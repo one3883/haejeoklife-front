@@ -922,6 +922,21 @@
 @keyframes hl-impact{from{filter:brightness(1.8);transform:translateX(-5px)}40%{transform:translateX(5px)}to{filter:none;transform:none}}
 @media(prefers-reduced-motion:reduce){#sceneArt.hl-reveal,#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg,#sceneArt.hl-reveal::after,#sceneArt.hl-reveal::before,#eventTitle.hl-title,#scene.hl-copy,#tacOverlay:not(.hidden) .tac-box,#tacArt.tac-shake,#tacFoe.tac-shake,#tacMe.tac-shake{animation:none!important}}
 </style>
+<style id="economy-haki-finish-style">
+.haki-level-panel{width:100%;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--ink)}
+.haki-level-panel strong{display:block;margin-bottom:6px;color:var(--gold)}
+.haki-level-row{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:13px;font-weight:700}
+.haki-level-row span{min-width:115px}
+.haki-level-track{flex:1;height:9px;background:#14222b;border-radius:999px;overflow:hidden}
+.haki-level-track i{display:block;height:100%;background:linear-gradient(90deg,#4d9bca,#e5bc62);border-radius:999px}
+.tac-card.tac-finisher{isolation:isolate;animation:tacFinisherImpact .75s cubic-bezier(.18,.8,.2,1) both;box-shadow:0 0 0 2px #ffe2a0,0 0 34px rgba(255,91,44,.85)!important}
+.tac-card.tac-finisher::before{content:"";position:absolute;inset:-12%;z-index:5;pointer-events:none;background:linear-gradient(125deg,transparent 40%,rgba(255,255,255,.95) 48%,rgba(255,172,70,.8) 50%,transparent 58%);animation:tacFinisherSlash .65s ease-out both}
+.tac-card.tac-finisher::after{content:"";position:absolute;inset:-20%;z-index:5;pointer-events:none;border:5px solid rgba(255,205,111,.8);border-radius:50%;animation:tacFinisherRing .65s ease-out both}
+@keyframes tacFinisherImpact{0%,100%{transform:translateX(0) scale(1)}15%{transform:translateX(-10px) scale(1.025);filter:brightness(2)}30%{transform:translateX(9px) scale(1.015)}50%{transform:translateX(-5px)}}
+@keyframes tacFinisherSlash{0%{opacity:0;transform:translateX(-70%) rotate(-9deg)}30%{opacity:1}100%{opacity:0;transform:translateX(70%) rotate(-9deg)}}
+@keyframes tacFinisherRing{0%{opacity:1;transform:scale(.25)}100%{opacity:0;transform:scale(1.35)}}
+@media(prefers-reduced-motion:reduce){.tac-card.tac-finisher,.tac-card.tac-finisher::before,.tac-card.tac-finisher::after{animation:none!important}}
+</style>
 </head>
   <body>
     <div class="wrap">
@@ -1756,6 +1771,11 @@
         "네펠타리",
         "샬롯",
         "돈키호테",
+        "마르코", "벨", "오르테가", "카스텔", "레온", "드레이크", "베넷", "로웰",
+        "스칼렛", "발렌", "로렌스", "하트", "아벨", "세실", "에반스", "리베라",
+        "그레이", "스톤", "크로우", "블레이크", "로크", "메이슨", "클로버", "베가",
+        "로사", "벨몬트", "아르노", "제이드", "코르보", "브란", "레인", "알바",
+        "바스코", "모건", "듀란", "테라", "페로", "레오네", "세라", "에스텔",
       ];
       const firstnames = [
         "루카",
@@ -1773,6 +1793,13 @@
         "마리",
         "로빈",
         "코라",
+        "아리아", "엘리오", "제이드", "리오", "아델", "시온", "세린", "카렌",
+        "에리카", "로웬", "아론", "라일", "이리스", "리안", "레오", "아벨",
+        "셀레나", "니코", "피오", "에밀", "루나", "루시", "레온", "테라",
+        "레미", "시엘", "카일", "마야", "리브", "이브", "로제", "이든",
+        "밀라", "리엘", "벨라", "나일", "레이라", "카밀", "리아", "토마",
+        "로안", "벨", "프레야", "이사", "라파", "루벤", "에디", "마일로",
+        "제노", "루이스", "다니엘", "헤이즐", "세라", "라나", "미카", "소피",
       ];
       const familyTypes = [
         "가난한 가정",
@@ -2195,6 +2222,31 @@
               .map((a) => `<span class="abilityTag">${a}</span>`)
               .join("")
           : '<span class="abilityEmpty">아직 습득한 특수 능력이 없습니다.</span>';
+        // 패기 수치를 능력 칸에서 즉시 확인할 수 있도록 숫자와 진행 막대를 함께 표시.
+        if (Array.isArray(p.haki) && p.haki.length) {
+          const levels = p.hakiLv || {};
+          const hakiPanel = document.createElement("div");
+          hakiPanel.className = "haki-level-panel";
+          const heading = document.createElement("strong");
+          heading.textContent = "패기 숙련도";
+          hakiPanel.appendChild(heading);
+          for (const kind of ["견문색", "무장색", "패왕색"]) {
+            if (!p.haki.includes(kind)) continue;
+            const value = Math.max(0, Math.min(100, Number(levels[kind]) || 10));
+            const line = document.createElement("div");
+            line.className = "haki-level-row";
+            const label = document.createElement("span");
+            label.textContent = kind + " " + value + "/100";
+            const track = document.createElement("div");
+            track.className = "haki-level-track";
+            const fill = document.createElement("i");
+            fill.style.width = value + "%";
+            track.appendChild(fill);
+            line.append(label, track);
+            hakiPanel.appendChild(line);
+          }
+          $("abilityList").appendChild(hakiPanel);
+        }
         renderV18();
         renderKid();
         {
@@ -2391,7 +2443,7 @@
               desc: "가족 관계↑ · 재산↑",
               effect: () => {
                 p.relationship = clamp(p.relationship + 2);
-                p.money += ri(20, 70);
+                p.money += ri(22, 76);
               },
             },
             "취미·특기 개발": {
@@ -2472,7 +2524,7 @@
               desc: "지식↑ · 재산 기회",
               effect: () => {
                 p.knowledge = clamp(p.knowledge + 3);
-                p.money += ri(0, 100);
+                p.money += ri(0, 108);
               },
             },
             "전투·패기 수련": {
@@ -2492,7 +2544,7 @@
             "약탈품·재산 관리": {
               desc: "재산↑ · 행복 조금↓",
               effect: () => {
-                p.money += ri(40, 150);
+                p.money += ri(44, 162);
                 p.happiness = clamp(p.happiness - 1);
               },
             },
@@ -2535,13 +2587,13 @@
             desc: "지식↑ · 직업 숙련",
             effect: () => {
               p.knowledge = clamp(p.knowledge + 3);
-              p.money += ri(10, 60);
+              p.money += ri(11, 65);
             },
           },
           "일·재산 관리": {
             desc: "재산↑ · 행복 조금↓",
             effect: () => {
-              p.money += ri(40, 130);
+              p.money += ri(44, 141);
               p.happiness = clamp(p.happiness - 1);
             },
           },
@@ -2829,6 +2881,10 @@
         } else if (p.age >= 16 && p.job === "은퇴자") {
           upkeep = ri(60000, 160000);
           p.money -= upkeep;
+          // 은퇴자에게도 소액의 연간 연금을 지급한다. 기존 마지막 연봉이 있으면 일부 반영.
+          const pensionBase = Math.max(0, Number(p.lastAnnualSalary) || 0);
+          const pension = Math.round(Math.max(90000, Math.min(360000, pensionBase * 0.13)));
+          p.money += pension;
         }
         p.health = clamp(
           p.health +
@@ -2937,7 +2993,7 @@
           혁명군: 380000,
           천룡인: 6000000,
         };
-        let b = base[job] ?? 650000;
+        let b = (base[job] ?? 650000) * 1.07;
         const ladder = careerLadders[job] || [];
         const multipliers = [1, 1.18, 1.42, 1.8, 2.3, 3, 4, 5.5, 7];
         const m =
@@ -3232,7 +3288,7 @@
               title: "열매를 팔아 재산을 얻는다",
               desc: "수집가에게 높은 가격으로 판매한다.",
               run: () => {
-                p.money += ri(1800, 6500);
+                p.money += ri(1945, 7021);
                 log("발견한 열매를 고가에 판매함");
               },
             },
@@ -3240,7 +3296,7 @@
               title: "해군 또는 연구자에게 넘긴다",
               desc: "보상과 평판을 얻을 수 있다.",
               run: () => {
-                p.money += ri(500, 1800);
+                p.money += ri(540, 1945);
                 p.reputation = clamp(p.reputation + 3);
                 p.knowledge = clamp(p.knowledge + 2);
                 log("기묘한 열매를 해군·연구자에게 넘김");
@@ -3507,7 +3563,7 @@
               p.flags.impelDownRaid = true;
               p.reputation = clamp(p.reputation + 12);
               p.combat = clamp(p.combat + 5);
-              p.money += ri(100000, 500000);
+              p.money += ri(108000, 540000);
               addNews(`${p.crew || "검은수염 해적단"}, 임펠 다운 습격`);
               log("임펠 다운을 습격하고 죄수들을 풀어 줌");
             },
@@ -4503,7 +4559,7 @@
                 title: "두 번째 열매를 팔아 이익을 얻는다",
                 desc: "능력을 유지한 채 큰돈을 번다.",
                 run: () => {
-                  p.money += ri(1500, 5000);
+                  p.money += ri(1620, 5400);
                   log("두 번째 열매를 판매함");
                 },
               },
@@ -4772,7 +4828,7 @@
             title: "집안일을 돕는다",
             desc: "가족에게 도움이 되고 작은 용돈을 받는다.",
             run: () => {
-              p.money += ri(10, 60);
+              p.money += ri(11, 65);
               p.relationship += 3;
               log("집안일을 도와 용돈을 받음");
             },
@@ -4907,7 +4963,7 @@
               title: "일터에서 성실하게 일한다",
               desc: "수입과 숙련도가 오른다.",
               run: () => {
-                p.money += ri(100, 450);
+                p.money += ri(108, 487);
                 p.knowledge += 2;
                 p.happiness += 1;
                 log("일터에서 성실하게 일함");
@@ -5369,7 +5425,7 @@
             "새로운 교역 항로 개척",
             "상인 연합이 외딴 섬을 잇는 새 교역 항로를 개척했습니다. 항로 주변의 항구에는 일자리가 늘었고, 물자와 기술이 빠르게 유입되기 시작했습니다.",
             () => {
-              p.money += ri(20, 100);
+              p.money += ri(22, 108);
               p.knowledge += 1;
             },
             "새로운 교역 항로가 개척됨",
@@ -5463,7 +5519,7 @@
             "이스트 블루의 해상 교역 협정",
             "이스트 블루의 여러 항구가 교역 협정을 맺었습니다. 소규모 상선의 운항이 늘고, 일부 섬에서는 수입품 가격이 내려가기 시작했습니다.",
             () => {
-              p.money += ri(20, 80);
+              p.money += ri(22, 87);
               p.knowledge += 1;
             },
             "이스트 블루 항구들이 교역 협정을 맺음",
@@ -5596,7 +5652,7 @@
             "새 항로와 왕국 간 협정의 효과가 나타나면서 해상 교역량이 늘었습니다. 항구에는 상선과 일자리가 몰리고 물가도 점차 안정되고 있습니다.",
             () => {
               shiftWorld("trade", -1);
-              p.money += ri(30, 100);
+              p.money += ri(33, 108);
             },
             "국제 교역이 회복되고 항구가 호황을 맞음",
           );
@@ -5661,7 +5717,7 @@
             p.job = "학생";
             p.knowledge += 3;
             p.relationship += 4;
-            p.money += ri(30, 90);
+            p.money += ri(33, 98);
             p.flags.familyWorkYears = (p.flags.familyWorkYears || 0) + 1;
             log("학생 신분을 유지하며 가족의 일을 도왔음");
           },
@@ -6255,7 +6311,7 @@
                 desc: "현재 경력을 이어가며 숙련과 수입을 쌓는다.",
                 run: () => {
                   p.knowledge = clamp(p.knowledge + 2);
-                  p.money += ri(80, 220);
+                  p.money += ri(87, 238);
                   log("현재 직업을 유지하기로 결정함");
                 },
               },
@@ -7690,7 +7746,7 @@
                 title: "혼란을 틈타 세력을 넓힌다",
                 desc: "비어 버린 바다에서 이득을 챙긴다.",
                 run: () => {
-                  p.money += ri(200, 600);
+                  p.money += ri(216, 648);
                   p.reputation += 4;
                   p.relationship -= 3;
                   log("정상전쟁의 혼란을 틈타 약탈 영역을 넓힘");
@@ -8738,7 +8794,7 @@
                   desc: "모은 것을 시장에 팔 수도 있다.",
                   run: () => {
                     p.happiness += 4;
-                    p.money += ri(0, 15);
+                    p.money += ri(0, 17);
                     log("바닷가에서 조개를 주움");
                   },
                 },
@@ -8930,7 +8986,7 @@
                   desc: "재료비가 든다. 작은 수익을 얻는다.",
                   run: () => {
                     p.money -= 40;
-                    p.money += ri(20, 60);
+                    p.money += ri(22, 65);
                     p.relationship += 2;
                     log("학교 축제에서 음식 가게를 엶");
                   },
@@ -8997,7 +9053,7 @@
                   title: "일을 더 열심히 배운다",
                   desc: "집안 살림에 보탬이 된다.",
                   run: () => {
-                    p.money += ri(30, 90);
+                    p.money += ri(33, 98);
                     p.relationship += 3;
                     log("가업을 열심히 도움");
                   },
@@ -9046,7 +9102,7 @@
                   req: { health: 40 },
                   desc: "용돈을 벌고 세상을 배운다.",
                   run: () => {
-                    p.money += ri(40, 120);
+                    p.money += ri(44, 130);
                     p.knowledge += 2;
                     p.happiness -= 1;
                     log("처음으로 일을 해서 돈을 벎");
@@ -9056,7 +9112,7 @@
                   title: "친구와 같이 일한다",
                   desc: "덜 벌지만 즐겁다.",
                   run: () => {
-                    p.money += ri(20, 60);
+                    p.money += ri(22, 65);
                     p.relationship += 4;
                     log("친구와 함께 첫 일을 함");
                   },
@@ -9122,7 +9178,7 @@
                   title: "장사를 배우고 싶다고 말한다",
                   desc: "상인의 일을 조금 엿본다.",
                   run: () => {
-                    p.money += ri(10, 50);
+                    p.money += ri(11, 54);
                     p.knowledge += 2;
                     log("장사를 배우고 싶다고 말함");
                   },
@@ -9295,7 +9351,7 @@
               "바쁜 계절",
               `${p.job} 일이 유난히 몰리는 해였습니다. 쉬는 날도 거의 없었지만, 손에 쥔 돈은 조금 늘었습니다.`,
               () => {
-                p.money += ri(20, 80);
+                p.money += ri(22, 87);
                 p.health -= 1;
               },
               "바쁜 한 해를 보냄",
@@ -9640,7 +9696,7 @@
               title: "상단과 함께 사막을 건넌다",
               desc: "돈을 벌지만 몸이 상할 수 있다.",
               run: () => {
-                p.money += ri(80, 250);
+                p.money += ri(87, 270);
                 p.health -= ri(0, 4);
                 p.knowledge += 2;
                 log("낙타 상단과 함께 사막을 건넘");
@@ -9769,7 +9825,7 @@
               title: "귤밭 일을 돕는다",
               desc: "품삯과 귤 한 바구니를 받는다.",
               run: () => {
-                p.money += ri(30, 100);
+                p.money += ri(33, 108);
                 p.relationship += 3;
                 log("귤 수확을 도움");
               },
@@ -9811,7 +9867,7 @@
                 title: "코팅 장인의 조수로 일한다",
                 desc: "기술과 돈을 얻는다.",
                 run: () => {
-                  p.money += ri(100, 300);
+                  p.money += ri(108, 324);
                   p.knowledge += 3;
                   log("코팅 장인의 조수로 일함");
                 },
@@ -9820,7 +9876,7 @@
                 title: "급한 해적에게 웃돈을 받는다",
                 desc: "큰돈을 벌지만 해적이 화를 낼 수 있다.",
                 run: () => {
-                  p.money += ri(200, 500);
+                  p.money += ri(216, 540);
                   if (Math.random() < 0.3) {
                     p.health -= ri(4, 10);
                     log("웃돈을 받다 해적에게 얻어맞음");
@@ -9865,7 +9921,7 @@
                 title: "경매장의 잡일을 맡는다",
                 desc: "돈은 되지만 양심이 아프다.",
                 run: () => {
-                  p.money += ri(150, 400);
+                  p.money += ri(162, 432);
                   p.happiness -= 6;
                   p.reputation -= 3;
                   log("인간 경매장에서 잡일을 함");
@@ -9922,7 +9978,7 @@
             "그랜드 라인 출항 준비",
             "그랜드 라인으로 떠나는 배들이 마지막 보급을 위해 몰려들어 시장이 크게 붐볐습니다.",
             () => {
-              p.money += ri(20, 80);
+              p.money += ri(22, 87);
             },
             "로그타운 시장이 출항 준비로 붐빔",
           ),
@@ -9982,7 +10038,7 @@
                     p.health -= ri(2, 7);
                     log("장물을 팔다 경비대에 얻어맞음");
                   } else {
-                    p.money += ri(40, 160);
+                    p.money += ri(44, 173);
                     log("쓰레기장에서 찾은 물건을 팔아 돈을 마련함");
                   }
                 },
@@ -10152,7 +10208,7 @@
                   "호박납 광산의 호황",
                   "하얀 광물 호박납의 주문이 밀려들어 광산은 밤낮없이 돌아갔습니다. 도시는 그 어느 때보다 풍요로워 보였습니다.",
                   () => {
-                    p.money += ri(50, 150);
+                    p.money += ri(54, 162);
                     p.health -= 1;
                   },
                   "호박납 광산의 호황을 누림",
@@ -10226,7 +10282,7 @@
             "향수 시장",
             "나노하나의 향수 시장에 새 향이 나와 바깥 섬 상인들까지 몰려들었습니다.",
             () => {
-              p.money += ri(20, 80);
+              p.money += ri(22, 87);
               p.happiness += 1;
             },
             "향수 시장이 크게 붐빔",
@@ -10376,7 +10432,7 @@
                   if (p.knowledge + ri(0, 30) >= 62) {
                     if (p.status === "민간인" && p.job !== "조선공")
                       setCareer("조선공", "민간인");
-                    p.money += ri(100, 250);
+                    p.money += ri(108, 270);
                     p.reputation += 2;
                     log("워터 세븐 조선소의 채용 시험에 합격함");
                   } else {
@@ -10486,7 +10542,7 @@
                     base: 0.05,
                     loseHp: [6, 15],
                     win: () => {
-                      p.money += ri(400, 1000);
+                      p.money += ri(432, 1080);
                       p.reputation += 6;
                     },
                   });
@@ -10684,7 +10740,7 @@
                 desc: "대박이 나거나 빚을 진다.",
                 run: () => {
                   if (Math.random() < 0.35) {
-                    p.money += ri(500, 2000);
+                    p.money += ri(540, 2160);
                     p.happiness += 6;
                     log("그란 테소로 카지노에서 큰돈을 땀");
                   } else {
@@ -10822,7 +10878,7 @@
             "남쪽 바다의 무역선",
             "따뜻한 남쪽 바다를 따라 과일과 향신료를 실은 무역선이 줄지어 들어왔습니다.",
             () => {
-              p.money += ri(10, 60);
+              p.money += ri(11, 65);
               p.happiness += 1;
             },
             "사우스 블루의 무역선이 항구를 채움",
@@ -10849,7 +10905,7 @@
                 desc: "고마움을 받는다.",
                 run: () => {
                   p.relationship += 4;
-                  p.money += ri(0, 80);
+                  p.money += ri(0, 87);
                   log("길 잃은 항해사를 도와줌");
                 },
               },
@@ -10857,7 +10913,7 @@
                 title: "비싸게 판다",
                 desc: "돈을 번다.",
                 run: () => {
-                  p.money += ri(80, 200);
+                  p.money += ri(87, 216);
                   p.relationship -= 2;
                   log("길 잃은 항해사에게 지침을 비싸게 팖");
                 },
@@ -11703,7 +11759,7 @@
                     loseHp: [10, 25],
                     win: () => {
                       p.reputation += 5;
-                      p.money += ri(100000, 400000);
+                      p.money += ri(108000, 432000);
                       if (p.bountyIssued) p.bounty += 3 * ri(2000000, 10000000);
                     },
                     death: {
@@ -11745,7 +11801,7 @@
                     loseHp: [10, 25],
                     win: () => {
                       p.reputation += 6;
-                      p.money += ri(100000, 300000);
+                      p.money += ri(108000, 324000);
                       addNews(
                         `해군 ${p.rankTitle || ""} ${p.name}, ${F.group} 격퇴`,
                       );
@@ -13068,7 +13124,7 @@
             body: `낯선 ${n.job}${ga(n.job)} 당신을 찾아왔습니다. ${p.age - d.helpedAge}년 전, 길을 잃고 울던 자신을 도와준 사람이 당신이었다고 합니다. 그는 그때의 은혜를 잊지 않았다며 도움이 필요하면 언제든 부르라고 말했습니다.`,
             choices: null,
             effect: () => {
-              p.money += ri(100000, 400000);
+              p.money += ri(108000, 432000);
               p.happiness += 6;
               p.relationship += 4;
             },
@@ -13741,7 +13797,7 @@
           choices: null,
           effect: () => {
             n.lastSeen = p.age;
-            if (p.money < 0) p.money += ri(100000, 400000);
+            if (p.money < 0) p.money += ri(108000, 432000);
             p.health += ri(5, 12);
             p.happiness += 4;
           },
@@ -14797,7 +14853,7 @@
                 if (
                   battle({ foe: "마을 자경단", base: 0.5, loseHp: [4, 12] })
                 ) {
-                  p.money += ri(300000, 1200000);
+                  p.money += ri(324000, 1296000);
                   gainStanding(6);
                   p.happiness -= 3;
                   shiftWorld("piratePower", 1);
@@ -14845,7 +14901,7 @@
               title: "지도를 팔아 버린다",
               desc: "확실한 돈을 챙긴다.",
               run: () => {
-                p.money += ri(50000, 200000);
+                p.money += ri(54000, 216000);
                 log("보물 지도를 팔아넘김");
               },
             },
@@ -14867,7 +14923,7 @@
               run: () => {
                 if (battle({ foe, base: F.base, loseHp: [10, 25] })) {
                   gainStanding(7);
-                  p.money += ri(300000, 1500000);
+                  p.money += ri(324000, 1620000);
                   addNews(`'${p.crew}', ${foe}${eul(foe)} 격파`);
                 } else if (p.vessel)
                   p.vessel.hull = Math.max(1, p.vessel.hull - 20);
@@ -15383,7 +15439,7 @@
                     loseHp: [6, 16],
                   })
                 ) {
-                  p.money += ri(300000, 1200000);
+                  p.money += ri(324000, 1296000);
                   gainStanding(4);
                 }
                 npcStory(n, "당신과 같은 현상범을 노림");
@@ -15401,7 +15457,7 @@
                   power: ri(30, 55),
                   rel: ri(50, 65),
                 });
-                p.money += ri(150000, 500000);
+                p.money += ri(162000, 540000);
                 gainStanding(2);
                 log(`${n.name}${wa(n.name)} 손잡고 현상범을 잡음`);
               },
@@ -15428,7 +15484,7 @@
                     loseHp: [6, 14],
                   })
                 ) {
-                  p.money += ri(400000, 1000000);
+                  p.money += ri(432000, 1080000);
                   gainStanding(5);
                 }
               },
@@ -15444,7 +15500,7 @@
                     loseHp: [10, 25],
                   })
                 ) {
-                  p.money += ri(400000, 1000000);
+                  p.money += ri(432000, 1080000);
                   gainStanding(4);
                 }
               },
@@ -16046,7 +16102,7 @@
                 desc: "이기면 전리품을 얻는다." + oddsText(FP.base),
                 run: () => {
                   if (battle({ foe: FP.label, base: FP.base, loseHp: [8, 20] }))
-                    p.money += ri(100000, 500000);
+                    p.money += ri(108000, 540000);
                   else {
                     hullHit(ri(10, 20));
                     v.food = Math.max(0, v.food - 20);
@@ -16148,7 +16204,7 @@
                 run: () => {
                   const r = Math.random();
                   if (r < 0.4) {
-                    p.money += ri(100000, 600000);
+                    p.money += ri(108000, 648000);
                     log("유령선에서 금화를 찾음");
                   } else if (r < 0.7) {
                     p.knowledge += 4;
@@ -16385,7 +16441,7 @@
               title: "능력으로 돈을 번다",
               desc: "수입과 숙련도.",
               run: () => {
-                p.money += ri(100000, 400000);
+                p.money += ri(108000, 432000);
                 p.fruitMastery = Math.min(40, m + 2);
                 log("능력을 써서 돈을 벎");
               },
@@ -19051,7 +19107,7 @@
                   title: "빛의 배달부로 큰돈을 번다",
                   desc: "재산이 크게 늘어난다.",
                   run: () => {
-                    p.money += ri(1000000, 3000000);
+                    p.money += ri(1080000, 3240000);
                     log("빛의 속도로 일해 큰돈을 벎");
                   },
                 },
@@ -19745,7 +19801,7 @@
               title: "받는다",
               desc: "재산이 는다.",
               run: () => {
-                p.money += ri(2000000, 5000000);
+                p.money += ri(2160000, 5400000);
                 log("가맹국의 진상품을 받음");
               },
             },
@@ -19753,7 +19809,7 @@
               title: "더 바치라고 요구한다",
               desc: "재산이 크게 늘지만 그 나라의 원한을 산다.",
               run: () => {
-                p.money += ri(5000000, 10000000);
+                p.money += ri(5400000, 10800000);
                 p.flags.cruel = (p.flags.cruel || 0) + 1;
                 gainStanding(2);
                 log("진상품을 더 바치라고 요구함");
@@ -19826,7 +19882,7 @@
                   title: `${sib.name}${eul(sib.name)} 밀어낸다`,
                   desc: "가문의 재산과 권세를 차지하지만 형제와는 원수가 된다.",
                   run: () => {
-                    p.money += ri(5000000, 12000000);
+                    p.money += ri(5400000, 12960000);
                     gainStanding(6);
                     sib.rel -= 40;
                     if (sib.rel < 0) sib.role = "원수";
@@ -19837,7 +19893,7 @@
                   title: "재산과 권한을 나눈다",
                   desc: "형제와의 사이를 지킨다.",
                   run: () => {
-                    p.money += ri(1500000, 4000000);
+                    p.money += ri(1620000, 4320000);
                     sib.rel += 15;
                     log(`${sib.name}${wa(sib.name)} 가문의 권한을 나눔`);
                   },
@@ -19961,7 +20017,7 @@
             title: "가문의 재산을 굴린다",
             desc: "재산이 늘어난다.",
             run: () => {
-              p.money += ri(1000000, 3000000);
+              p.money += ri(1080000, 3240000);
               log("가문의 재산을 굴림");
             },
           },
@@ -20626,7 +20682,7 @@
                 desc: "요리 기술이 는다.",
                 run: () => {
                   sk("요리", 5);
-                  p.money += ri(10, 30);
+                  p.money += ri(11, 33);
                   log("생선 손질을 배움");
                 },
               },
@@ -20635,7 +20691,7 @@
                 desc: "장사 기술이 는다.",
                 run: () => {
                   sk("장사", 5);
-                  p.money += ri(20, 40);
+                  p.money += ri(22, 44);
                   log("생선 가게에서 손님을 끌어모음");
                 },
               },
@@ -20895,7 +20951,7 @@
                 req: { health: 40 },
                 run: () => {
                   if (kidCheck(0.45, "항해술")) {
-                    p.money += ri(100, 400);
+                    p.money += ri(108, 432);
                     f.rel += 8;
                     mem("동굴에서 찾은 옛 금화");
                     log("동굴 깊은 곳에서 옛 해적의 금화를 찾음");
@@ -21473,7 +21529,7 @@
             req: { health: 40 },
             run: () => {
               sk("항해술", 11);
-              p.money += ri(20, 60);
+              p.money += ri(22, 65);
             },
           },
           {
@@ -21482,7 +21538,7 @@
             desc: "요리가 크게 는다.",
             run: () => {
               sk("요리", 11);
-              p.money += ri(20, 50);
+              p.money += ri(22, 54);
             },
           },
           {
@@ -21492,7 +21548,7 @@
             req: { health: 35 },
             run: () => {
               sk("제작", 11);
-              p.money += ri(10, 40);
+              p.money += ri(11, 44);
             },
           },
           {
@@ -21511,7 +21567,7 @@
             desc: "장사가 크게 는다.",
             run: () => {
               sk("장사", 11);
-              p.money += ri(30, 80);
+              p.money += ri(33, 87);
             },
           },
         ];
@@ -21742,7 +21798,7 @@
                 desc: "재산이 는다.",
                 req: { health: 35 },
                 run: () => {
-                  p.money += ri(80, 200);
+                  p.money += ri(87, 216);
                   sk("장사", 2);
                   log("첫 아르바이트로 돈을 모음");
                 },
@@ -22088,7 +22144,7 @@
                   desc: "항해술이 는다.",
                   run: () => {
                     sk("항해술", 4);
-                    p.money += ri(10, 30);
+                    p.money += ri(11, 33);
                     log("상선 선원들의 심부름을 함");
                   },
                 },
@@ -22714,7 +22770,7 @@
                 title: "심부름을 해 준다",
                 desc: "돈을 받지만 평판이 떨어진다.",
                 run: () => {
-                  p.money += ri(30, 80);
+                  p.money += ri(33, 87);
                   lrep(-4);
                   log("패밀리의 심부름을 함");
                 },
@@ -22746,7 +22802,7 @@
                 title: "알을 몇 개 주워 판다",
                 desc: "돈은 되지만 평판이 떨어진다.",
                 run: () => {
-                  p.money += ri(20, 60);
+                  p.money += ri(22, 65);
                   lrep(-3);
                   log("바다거북 알을 팔았음");
                 },
@@ -23900,7 +23956,7 @@
           pir = p.status === "해적",
           navy = p.status === "해군";
         if (d("piratePower") > 0) {
-          if (pir) p.money += ri(30000, 120000);
+          if (pir) p.money += ri(32401, 129601);
           else p.happiness -= 1;
         }
         if (d("piratePower") < 0) {
@@ -23912,7 +23968,7 @@
           else if (navy) p.reputation += 1;
         }
         if (d("unrest") > 0) p.happiness -= 1;
-        if (d("trade") > 0) p.money += ri(20000, 80000);
+        if (d("trade") > 0) p.money += ri(21600, 86400);
         if (d("trade") < 0) p.money -= ri(20000, 80000);
         if (d("epidemic") > 0 && Math.random() < 0.5) p.health -= 1;
         if (d("tech") > 0) p.knowledge += 1;
@@ -25318,7 +25374,7 @@
                   if (p.knowledge + ri(0, 30) >= 70) {
                     gainStanding(8);
                     p.reputation += 4;
-                    p.money += ri(300000, 800000);
+                    p.money += ri(324000, 864000);
                     achieve("학술적 명성을 얻음");
                     addNews(`학자 ${p.name}의 연구, 학계에서 큰 반향`);
                     log("연구 성과를 발표해 학술적 명성을 얻음");
@@ -27916,9 +27972,9 @@ function renameOldBlades(){
 /* ===================== v68: 출생 설정에서 악마의 열매 고르기 ===================== */
 // B~S등급 열매 중 하나를 고르면 5살이 되는 해에 반드시 그 열매를 먹는다.
 let _fruitWarned=false;
-function chosenFruitPick(){const el=document.getElementById("charFruit");const v=el?String(el.value||""):"";return ["S","A","B"].some(g=>FRUIT_GRADES[g].includes(v))?v:null}
+function chosenFruitPick(){const el=document.getElementById("charFruit");const v=el?String(el.value||""):"";return v!=="사람사람 열매 모델 원붕이"&&["S","A","B","C"].some(g=>FRUIT_GRADES[g].includes(v))?v:null}
 {const el=document.getElementById("charFruit");if(el){
- for(const g of ["S","A","B"]){const og=document.createElement("optgroup");og.label=g+"등급";for(const f of FRUIT_GRADES[g]){const o=document.createElement("option");o.value=f;o.textContent=f;og.appendChild(o)}el.appendChild(og)}
+ for(const g of ["S","A","B","C"]){const og=document.createElement("optgroup");og.label=g+"등급";for(const f of FRUIT_GRADES[g]){if(f==="사람사람 열매 모델 원붕이")continue;const o=document.createElement("option");o.value=f;o.textContent=f;og.appendChild(o)}el.appendChild(og)}
  el.addEventListener("change",()=>{if(el.value&&!_fruitWarned){_fruitWarned=true;showSetupWarning(`<h2 style="margin-top:0">잠깐만요</h2><div>고른 <b>${el.value}</b>은(는) 5살이 되는 해에 반드시 먹게 됩니다. 한번 먹으면 바다에서 헤엄칠 수 없고, 되돌릴 수 없습니다.</div><div class="small" style="margin-top:8px">열매를 직접 고르면 우연히 운명이 바뀌는 재미가 반감되거나 몰입을 해칠 수도 있습니다. 그래도 괜찮다면 그대로 진행하세요. '운명에 맡긴다'를 고르면 예전처럼 우연에 맡깁니다.</div>`)}})}}
 {const _bg68=begin;begin=function(){const f=chosenFruitPick(),before=p;const r=_bg68.apply(this,arguments);if(p&&p!==before&&f)p.flags.chosenFruit=f;return r}}
 function chosenFruitScene(){
@@ -27953,8 +28009,8 @@ function jxAuto(job, n, title, body, effect, summary) {
 const JOBX = {
   어부: () => [
     jx("어부", 1, "새벽 바다의 대어", "새벽 그물에 배가 기울 만큼 커다란 물고기가 걸렸습니다. 혼자 끌어올리기엔 벅차 보입니다.", [
-      ["끝까지 혼자 끌어올린다", "힘이 들지만 큰돈이 된다.", () => { if (Math.random() < 0.6) { p.money += ri(80000, 200000); p.combat += 1; log("혼자 대어를 끌어올려 비싸게 팔았음"); } else { p.health -= ri(4, 10); log("대어를 끌어올리다 그물에 손을 다침"); } }],
-      ["옆 배를 불러 나눠 갖는다", "수익은 줄지만 안전하다.", () => { p.money += ri(40000, 90000); p.relationship += 3; log("이웃 어부와 대어를 나눔"); }],
+      ["끝까지 혼자 끌어올린다", "힘이 들지만 큰돈이 된다.", () => { if (Math.random() < 0.6) { p.money += ri(86400, 216000); p.combat += 1; log("혼자 대어를 끌어올려 비싸게 팔았음"); } else { p.health -= ri(4, 10); log("대어를 끌어올리다 그물에 손을 다침"); } }],
+      ["옆 배를 불러 나눠 갖는다", "수익은 줄지만 안전하다.", () => { p.money += ri(43200, 97200); p.relationship += 3; log("이웃 어부와 대어를 나눔"); }],
     ]),
     jx("어부", 2, "어장 다툼", "다른 마을 어선들이 당신네 어장까지 넘어와 그물을 치고 있습니다. 마을 어부들이 술렁입니다.", [
       ["앞장서서 담판을 짓는다", "말로 해결해 본다.", () => { if (Math.random() < 0.55 + p.knowledge / 300) { p.reputation += 3; log("어장 다툼을 담판으로 해결함"); } else { p.happiness -= 3; log("어장 담판이 결렬됨"); } }],
@@ -27964,14 +28020,14 @@ const JOBX = {
   ],
   농부: () => [
     jx("농부", 1, "흉년의 조짐", "올해는 비가 너무 적습니다. 밭이 갈라지기 시작했습니다.", [
-      ["멀리서 물을 길어 온다", "몸은 고되지만 수확을 지킨다.", () => { p.health -= ri(2, 6); p.money += ri(30000, 80000); log("멀리서 물을 길어 밭을 지켜 냄"); }],
-      ["가뭄에 강한 작물로 바꾼다", "지식이 필요하다.", () => { if (p.knowledge >= 25 || Math.random() < 0.4) { p.money += ri(50000, 120000); p.knowledge += 2; log("가뭄에 강한 작물로 바꿔 수확을 지킴"); } else { p.money -= ri(20000, 50000); log("작물을 바꿨지만 잘 자라지 않음"); } }],
+      ["멀리서 물을 길어 온다", "몸은 고되지만 수확을 지킨다.", () => { p.health -= ri(2, 6); p.money += ri(32401, 86400); log("멀리서 물을 길어 밭을 지켜 냄"); }],
+      ["가뭄에 강한 작물로 바꾼다", "지식이 필요하다.", () => { if (p.knowledge >= 25 || Math.random() < 0.4) { p.money += ri(54000, 129601); p.knowledge += 2; log("가뭄에 강한 작물로 바꿔 수확을 지킴"); } else { p.money -= ri(20000, 50000); log("작물을 바꿨지만 잘 자라지 않음"); } }],
     ]),
     jx("농부", 2, "해적의 식량 징발", "지나가던 해적들이 마을에 들러 곡식을 내놓으라고 합니다.", [
       ["순순히 일부를 내준다", "손해를 보지만 다치지 않는다.", () => { p.money -= ri(30000, 70000); log("해적에게 곡식 일부를 내줌"); }],
       ["창고를 숨기고 버틴다", "들키면 위험하다.", () => { if (Math.random() < 0.6) { p.happiness += 3; log("창고를 숨겨 곡식을 지킴"); } else { p.health -= ri(5, 12); p.money -= ri(40000, 90000); log("숨긴 창고를 들켜 해적에게 맞음"); } }],
     ]),
-    jxAuto("농부", 3, "풍년 축제", "올해는 유난히 수확이 좋았습니다. 마을 사람들과 함께 연 풍년 축제에서 당신의 작물이 최고로 뽑혔습니다.", () => { p.money += ri(40000, 100000); p.happiness += 5; p.reputation += 1; }, "풍년 축제에서 최고의 작물로 뽑힘"),
+    jxAuto("농부", 3, "풍년 축제", "올해는 유난히 수확이 좋았습니다. 마을 사람들과 함께 연 풍년 축제에서 당신의 작물이 최고로 뽑혔습니다.", () => { p.money += ri(43200, 108000); p.happiness += 5; p.reputation += 1; }, "풍년 축제에서 최고의 작물로 뽑힘"),
   ],
   "상점 점원": () => [
     jx("상점 점원", 1, "진상 손님", "물건값을 깎아 달라며 한 시간째 소리치는 손님이 있습니다. 주인은 자리를 비웠습니다.", [
@@ -27986,19 +28042,19 @@ const JOBX = {
   ],
   "항구 노동자": () => [
     jx("항구 노동자", 1, "수상한 화물", "선적하던 상자 하나에서 쇳소리와 함께 화약 냄새가 납니다. 서류에는 '건어물'이라고 적혀 있습니다.", [
-      ["해군 초소에 신고한다", "보상을 받을 수도 있다.", () => { if (noNavyHere()) { p.reputation += 2; log("수상한 화물을 항구 관리인에게 알림"); } else { p.money += ri(20000, 60000); p.reputation += 2; log("수상한 화물을 해군에 신고해 보상을 받음"); } }],
-      ["못 본 척 싣는다", "괜히 엮이고 싶지 않다.", () => { p.money += ri(10000, 30000); log("수상한 화물을 못 본 척 실어 줌"); }],
+      ["해군 초소에 신고한다", "보상을 받을 수도 있다.", () => { if (noNavyHere()) { p.reputation += 2; log("수상한 화물을 항구 관리인에게 알림"); } else { p.money += ri(21600, 64801); p.reputation += 2; log("수상한 화물을 해군에 신고해 보상을 받음"); } }],
+      ["못 본 척 싣는다", "괜히 엮이고 싶지 않다.", () => { p.money += ri(10800, 32401); log("수상한 화물을 못 본 척 실어 줌"); }],
     ]),
     jx("항구 노동자", 2, "임금 체불", "항구 하역 회사가 석 달째 임금을 주지 않고 있습니다. 동료들이 파업을 하자고 합니다.", [
-      ["파업에 앞장선다", "임금을 받아 낼 수도, 잘릴 수도 있다.", () => { if (Math.random() < 0.6) { p.money += ri(60000, 150000); p.reputation += 3; log("파업에 앞장서 밀린 임금을 받아 냄"); } else { p.money -= ri(20000, 50000); p.happiness -= 4; log("파업에 앞장섰다가 일감을 잃음"); } }],
-      ["조용히 일을 계속한다", "언젠가는 주겠지.", () => { p.money += ri(20000, 40000); p.happiness -= 2; log("파업에 끼지 않고 일을 계속함"); }],
+      ["파업에 앞장선다", "임금을 받아 낼 수도, 잘릴 수도 있다.", () => { if (Math.random() < 0.6) { p.money += ri(64801, 162000); p.reputation += 3; log("파업에 앞장서 밀린 임금을 받아 냄"); } else { p.money -= ri(20000, 50000); p.happiness -= 4; log("파업에 앞장섰다가 일감을 잃음"); } }],
+      ["조용히 일을 계속한다", "언젠가는 주겠지.", () => { p.money += ri(21600, 43200); p.happiness -= 2; log("파업에 끼지 않고 일을 계속함"); }],
     ]),
     jxAuto("항구 노동자", 3, "무너지는 화물", "높이 쌓인 화물이 기우뚱하는 순간, 당신이 몸을 날려 어린 짐꾼을 밀어냈습니다. 부두 사람들이 당신을 영웅이라 불렀습니다.", () => { p.reputation += 3; p.health -= ri(2, 6); p.combat += 1; }, "무너지는 화물에서 어린 짐꾼을 구함"),
   ],
   조선공: () => [
     jx("조선공", 1, "보물선의 수리 의뢰", "낡은 해도를 든 선장이 배를 '거친 바다도 견디게' 고쳐 달라며 두둑한 돈을 내밀었습니다. 기한은 단 사흘입니다.", [
-      ["밤을 새워 완성한다", "큰돈과 명성을 얻는다.", () => { p.health -= ri(3, 8); p.money += ri(150000, 400000); sk("제작", 3); log("사흘 밤을 새워 보물선 수리를 끝냄"); }],
-      ["기한을 늘려 달라고 한다", "꼼꼼하게 고친다.", () => { p.money += ri(80000, 160000); p.reputation += 2; log("기한을 늘려 꼼꼼하게 배를 고침"); }],
+      ["밤을 새워 완성한다", "큰돈과 명성을 얻는다.", () => { p.health -= ri(3, 8); p.money += ri(162000, 432000); sk("제작", 3); log("사흘 밤을 새워 보물선 수리를 끝냄"); }],
+      ["기한을 늘려 달라고 한다", "꼼꼼하게 고친다.", () => { p.money += ri(86400, 172800); p.reputation += 2; log("기한을 늘려 꼼꼼하게 배를 고침"); }],
     ]),
     jx("조선공", 2, "아담의 나무 소문", "보물의 나무 '아담'의 목재 조각이 암시장에 나왔다는 소문을 들었습니다. 최고의 조선공이라면 한 번쯤 다뤄 보고 싶은 나무입니다.", [
       ["큰돈을 들여 사들인다", "진짜라면 평생의 경험이 된다.", () => { p.money -= ri(200000, 500000); if (Math.random() < 0.5) { sk("제작", 8); p.knowledge += 3; log("아담 목재 조각을 다뤄 보며 솜씨가 크게 늘어남"); } else log("아담 목재라던 조각이 가짜로 밝혀짐"); }],
@@ -28008,14 +28064,14 @@ const JOBX = {
   ],
   요리사: () => [
     jx("요리사", 1, "굶주린 해적", "문 닫을 무렵, 돈 한 푼 없는 굶주린 해적이 식당 앞에 쓰러졌습니다.", [
-      ["밥을 차려 준다", "배고픈 사람은 누구든 먹인다.", () => { p.happiness += 4; p.money -= ri(3000, 8000); if (Math.random() < 0.3) { p.money += ri(100000, 300000); log("밥을 먹여 준 해적이 훗날 보답을 보내옴"); } else log("굶주린 해적에게 밥을 차려 줌"); }],
+      ["밥을 차려 준다", "배고픈 사람은 누구든 먹인다.", () => { p.happiness += 4; p.money -= ri(3000, 8000); if (Math.random() < 0.3) { p.money += ri(108000, 324000); log("밥을 먹여 준 해적이 훗날 보답을 보내옴"); } else log("굶주린 해적에게 밥을 차려 줌"); }],
       ["해군에 신고한다", "엮이지 않는 게 좋다.", () => { p.reputation += 1; p.happiness -= 2; log("식당 앞에 쓰러진 해적을 신고함"); }],
     ]),
     jx("요리사", 2, "요리 대회", "항구에서 큰 요리 대회가 열립니다. 우승하면 상금과 함께 유명 식당의 초대를 받을 수 있습니다.", [
-      ["새로운 요리로 승부한다", "위험하지만 눈에 띈다.", () => { if (Math.random() < 0.3 + skv("요리") / 200) { p.money += ri(200000, 500000); p.reputation += 5; achieve("요리 대회 우승"); log("요리 대회에서 새 요리로 우승함"); } else { p.happiness -= 3; log("요리 대회에서 새 요리가 혹평을 받음"); } }],
-      ["자신 있는 요리로 안전하게 간다", "입상은 할 수 있다.", () => { p.money += ri(50000, 120000); p.reputation += 2; sk("요리", 2); log("요리 대회에서 입상함"); }],
+      ["새로운 요리로 승부한다", "위험하지만 눈에 띈다.", () => { if (Math.random() < 0.3 + skv("요리") / 200) { p.money += ri(216000, 540000); p.reputation += 5; achieve("요리 대회 우승"); log("요리 대회에서 새 요리로 우승함"); } else { p.happiness -= 3; log("요리 대회에서 새 요리가 혹평을 받음"); } }],
+      ["자신 있는 요리로 안전하게 간다", "입상은 할 수 있다.", () => { p.money += ri(54000, 129601); p.reputation += 2; sk("요리", 2); log("요리 대회에서 입상함"); }],
     ]),
-    jxAuto("요리사", 3, "바다의 진미", "어부에게서 처음 보는 해수어를 얻어 밤새 요리법을 연구했습니다. 다음 날 그 요리를 맛본 손님들이 줄을 섰습니다.", () => { sk("요리", 3); p.money += ri(40000, 100000); p.happiness += 3; }, "새로운 해수어 요리를 개발함"),
+    jxAuto("요리사", 3, "바다의 진미", "어부에게서 처음 보는 해수어를 얻어 밤새 요리법을 연구했습니다. 다음 날 그 요리를 맛본 손님들이 줄을 섰습니다.", () => { sk("요리", 3); p.money += ri(43200, 108000); p.happiness += 3; }, "새로운 해수어 요리를 개발함"),
   ],
   "의사 견습": () => [
     jx("의사 견습", 1, "한밤의 응급 환자", "선배 의사가 없는 밤, 칼에 베인 선원이 피투성이로 실려 왔습니다.", [
@@ -28030,7 +28086,7 @@ const JOBX = {
   ],
   상인: () => [
     jx("상인", 1, "환율 폭락", "어느 왕국의 화폐 가치가 하룻밤 새 폭락했다는 소식이 들어왔습니다. 그 나라 물건이 헐값이 되었습니다.", [
-      ["물건을 대량으로 사들인다", "되팔면 큰돈이 될 수도 있다.", () => { if (Math.random() < 0.55) { p.money += ri(300000, 900000); log("환율 폭락 때 사들인 물건을 되팔아 큰돈을 벎"); } else { p.money -= ri(200000, 500000); log("헐값에 사들인 물건이 팔리지 않아 손해를 봄"); } }],
+      ["물건을 대량으로 사들인다", "되팔면 큰돈이 될 수도 있다.", () => { if (Math.random() < 0.55) { p.money += ri(324000, 972001); log("환율 폭락 때 사들인 물건을 되팔아 큰돈을 벎"); } else { p.money -= ri(200000, 500000); log("헐값에 사들인 물건이 팔리지 않아 손해를 봄"); } }],
       ["지켜보기만 한다", "위험한 장사는 하지 않는다.", () => { p.knowledge += 2; log("환율 폭락을 지켜보며 시장을 공부함"); }],
     ]),
     jx("상인", 2, "해적의 보호비", "항로를 지나는 해적단이 '안전한 항해'의 대가로 보호비를 요구했습니다.", [
@@ -28038,18 +28094,18 @@ const JOBX = {
       ["항로를 바꾼다", "시간과 비용이 더 든다.", () => { p.money -= ri(40000, 120000); p.knowledge += 2; log("해적을 피해 새로운 항로를 개척함"); }],
       ["해군에 호위를 요청한다", "가맹국 상인이라면 가능하다.", () => { if (!noNavyHere() && Math.random() < 0.6) { p.reputation += 2; log("해군의 호위를 받아 무역을 이어 감"); } else { p.money -= ri(150000, 300000); log("호위 요청이 늦어 화물을 빼앗김"); } }],
     ]),
-    jxAuto("상인", 3, "대형 계약", "몇 년 동안 공들인 거래처와 마침내 대형 계약을 맺었습니다. 상인 조합에서도 당신의 이름이 오르내립니다.", () => { p.money += ri(200000, 600000); p.reputation += 3; sk("장사", 3); }, "대형 무역 계약을 따냄"),
+    jxAuto("상인", 3, "대형 계약", "몇 년 동안 공들인 거래처와 마침내 대형 계약을 맺었습니다. 상인 조합에서도 당신의 이름이 오르내립니다.", () => { p.money += ri(216000, 648000); p.reputation += 3; sk("장사", 3); }, "대형 무역 계약을 따냄"),
   ],
   모험가: () => [
     jx("모험가", 1, "지도에 없는 섬", "항해 중 해도에 없는 작은 섬을 발견했습니다. 짙은 안개 너머로 무언가 반짝입니다.", [
-      ["섬에 상륙한다", "보물이 있을 수도, 함정이 있을 수도 있다.", () => { if (Math.random() < 0.5) { p.money += ri(150000, 500000); p.happiness += 5; log("지도에 없는 섬에서 오래된 보물을 찾음"); } else { p.health -= ri(6, 15); log("지도에 없는 섬에서 맹수에게 쫓겨 도망침"); } }],
+      ["섬에 상륙한다", "보물이 있을 수도, 함정이 있을 수도 있다.", () => { if (Math.random() < 0.5) { p.money += ri(162000, 540000); p.happiness += 5; log("지도에 없는 섬에서 오래된 보물을 찾음"); } else { p.health -= ri(6, 15); log("지도에 없는 섬에서 맹수에게 쫓겨 도망침"); } }],
       ["위치만 기록해 둔다", "다음 기회를 노린다.", () => { p.knowledge += 3; sk("항해술", 2); log("지도에 없는 섬의 위치를 해도에 기록함"); }],
     ]),
     jx("모험가", 2, "하늘섬의 전설", "구름 위에 섬이 있다는 노인의 이야기를 들었습니다. 그곳에 가려면 거대한 해류를 타야 한다고 합니다.", [
       ["해류를 찾아 나선다", "큰 모험이다.", () => { p.happiness += 4; sk("항해술", 3); if (Math.random() < 0.2) { p.reputation += 6; achieve("하늘섬의 흔적을 찾음"); log("하늘섬으로 향하는 해류의 흔적을 찾아냄"); } else log("하늘섬의 해류를 찾지 못하고 돌아옴"); }],
       ["허황된 이야기라며 웃는다", "현실을 본다.", () => { log("하늘섬 이야기를 웃어넘김"); }],
     ]),
-    jxAuto("모험가", 3, "모험기 출간", "그동안의 여행 기록을 정리한 모험기가 책으로 나왔습니다. 항구 서점마다 당신의 이름이 적힌 책이 놓였습니다.", () => { p.money += ri(80000, 200000); p.reputation += 3; p.knowledge += 2; }, "모험기를 책으로 펴냄"),
+    jxAuto("모험가", 3, "모험기 출간", "그동안의 여행 기록을 정리한 모험기가 책으로 나왔습니다. 항구 서점마다 당신의 이름이 적힌 책이 놓였습니다.", () => { p.money += ri(86400, 216000); p.reputation += 3; p.knowledge += 2; }, "모험기를 책으로 펴냄"),
   ],
   선원: () => [
     jx("선원", 1, "돛대 위의 망루", "거친 파도 속에 망루 담당 선원이 다쳤습니다. 누군가 돛대 꼭대기에 올라가야 합니다.", [
@@ -28079,10 +28135,10 @@ const JOBX = {
       ["끝까지 데이터를 기록한다", "위험하지만 귀중한 자료가 남는다.", () => { p.knowledge += 5; if (Math.random() < 0.4) { p.health -= ri(8, 18); log("실험실 폭발에 휘말렸지만 귀중한 데이터를 남김"); } else log("폭발 직전까지 실험 데이터를 기록함"); }],
     ]),
     jx("과학자", 2, "군의 연구 제안", "어느 왕국의 군대가 당신의 연구를 무기 개발에 쓰고 싶다며 막대한 연구비를 제안했습니다.", [
-      ["제안을 받아들인다", "돈과 설비가 생긴다.", () => { p.money += ri(300000, 800000); p.happiness -= 3; log("왕국 군대의 연구비 제안을 받아들임"); }],
+      ["제안을 받아들인다", "돈과 설비가 생긴다.", () => { p.money += ri(324000, 864000); p.happiness -= 3; log("왕국 군대의 연구비 제안을 받아들임"); }],
       ["거절한다", "연구는 사람을 살리는 데 쓴다.", () => { p.reputation += 2; p.happiness += 3; log("무기 개발 제안을 거절함"); }],
     ]),
-    jxAuto("과학자", 3, "작은 발명의 성공", "항구 사람들의 불편을 덜려고 만든 작은 기계가 뜻밖에 큰 인기를 끌었습니다. 집집마다 당신의 발명품이 하나씩 놓였습니다.", () => { p.money += ri(100000, 300000); p.reputation += 3; p.knowledge += 2; }, "작은 발명품이 큰 인기를 끔"),
+    jxAuto("과학자", 3, "작은 발명의 성공", "항구 사람들의 불편을 덜려고 만든 작은 기계가 뜻밖에 큰 인기를 끌었습니다. 집집마다 당신의 발명품이 하나씩 놓였습니다.", () => { p.money += ri(108000, 324000); p.reputation += 3; p.knowledge += 2; }, "작은 발명품이 큰 인기를 끔"),
   ],
   해군: () => [
     jx("해군", 1, "탈영병", "같은 부대의 동료가 밤에 몰래 배를 타고 도망치려는 걸 목격했습니다. 고향의 가족이 아프다고 합니다.", [
@@ -28090,14 +28146,14 @@ const JOBX = {
       ["못 본 척 보내 준다", "들키면 처벌받는다.", () => { p.relationship += 4; if (Math.random() < 0.25) { gainStanding(-3); log("탈영병을 보내 준 사실이 들켜 징계를 받음"); } else log("가족을 만나러 가는 동료를 못 본 척 보내 줌"); }],
     ]),
     jx("해군", 2, "해적선 추격전", "순찰 중 소형 해적선을 발견했습니다. 상대는 섬 사이 좁은 수로로 도망치고 있습니다.", [
-      ["좁은 수로까지 쫓아간다", "공을 세울 기회다." + oddsText(0.15), () => { battle({ foe: "소형 해적선의 해적들", base: 0.15, loseHp: [8, 20], win: () => { gainStanding(4); p.money += ri(50000, 150000); } }); }],
+      ["좁은 수로까지 쫓아간다", "공을 세울 기회다." + oddsText(0.15), () => { battle({ foe: "소형 해적선의 해적들", base: 0.15, loseHp: [8, 20], win: () => { gainStanding(4); p.money += ri(54000, 162000); } }); }],
       ["포위망을 짜고 기다린다", "확실하지만 놓칠 수도 있다.", () => { if (Math.random() < 0.5) { gainStanding(2); log("포위망으로 해적선을 붙잡음"); } else log("포위망을 짰지만 해적선을 놓침"); }],
     ]),
     jxAuto("해군", 3, "마을의 감사", "당신의 부대가 해적에게서 지켜 낸 마을 사람들이 기지로 과일과 생선을 한가득 보내왔습니다. 동료들이 당신 어깨를 두드립니다.", () => { p.happiness += 5; p.reputation += 2; gainStanding(2); }, "지켜 낸 마을에서 감사 선물을 받음"),
   ],
   해적: () => [
     jx("해적", 1, "술집의 보물 지도", "술에 취한 늙은 해적이 낡은 보물 지도를 팔겠다고 합니다. 진짜인지 알 수 없습니다.", [
-      ["지도를 사서 찾아간다", "도박이다.", () => { p.money -= ri(30000, 80000); if (Math.random() < 0.35) { p.money += ri(300000, 900000); log("술집에서 산 보물 지도로 실제 보물을 찾음"); } else log("술집에서 산 보물 지도가 가짜였음"); }],
+      ["지도를 사서 찾아간다", "도박이다.", () => { p.money -= ri(30000, 80000); if (Math.random() < 0.35) { p.money += ri(324000, 972001); log("술집에서 산 보물 지도로 실제 보물을 찾음"); } else log("술집에서 산 보물 지도가 가짜였음"); }],
       ["콧방귀를 뀐다", "그런 지도는 흔하다.", () => { log("술집의 보물 지도를 거들떠보지 않음"); }],
     ]),
     jx("해적", 2, "현상금 사냥꾼의 기습", "항구에 내리자마자 수배서를 든 현상금 사냥꾼들이 당신을 에워쌌습니다.", [
@@ -28108,14 +28164,14 @@ const JOBX = {
   ],
   "현상금 사냥꾼": () => [
     jx("현상금 사냥꾼", 1, "어린 현상범", "의뢰서의 현상범은 아직 열다섯도 안 된 소년이었습니다. 굶주린 동생들을 먹이려고 상선 창고를 털었다고 합니다.", [
-      ["의뢰대로 잡는다", "일은 일이다.", () => { p.money += ri(80000, 200000); p.happiness -= 4; log("어린 현상범을 붙잡아 넘김"); }],
+      ["의뢰대로 잡는다", "일은 일이다.", () => { p.money += ri(86400, 216000); p.happiness -= 4; log("어린 현상범을 붙잡아 넘김"); }],
       ["놓아주고 의뢰를 포기한다", "돈보다 중요한 게 있다.", () => { p.happiness += 4; p.relationship += 2; log("어린 현상범을 놓아줌"); }],
     ]),
     jx("현상금 사냥꾼", 2, "가짜 수배서", "현상금이 높은 수배서를 들고 찾아간 상대가 자신은 누명을 썼다며 증거를 내밀었습니다.", [
-      ["증거를 확인해 본다", "사실이라면 진짜 범인이 따로 있다.", () => { p.knowledge += 2; if (Math.random() < 0.5) { p.reputation += 4; p.money += ri(100000, 250000); log("누명을 밝혀내고 진짜 범인을 잡음"); } else log("증거를 확인했지만 결론을 내지 못함"); }],
-      ["상관없이 넘긴다", "판단은 해군이 한다.", () => { p.money += ri(100000, 200000); p.happiness -= 3; log("누명을 주장하는 현상범을 그대로 넘김"); }],
+      ["증거를 확인해 본다", "사실이라면 진짜 범인이 따로 있다.", () => { p.knowledge += 2; if (Math.random() < 0.5) { p.reputation += 4; p.money += ri(108000, 270000); log("누명을 밝혀내고 진짜 범인을 잡음"); } else log("증거를 확인했지만 결론을 내지 못함"); }],
+      ["상관없이 넘긴다", "판단은 해군이 한다.", () => { p.money += ri(108000, 216000); p.happiness -= 3; log("누명을 주장하는 현상범을 그대로 넘김"); }],
     ]),
-    jxAuto("현상금 사냥꾼", 3, "사냥꾼 길드의 소문", "현상금 사냥꾼들이 모이는 술집에서 당신의 이름이 '믿을 만한 사냥꾼'으로 오르내리고 있습니다. 좋은 의뢰가 먼저 들어오기 시작했습니다.", () => { gainStanding(3); p.money += ri(50000, 120000); }, "사냥꾼들 사이에서 믿을 만한 이름으로 알려짐"),
+    jxAuto("현상금 사냥꾼", 3, "사냥꾼 길드의 소문", "현상금 사냥꾼들이 모이는 술집에서 당신의 이름이 '믿을 만한 사냥꾼'으로 오르내리고 있습니다. 좋은 의뢰가 먼저 들어오기 시작했습니다.", () => { gainStanding(3); p.money += ri(54000, 129601); }, "사냥꾼들 사이에서 믿을 만한 이름으로 알려짐"),
   ],
   혁명군: () => [
     jx("혁명군", 1, "신문 속의 동지", "세계 경제 신문에 체포된 혁명군 동지의 사진이 실렸습니다. 공개 처형이 다음 달로 예정되어 있습니다.", [
@@ -29590,6 +29646,15 @@ function tacFx(st) {
     } else if (f === "haki") pulse(me, "tac-flash-gold", 700);
     else if (f === "king") pulse(foe, "tac-flash-purple", 800);
     else if (f === "phase") pulse(foe, "tac-flash-gold", 900);
+  }
+  // 체력이 0이 된 순간에만 결정타 연출을 실행한다. 전투 결과/승률에는 관여하지 않는다.
+  if (st.over && !st.finisherShown) {
+    st.finisherShown = true;
+    const target = st.ehp <= 0 ? foe : st.php <= 0 ? me : null;
+    if (target) {
+      target.classList.add("tac-finisher");
+      setTimeout(() => target.classList.remove("tac-finisher"), 850);
+    }
   }
   st.fx = [];
 }
