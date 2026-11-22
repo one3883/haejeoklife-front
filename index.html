@@ -898,6 +898,27 @@
         background: #eaf6fb;
         border-color: var(--sea);
       }
+
+      /* 오늘의 랭킹 — 기존 바다/돛천 테마 */
+      .ranking-panel { margin-top: 16px; }
+      .ranking-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+      .ranking-head h2 { margin:0; }
+      .ranking-total { color:var(--muted); font-size:13px; margin:10px 0; }
+      .ranking-row { display:flex; gap:12px; align-items:center; border-top:1px solid var(--line); padding:12px 2px; }
+      .ranking-place { flex:0 0 42px; font-weight:900; color:var(--gold); }
+      .ranking-person { flex:1; min-width:0; overflow-wrap:anywhere; }
+      .ranking-person strong { display:block; }
+      .ranking-person small { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
+      .ranking-bounty { flex:0 0 auto; text-align:right; color:var(--gold); font-variant-numeric:tabular-nums; }
+      .ranking-bounty small { font-size:11px; }
+      .ranking-form { margin:12px 0; }
+      .ranking-form label { display:block; font-weight:700; margin-bottom:7px; }
+      .ranking-formline { display:flex; gap:8px; }
+      .ranking-formline input { min-width:0; flex:1; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); color:var(--ink); font:inherit; }
+      .ranking-my-rank { padding:12px; margin:10px 0; font-weight:900; font-size:19px; color:var(--gold); border:1px solid var(--line); border-radius:10px; }
+      .ranking-message { margin:8px 0; font-size:13px; }
+      [hidden] { display:none !important; }
+      @media(max-width:480px) { .ranking-row { gap:7px; } .ranking-place { flex-basis:35px; } .ranking-bounty { font-size:12px; } .ranking-bounty small { font-size:10px; } .ranking-formline { flex-wrap:wrap; } .ranking-formline button { flex:1; } }
     </style>
   <style>
 /* Cinematic animations: visual effects only; game rules are unchanged */
@@ -1092,6 +1113,7 @@
           </button>
         </div>
         <div class="small" id="saveInfo" style="margin-top: 8px"></div>
+      <section id="ranking-home" class="panel ranking-panel"><div class="ranking-head"><h2>🏆 오늘의 TOP 10</h2><button class="btn secondary ranking-refresh" type="button">새로고침</button></div><p class="ranking-total" aria-live="polite">오늘의 도전자 집계 중…</p><div class="ranking-list" aria-live="polite"><p class="small">랭킹을 불러오는 중입니다…</p></div></section>
       </section>
 
       <section id="game" class="hidden">
@@ -1175,6 +1197,17 @@
                 class="notice small"
                 style="display: none; margin: 12px 0 0"
               ></div>
+              <section id="ranking-death" class="ranking-panel" hidden>
+                <div class="ranking-head"><h2>🏆 오늘의 랭킹 도전</h2><button class="btn secondary ranking-refresh" type="button">새로고침</button></div>
+                <p class="small">이번 인생의 최종 현상금으로 오늘의 랭킹에 도전하세요.</p>
+                <form id="ranking-form" class="ranking-form">
+                  <label for="ranking-nickname">등록할 닉네임 (최대 12자)</label>
+                  <div class="ranking-formline"><input id="ranking-nickname" type="text" maxlength="12" autocomplete="nickname" required placeholder="닉네임 입력" /><button id="ranking-submit" class="btn" type="submit">랭킹 등록</button></div>
+                </form>
+                <div id="ranking-my-rank" class="ranking-my-rank" aria-live="polite" hidden></div>
+                <p id="ranking-message" class="ranking-message" role="status"></p>
+                <p class="ranking-total">오늘의 도전자 집계 중…</p><div class="ranking-list"><p class="small">랭킹을 불러오는 중입니다…</p></div>
+              </section>
               <div class="choices" id="choices"></div>
               <div class="actions">
                 <button
@@ -29876,6 +29909,7 @@ new MutationObserver(recs=>{
 /* =========================================================== */
 
 </script>
+  <script src="ranking.js" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
