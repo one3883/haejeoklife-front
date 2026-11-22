@@ -899,7 +899,30 @@
         border-color: var(--sea);
       }
     </style>
-  </head>
+  <style>
+/* Cinematic animations: visual effects only; game rules are unchanged */
+#sceneArt{isolation:isolate}
+#sceneArt.hl-reveal{animation:hl-frame .55s ease-out both}
+#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg{animation:hl-image .8s ease-out both}
+#sceneArt.hl-reveal::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(110deg,transparent 35%,rgba(255,243,194,.24) 50%,transparent 65%);animation:hl-glint .8s ease-out both}
+#sceneArt.hl-battle.hl-reveal::before{content:"";position:absolute;inset:-30%;z-index:6;pointer-events:none;background:linear-gradient(115deg,transparent 45%,rgba(255,255,255,.9) 50%,transparent 55%);animation:hl-strike .42s ease-out both}
+#sceneArt.hl-boss.hl-reveal{animation:hl-boss-in .7s ease-out both}
+#eventTitle.hl-title{animation:hl-title .42s ease-out both}
+#scene.hl-copy{animation:hl-copy .48s ease-out both}
+#tacOverlay.hl-battle-open .tac-box{animation:hl-arena .4s ease-out both}
+#tacArt.hl-impact,#tacFoe.hl-impact,#tacMe.hl-impact{animation:hl-impact .3s ease-out}
+@keyframes hl-frame{from{opacity:.5;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes hl-image{from{opacity:.2;transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
+@keyframes hl-glint{from{opacity:0;transform:translateX(-70%)}40%{opacity:1}to{opacity:0;transform:translateX(70%)}}
+@keyframes hl-strike{from{opacity:0;transform:translateX(-80%) rotate(-8deg)}50%{opacity:1}to{opacity:0;transform:translateX(80%) rotate(-8deg)}}
+@keyframes hl-boss-in{from{opacity:.5;filter:brightness(.5);transform:scale(1.04)}60%{filter:brightness(1.25)}to{opacity:1;filter:none;transform:none}}
+@keyframes hl-title{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes hl-copy{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes hl-arena{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes hl-impact{from{filter:brightness(1.8);transform:translateX(-5px)}40%{transform:translateX(5px)}to{filter:none;transform:none}}
+@media(prefers-reduced-motion:reduce){#sceneArt.hl-reveal,#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg,#sceneArt.hl-reveal::after,#sceneArt.hl-reveal::before,#eventTitle.hl-title,#scene.hl-copy,#tacOverlay.hl-battle-open .tac-box,#tacArt.hl-impact,#tacFoe.hl-impact,#tacMe.hl-impact{animation:none!important}}
+</style>
+</head>
   <body>
     <div class="wrap">
       <header class="hero">
@@ -29651,5 +29674,22 @@ new MutationObserver(recs=>{
 /* =========================================================== */
 
 </script>
-  </body>
+  <script>
+/* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
+(()=>{'use strict';
+const art=document.getElementById('sceneArt'),title=document.getElementById('eventTitle'),scene=document.getElementById('scene');
+if(!art||!title||!scene)return;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const restart=(el,cls)=>{if(!el||reduced.matches)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)};
+let oldTitle=title.textContent,oldArt=art.innerHTML,pending=false;
+function update(){pending=false;const name=title.textContent,html=art.innerHTML,tc=name!==oldTitle,ac=html!==oldArt;oldTitle=name;oldArt=html;
+if(tc){restart(title,'hl-title');restart(scene,'hl-copy')}
+if(ac){const boss=/이무|미호크|카이도|빅맘|티치|샹크스|해적왕|사황/.test(name),battle=boss||/전투|싸움|결투|습격|전쟁|격돌|검사/.test(name);art.classList.toggle('hl-boss',boss);art.classList.toggle('hl-battle',battle);restart(art,'hl-reveal')}}
+const schedule=()=>{if(!pending){pending=true;requestAnimationFrame(update)}};
+new MutationObserver(schedule).observe(title,{subtree:true,childList:true,characterData:true});
+new MutationObserver(schedule).observe(art,{childList:true,subtree:true,characterData:true});
+new MutationObserver(records=>{for(const r of records){const el=r.target;if(el.id==='tacOverlay'&&!el.classList.contains('hidden'))restart(el,'hl-battle-open');else if(el.id==='tacArt'||el.id==='tacFoe'||el.id==='tacMe'){if(el.classList.contains('tac-shake')||el.classList.contains('tac-slash'))restart(el,'hl-impact')}}}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+})();
+</script>
+</body>
 </html>
