@@ -899,7 +899,30 @@
         border-color: var(--sea);
       }
     </style>
-  </head>
+  <style>
+/* Cinematic animations: visual effects only; game rules are unchanged */
+#sceneArt{isolation:isolate}
+#sceneArt.hl-reveal{animation:hl-frame .55s ease-out both}
+#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg{animation:hl-image .8s ease-out both}
+#sceneArt.hl-reveal::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(110deg,transparent 35%,rgba(255,243,194,.24) 50%,transparent 65%);animation:hl-glint .8s ease-out both}
+#sceneArt.hl-battle.hl-reveal::before{content:"";position:absolute;inset:-30%;z-index:6;pointer-events:none;background:linear-gradient(115deg,transparent 45%,rgba(255,255,255,.9) 50%,transparent 55%);animation:hl-strike .42s ease-out both}
+#sceneArt.hl-boss.hl-reveal{animation:hl-boss-in .7s ease-out both}
+#eventTitle.hl-title{animation:hl-title .42s ease-out both}
+#scene.hl-copy{animation:hl-copy .48s ease-out both}
+#tacOverlay:not(.hidden) .tac-box{animation:hl-arena .4s ease-out both}
+#tacArt.tac-shake,#tacFoe.tac-shake,#tacMe.tac-shake{animation:hl-impact .3s ease-out}
+@keyframes hl-frame{from{opacity:.5;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes hl-image{from{opacity:.2;transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
+@keyframes hl-glint{from{opacity:0;transform:translateX(-70%)}40%{opacity:1}to{opacity:0;transform:translateX(70%)}}
+@keyframes hl-strike{from{opacity:0;transform:translateX(-80%) rotate(-8deg)}50%{opacity:1}to{opacity:0;transform:translateX(80%) rotate(-8deg)}}
+@keyframes hl-boss-in{from{opacity:.5;filter:brightness(.5);transform:scale(1.04)}60%{filter:brightness(1.25)}to{opacity:1;filter:none;transform:none}}
+@keyframes hl-title{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes hl-copy{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes hl-arena{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes hl-impact{from{filter:brightness(1.8);transform:translateX(-5px)}40%{transform:translateX(5px)}to{filter:none;transform:none}}
+@media(prefers-reduced-motion:reduce){#sceneArt.hl-reveal,#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg,#sceneArt.hl-reveal::after,#sceneArt.hl-reveal::before,#eventTitle.hl-title,#scene.hl-copy,#tacOverlay:not(.hidden) .tac-box,#tacArt.tac-shake,#tacFoe.tac-shake,#tacMe.tac-shake{animation:none!important}}
+</style>
+</head>
   <body>
     <div class="wrap">
       <header class="hero">
@@ -29350,9 +29373,15 @@ function tacEnsureUI() {
   if (document.getElementById("tacOverlay")) return;
   const css = document.createElement("style");
   css.textContent = `
-.tac-ov{position:fixed;inset:0;z-index:9999;background:rgba(5,12,18,.82);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:12px 10px calc(12px + env(safe-area-inset-bottom,0px))}
+.tac-ov{position:fixed;inset:0;z-index:9999;background:rgba(5,12,18,.82);display:flex;align-items:stretch;justify-content:center;overflow:hidden;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px))}
 .tac-ov.hidden{display:none}
-.tac-box{width:100%;max-width:640px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.5);color:var(--ink)}
+.tac-box{width:100%;max-width:640px;min-height:0;max-height:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);color:var(--ink);display:flex;flex-direction:column;overflow:hidden}
+.tac-fixed{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.tac-scroll{flex:0 1 32%;height:32%;max-height:32%;min-height:88px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 3px 5px;touch-action:pan-y}
+.tac-fixed{flex:1 1 auto;min-height:0;overflow-y:auto}
+@media(max-height:650px){.tac-scroll{flex-basis:29%;height:29%;max-height:29%;min-height:76px}}
+@media(max-height:760px){.tac-art{height:clamp(54px,12vh,85px)}.tac-card{padding:7px 9px;margin-top:5px}.tac-intent{margin-top:4px;padding:5px 7px}.tac-title{margin:2px 0 4px}.tac-bar{margin:4px 0 2px}}
+@media(max-height:600px){.tac-art{height:clamp(50px,10vh,70px)}.tac-head{font-size:12px}.tac-badges{font-size:11px}.tac-scroll .tac-act{min-height:52px}}
 .tac-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tac-art{position:relative;height:clamp(90px,24vw,150px);border-radius:12px;overflow:hidden;margin:6px 0 4px;background:#0b1622}
 .tac-art:empty{display:none}
@@ -29396,14 +29425,18 @@ function tacEnsureUI() {
   ov.id = "tacOverlay";
   ov.className = "tac-ov hidden";
   ov.innerHTML = `<div class="tac-box" role="dialog" aria-label="전략 전투">
-  <div class="tac-head"><span class="pill">⚔ 전략 전투</span><span class="small" id="tacOdds"></span></div>
-  <div id="tacArt" class="tac-art"></div>
-  <div class="tac-title" id="tacTitle"></div>
-  <div class="tac-card" id="tacFoe"></div>
-  <div class="tac-card" id="tacMe"></div>
-  <div class="tac-acts" id="tacActs"></div>
-  <div class="tac-log" id="tacLog"></div>
-  <div class="tac-foot"><span class="small" id="tacHint">행동을 하나 고르면 적이 예고한 행동을 합니다.</span></div>
+  <div class="tac-fixed">
+    <div class="tac-head"><span class="pill">⚔ 전략 전투</span><span class="small" id="tacOdds"></span></div>
+    <div id="tacArt" class="tac-art"></div>
+    <div class="tac-title" id="tacTitle"></div>
+    <div class="tac-card" id="tacFoe"></div>
+    <div class="tac-card" id="tacMe"></div>
+  </div>
+  <div class="tac-scroll" id="tacScroll" tabindex="0" aria-label="전투 기술 선택 및 전투 기록">
+    <div class="tac-acts" id="tacActs"></div>
+    <div class="tac-log" id="tacLog"></div>
+    <div class="tac-foot"><span class="small" id="tacHint">행동을 하나 고르면 적이 예고한 행동을 합니다.</span></div>
+  </div>
 </div>`;
   document.body.appendChild(ov);
 }
@@ -29651,5 +29684,23 @@ new MutationObserver(recs=>{
 /* =========================================================== */
 
 </script>
-  </body>
+  <script>
+/* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
+(()=>{'use strict';
+const art=document.getElementById('sceneArt'),title=document.getElementById('eventTitle'),scene=document.getElementById('scene');
+if(!art||!title||!scene)return;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const restart=(el,cls)=>{if(!el||reduced.matches)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)};
+let oldTitle=title.textContent,oldArt=art.innerHTML,pending=false;
+function update(){pending=false;const name=title.textContent,html=art.innerHTML,tc=name!==oldTitle,ac=html!==oldArt;oldTitle=name;oldArt=html;
+if(tc){restart(title,'hl-title');restart(scene,'hl-copy')}
+if(ac){const boss=/이무|미호크|카이도|빅맘|티치|샹크스|해적왕|사황/.test(name),battle=boss||/전투|싸움|결투|습격|전쟁|격돌|검사/.test(name);art.classList.toggle('hl-boss',boss);art.classList.toggle('hl-battle',battle);restart(art,'hl-reveal')}}
+const schedule=()=>{if(!pending){pending=true;requestAnimationFrame(update)}};
+new MutationObserver(schedule).observe(title,{subtree:true,childList:true,characterData:true});
+new MutationObserver(schedule).observe(art,{childList:true,subtree:true,characterData:true});
+/* Avoid class-observer recursion: the observer must never mutate the class it watches.
+   CSS handles battle appearance and impacts without watching combat state. */
+})();
+</script>
+</body>
 </html>
