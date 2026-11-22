@@ -909,8 +909,8 @@
 #sceneArt.hl-boss.hl-reveal{animation:hl-boss-in .7s ease-out both}
 #eventTitle.hl-title{animation:hl-title .42s ease-out both}
 #scene.hl-copy{animation:hl-copy .48s ease-out both}
-#tacOverlay.hl-battle-open .tac-box{animation:hl-arena .4s ease-out both}
-#tacArt.hl-impact,#tacFoe.hl-impact,#tacMe.hl-impact{animation:hl-impact .3s ease-out}
+#tacOverlay:not(.hidden) .tac-box{animation:hl-arena .4s ease-out both}
+#tacArt.tac-shake,#tacFoe.tac-shake,#tacMe.tac-shake{animation:hl-impact .3s ease-out}
 @keyframes hl-frame{from{opacity:.5;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes hl-image{from{opacity:.2;transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
 @keyframes hl-glint{from{opacity:0;transform:translateX(-70%)}40%{opacity:1}to{opacity:0;transform:translateX(70%)}}
@@ -920,7 +920,7 @@
 @keyframes hl-copy{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @keyframes hl-arena{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes hl-impact{from{filter:brightness(1.8);transform:translateX(-5px)}40%{transform:translateX(5px)}to{filter:none;transform:none}}
-@media(prefers-reduced-motion:reduce){#sceneArt.hl-reveal,#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg,#sceneArt.hl-reveal::after,#sceneArt.hl-reveal::before,#eventTitle.hl-title,#scene.hl-copy,#tacOverlay.hl-battle-open .tac-box,#tacArt.hl-impact,#tacFoe.hl-impact,#tacMe.hl-impact{animation:none!important}}
+@media(prefers-reduced-motion:reduce){#sceneArt.hl-reveal,#sceneArt.hl-reveal img,#sceneArt.hl-reveal svg,#sceneArt.hl-reveal::after,#sceneArt.hl-reveal::before,#eventTitle.hl-title,#scene.hl-copy,#tacOverlay:not(.hidden) .tac-box,#tacArt.tac-shake,#tacFoe.tac-shake,#tacMe.tac-shake{animation:none!important}}
 </style>
 </head>
   <body>
@@ -29688,7 +29688,8 @@ if(ac){const boss=/이무|미호크|카이도|빅맘|티치|샹크스|해적왕|
 const schedule=()=>{if(!pending){pending=true;requestAnimationFrame(update)}};
 new MutationObserver(schedule).observe(title,{subtree:true,childList:true,characterData:true});
 new MutationObserver(schedule).observe(art,{childList:true,subtree:true,characterData:true});
-new MutationObserver(records=>{for(const r of records){const el=r.target;if(el.id==='tacOverlay'&&!el.classList.contains('hidden'))restart(el,'hl-battle-open');else if(el.id==='tacArt'||el.id==='tacFoe'||el.id==='tacMe'){if(el.classList.contains('tac-shake')||el.classList.contains('tac-slash'))restart(el,'hl-impact')}}}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+/* Avoid class-observer recursion: the observer must never mutate the class it watches.
+   CSS handles battle appearance and impacts without watching combat state. */
 })();
 </script>
 </body>
