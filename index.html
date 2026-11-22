@@ -29377,9 +29377,11 @@ function tacEnsureUI() {
 .tac-ov.hidden{display:none}
 .tac-box{width:100%;max-width:640px;min-height:0;max-height:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);color:var(--ink);display:flex;flex-direction:column;overflow:hidden}
 .tac-fixed{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.tac-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 3px 5px;touch-action:pan-y}
+.tac-scroll{flex:0 1 32%;height:32%;max-height:32%;min-height:88px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 3px 5px;touch-action:pan-y}
+.tac-fixed{flex:1 1 auto;min-height:0;overflow-y:auto}
+@media(max-height:650px){.tac-scroll{flex-basis:29%;height:29%;max-height:29%;min-height:76px}}
 @media(max-height:760px){.tac-art{height:clamp(54px,12vh,85px)}.tac-card{padding:7px 9px;margin-top:5px}.tac-intent{margin-top:4px;padding:5px 7px}.tac-title{margin:2px 0 4px}.tac-bar{margin:4px 0 2px}}
-@media(max-height:600px){.tac-art{display:none}.tac-head{font-size:12px}.tac-badges{font-size:11px}.tac-scroll .tac-act{min-height:52px}}
+@media(max-height:600px){.tac-art{height:clamp(50px,10vh,70px)}.tac-head{font-size:12px}.tac-badges{font-size:11px}.tac-scroll .tac-act{min-height:52px}}
 .tac-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tac-art{position:relative;height:clamp(90px,24vw,150px);border-radius:12px;overflow:hidden;margin:6px 0 4px;background:#0b1622}
 .tac-art:empty{display:none}
