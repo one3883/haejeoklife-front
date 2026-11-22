@@ -17736,20 +17736,61 @@
           return false;
         }
       }
+      // 저장 데이터에는 실행 가능한 코드를 넣지 않는다.
+      // 기존 저장의 __fn 문자열도 실행하지 않고, 검증된 효과 ID만 복원한다.
+      const MOD_YEARLY_EFFECTS = Object.freeze({
+        marine_bribe: () => {
+          if (Math.random() < 0.15) {
+            removeMod("marine_bribe");
+            setCareer("항구 노동자", "민간인");
+            p.reputation -= 10;
+            p.happiness -= 10;
+            log("감찰에서 뒷돈이 적발되어 해군에서 불명예 제대함");
+          }
+        },
+        cross_guild: () => {
+          if (Math.random() < 0.08) {
+            p.health -= ri(8, 20);
+            log("크로스 길드 현상금을 노린 자들에게 습격당함");
+          }
+        },
+        collusion: () => { p.happiness -= 2; },
+        king_good: () => { p.happiness += 1; },
+        king_bad: () => { p.happiness -= 2; },
+      });
+      function restoreModYearly(mod) {
+        if (!mod || typeof mod !== "object") return;
+        let effect = null;
+        if (mod.id === "marine_bribe") effect = MOD_YEARLY_EFFECTS.marine_bribe;
+        else if (mod.id === "cross_guild") effect = MOD_YEARLY_EFFECTS.cross_guild;
+        else if (typeof mod.id === "string" && mod.id.startsWith("collusion_") &&
+                 mod.label === "해적과 결탁한 해군 지부")
+          effect = MOD_YEARLY_EFFECTS.collusion;
+        else if (typeof mod.id === "string" && mod.id.startsWith("king_")) {
+          if (mod.label && mod.label.endsWith("의 선정"))
+            effect = MOD_YEARLY_EFFECTS.king_good;
+          else if (mod.label && mod.label.endsWith("의 폭정"))
+            effect = MOD_YEARLY_EFFECTS.king_bad;
+        }
+        // 등록된 효과가 없는 저장 데이터는 실행하지 않는다.
+        if (effect) mod.yearly = effect;
+        else delete mod.yearly;
+      }
       function serializeGame() {
         return JSON.stringify(
-          { v: 1, savedAt: Date.now(), yearMs, rate, p },
-          (k, v) => (typeof v === "function" ? { __fn: v.toString() } : v),
+          { v: 2, savedAt: Date.now(), yearMs, rate, p },
+          (k, v) => typeof v === "function" ? undefined : v,
         );
-      }
-      // 함수(생활 영향의 연간 효과)는 소스 문자열로 저장했다가, 이 스크립트의 스코프 안에서 다시 만든다.
-      function reviveFn(src) {
-        return eval("(" + src + ")");
       }
       function reviveGame(str) {
-        return JSON.parse(str, (k, v) =>
-          v && typeof v === "object" && v.__fn ? reviveFn(v.__fn) : v,
+        // 구버전 저장의 함수 문자열은 안전하게 폐기하고, 효과를 ID로 재연결한다.
+        const data = JSON.parse(str, (k, v) =>
+          v && typeof v === "object" && Object.prototype.hasOwnProperty.call(v, "__fn")
+            ? undefined : v,
         );
+        if (data && data.p && Array.isArray(data.p.mods))
+          data.p.mods.forEach(restoreModYearly);
+        return data;
       }
       function relinkPlaces() {
         const f = (o) =>
