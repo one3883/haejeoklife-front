@@ -929,13 +929,19 @@
 .haki-level-row span{min-width:115px}
 .haki-level-track{flex:1;height:9px;background:#14222b;border-radius:999px;overflow:hidden}
 .haki-level-track i{display:block;height:100%;background:linear-gradient(90deg,#4d9bca,#e5bc62);border-radius:999px}
-.tac-card.tac-finisher{isolation:isolate;animation:tacFinisherImpact .75s cubic-bezier(.18,.8,.2,1) both;box-shadow:0 0 0 2px #ffe2a0,0 0 34px rgba(255,91,44,.85)!important}
-.tac-card.tac-finisher::before{content:"";position:absolute;inset:-12%;z-index:5;pointer-events:none;background:linear-gradient(125deg,transparent 40%,rgba(255,255,255,.95) 48%,rgba(255,172,70,.8) 50%,transparent 58%);animation:tacFinisherSlash .65s ease-out both}
-.tac-card.tac-finisher::after{content:"";position:absolute;inset:-20%;z-index:5;pointer-events:none;border:5px solid rgba(255,205,111,.8);border-radius:50%;animation:tacFinisherRing .65s ease-out both}
-@keyframes tacFinisherImpact{0%,100%{transform:translateX(0) scale(1)}15%{transform:translateX(-10px) scale(1.025);filter:brightness(2)}30%{transform:translateX(9px) scale(1.015)}50%{transform:translateX(-5px)}}
-@keyframes tacFinisherSlash{0%{opacity:0;transform:translateX(-70%) rotate(-9deg)}30%{opacity:1}100%{opacity:0;transform:translateX(70%) rotate(-9deg)}}
-@keyframes tacFinisherRing{0%{opacity:1;transform:scale(.25)}100%{opacity:0;transform:scale(1.35)}}
-@media(prefers-reduced-motion:reduce){.tac-card.tac-finisher,.tac-card.tac-finisher::before,.tac-card.tac-finisher::after{animation:none!important}}
+.tac-ko-overlay{position:fixed;inset:0;z-index:10005;pointer-events:none;overflow:hidden}
+.tac-ko-flash{position:absolute;inset:0;background:radial-gradient(circle at var(--ko-x,50%) var(--ko-y,50%),rgba(255,248,217,.45),rgba(255,174,60,.09) 28%,transparent 60%);animation:tacKoFade .85s ease-out both}
+.tac-ko-burst{position:absolute;width:min(80vw,460px);aspect-ratio:1;transform:translate(-50%,-50%);filter:drop-shadow(0 0 16px rgba(255,170,75,.95));animation:tacKoBurst .85s ease-out both}
+.tac-ko-burst svg{width:100%;height:100%;overflow:visible}
+.tac-ko-core{transform-origin:center;animation:tacKoCore .7s ease-out both}
+.tac-ko-ring{transform-origin:center;animation:tacKoRing .8s ease-out both}
+.tac-ko-spark{transform-origin:center;animation:tacKoSpark .8s ease-out both}
+@keyframes tacKoBurst{0%{opacity:0;scale:.25}15%{opacity:1;scale:.95}35%{scale:1.16}100%{opacity:0;scale:1.4}}
+@keyframes tacKoCore{0%{opacity:0;scale:.25}25%{opacity:1;scale:1.15}100%{opacity:0;scale:.5}}
+@keyframes tacKoRing{0%{opacity:0;scale:.25}30%{opacity:1}100%{opacity:0;scale:1.6}}
+@keyframes tacKoSpark{0%{opacity:0;scale:.3}20%{opacity:1}100%{opacity:0;scale:1.5}}
+@keyframes tacKoFade{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.tac-ko-burst,.tac-ko-core,.tac-ko-ring,.tac-ko-spark,.tac-ko-flash{animation-duration:.18s!important}}
 </style>
 </head>
   <body>
@@ -29610,6 +29616,51 @@ function tacRender(st) {
     .join("");
   $$("tacLog").scrollTop = 1e6;
 }
+function tacKnockoutBurst(target) {
+  if (!target || !document.body) return;
+  const rect = target.getBoundingClientRect();
+  const x = Math.max(40, Math.min(window.innerWidth - 40, rect.left + rect.width / 2));
+  const y = Math.max(40, Math.min(window.innerHeight - 40, rect.top + rect.height / 2));
+  const overlay = document.createElement("div");
+  overlay.className = "tac-ko-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.style.setProperty("--ko-x", (x / window.innerWidth * 100) + "%");
+  overlay.style.setProperty("--ko-y", (y / window.innerHeight * 100) + "%");
+  const flash = document.createElement("div");
+  flash.className = "tac-ko-flash";
+  const burst = document.createElement("div");
+  burst.className = "tac-ko-burst";
+  burst.style.left = x + "px";
+  burst.style.top = y + "px";
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 400 400");
+  function add(tag, attrs, cls) {
+    const el = document.createElementNS(ns, tag);
+    for (const key of Object.keys(attrs)) el.setAttribute(key, String(attrs[key]));
+    el.setAttribute("class", cls);
+    svg.appendChild(el);
+  }
+  add("circle",{cx:200,cy:200,r:85,fill:"none",stroke:"#ffd89a","stroke-width":4,opacity:.8},"tac-ko-ring");
+  for (let i = 0; i < 16; i++) {
+    const angle = i * Math.PI / 8;
+    const r0 = 20 + (i % 3) * 9, r1 = 130 + (i % 4) * 17;
+    const spread = i % 2 ? .05 : .085;
+    const p = (r,a) => [200 + Math.cos(a)*r,200 + Math.sin(a)*r];
+    const a = p(r0,angle-spread),b = p(r1,angle),c = p(r0,angle+spread);
+    add("polygon",{points:a.join(",")+" "+b.join(",")+" "+c.join(","),fill:i%3===0?"#fffdf2":"#ffd18a",stroke:"#fff6dd","stroke-width":1},"tac-ko-spark");
+  }
+  for (let i = 0; i < 22; i++) {
+    const a = i * 2.39996,r = 45 + (i*37)%140;
+    add("circle",{cx:200+Math.cos(a)*r,cy:200+Math.sin(a)*r,r:2+(i%4)*1.6,fill:i%3?"#ffe4ae":"#ffffff",opacity:.9},"tac-ko-spark");
+  }
+  add("circle",{cx:200,cy:200,r:34,fill:"#fffefa"},"tac-ko-core");
+  add("circle",{cx:200,cy:200,r:57,fill:"none",stroke:"#ffb65a","stroke-width":5,opacity:.9},"tac-ko-ring");
+  burst.appendChild(svg);
+  overlay.append(flash,burst);
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 950);
+}
 function tacFx(st) {
   const foe = document.getElementById("tacFoe"),
     me = document.getElementById("tacMe");
@@ -29647,14 +29698,11 @@ function tacFx(st) {
     else if (f === "king") pulse(foe, "tac-flash-purple", 800);
     else if (f === "phase") pulse(foe, "tac-flash-gold", 900);
   }
-  // 체력이 0이 된 순간에만 결정타 연출을 실행한다. 전투 결과/승률에는 관여하지 않는다.
+  // KO 순간: 체력바가 아닌 화면 위에 큰 금빛 검격/타격 폭발을 띄운다.
   if (st.over && !st.finisherShown) {
     st.finisherShown = true;
     const target = st.ehp <= 0 ? foe : st.php <= 0 ? me : null;
-    if (target) {
-      target.classList.add("tac-finisher");
-      setTimeout(() => target.classList.remove("tac-finisher"), 850);
-    }
+    if (target) tacKnockoutBurst(target);
   }
   st.fx = [];
 }
