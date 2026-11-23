@@ -31,7 +31,7 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal, headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
+      const response = await fetch(url, { ...options, signal: controller.signal, cache: options.cache || 'no-store', headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
       if (!response.ok) throw new Error(`서버 응답 오류 (${response.status})`);
       return await response.json();
     } finally { clearTimeout(timer); }
@@ -39,7 +39,7 @@
   async function refreshRankings() {
     const panels = [$('ranking-home'), $('ranking-death')];
     try {
-      const data = await request(`${API}/today?limit=30`);
+      const data = await request(`${API}/today?limit=30&_=${Date.now()}`, { cache: 'no-store' });
       panels.forEach(el => renderRanking(el, data));
     } catch (error) {
       panels.forEach(el => { if (!el) return; const list = el.querySelector('.ranking-list'); if (list && !list.querySelector('.ranking-row')) list.textContent = '랭킹을 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.'; });
