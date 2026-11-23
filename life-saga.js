@@ -15,6 +15,8 @@
    ===================================================================== */
 (() => {
   "use strict";
+  // 이 값이 게임 설명에 표시된다. 화면에 다른 값이 보이면 예전 파일이 캐시에 남아 있는 것이다.
+  window.LIFE_SAGA_VERSION = "20261124b";
   // 다른 버전의 index.html과 함께 실렸을 때 일부만 설치되는 일이 없도록, 필요한 기존 기능을 먼저 확인한다
   {
     const need = [
@@ -3694,8 +3696,13 @@
   // ── 어둠어둠 열매: 썩은 과일을 악마의 열매라 속이다 ──
   function darkTrickScene(out) {
     if (p.fruit !== "어둠어둠 열매" || p.age < 18 || done("dark_trick") || !free()) return;
-    const mate = closeNpcs((n) => ["동료", "친구"].includes(n.role) && near(n) && ea(n) >= 16)[0];
-    if (!mate) return;
+    let mate = closeNpcs((n) => ["동료", "친구"].includes(n.role) && near(n) && ea(n) >= 16)[0];
+    // 곁에 동료가 없어도, 배를 타거나 소속이 있으면 함께 지내는 동료 하나를 만든다
+    if (!mate) {
+      if (!(p.ship || p.crew || ["해적", "해군", "혁명군"].includes(p.status) || p.job === "현상금 사냥꾼")) return;
+      mate = peer({ role: "동료", d: ri(-4, 4), rel: ri(55, 70) });
+      remember(mate, "같은 배에서 지내는 동료", "crew", 1);
+    }
     out.push(
       mk(
         "dark_trick",
@@ -3732,7 +3739,7 @@
           },
           { title: "그냥 버린다", desc: "", run: () => { p.knowledge += 1; log("썩은 과일을 버림"); } },
         ],
-        { npc: mate },
+        { npc: mate, essential: true },
       ),
     );
   }
@@ -3853,7 +3860,7 @@
         if (box && close) {
           const d = document.createElement("details");
           d.style.cssText = "margin-top:10px;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 12px";
-          d.innerHTML = `<summary style="cursor:pointer;font-weight:800">인연·습관·선택의 여파 (인생 서사)</summary><div class="small" style="margin-top:6px">
+          d.innerHTML = `<summary style="cursor:pointer;font-weight:800">인연·습관·선택의 여파 (인생 서사 · 버전 ${window.LIFE_SAGA_VERSION})</summary><div class="small" style="margin-top:6px">
 • <b>선택의 여파</b>: 중요한 선택을 하면 그 결과로 일어난 일이 바로 다음 장면으로 이어집니다. 다치면 누가 곁을 지키는지, 큰돈이 생기면 어떻게 쓰는지, 수배서가 붙으면 고향의 가족이 어떻게 반응하는지 이어서 결정합니다.<br>
 • <b>처지에 맞는 사건</b>: 해적·해군·혁명군·현상금 사냥꾼·민간인·은퇴자마다, 그리고 항구·도시·사막·설원·하늘섬·와노쿠니·어인섬 등 사는 곳마다 다른 사건과 내용이 나옵니다.<br>
 • <b>인연</b>: 인물들은 당신과의 <b>기억</b>을 쌓고, 친구는 연인·배우자가, 라이벌은 친구가 될 수 있습니다. 인물들도 해마다 결혼·출산·이사·이직·은퇴를 겪고, 자녀가 아이를 낳으면 손주가 생깁니다.<br>

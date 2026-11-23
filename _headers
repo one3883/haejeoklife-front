@@ -1,0 +1,7 @@
+# Cloudflare Pages: 새 버전을 올리면 브라우저가 예전 파일을 계속 쓰지 않도록 매번 최신인지 확인한다
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
