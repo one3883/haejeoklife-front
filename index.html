@@ -13906,7 +13906,7 @@
           sp = npcById(p.spouseId);
         if (age >= 13 && age <= 18 && parents.length)
           pool.push(parentConflictScene(rand(parents)));
-        const sick = rand(parents.filter((n) => n.age >= 58));
+        const sick = rand(parents.filter((n) => n.age / (n.scale || 1) >= 58));
         if (sick && age >= 16) pool.push(parentIllScene(sick));
         const mom =
           p.family !== "고아원" &&
@@ -13932,7 +13932,7 @@
           if (
             npcsBy((n) => n.role === "자녀").length < 4 &&
             age < 46 &&
-            sp.age < 46 &&
+            sp.age / (sp.scale || 1) < 46 &&
             Math.random() < 0.55
           )
             pool.push(childBornScene(sp));
@@ -13950,7 +13950,7 @@
         );
         if (teen) pool.push(childAdviceScene(teen));
         const kid = rand(
-          npcsBy((n) => n.role === "자녀" && n.age >= 4 && n.age <= 18),
+          npcsBy((n) => n.role === "자녀" && n.age / (n.scale || 1) >= 4 && n.age / (n.scale || 1) <= 18),
         );
         if (
           kid &&
@@ -18075,9 +18075,12 @@
         if (nb) {
           const order = [
             "배우자",
+            "연인",
             "자녀",
+            "손주",
             "부모",
             "형제",
+            "제자",
             "동료",
             "친구",
             "은인",
@@ -29957,6 +29960,7 @@ new MutationObserver(recs=>{
 /* =========================================================== */
 
 </script>
+  <script src="life-saga.js"></script>
   <script src="ranking.js" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
