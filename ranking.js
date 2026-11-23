@@ -10,7 +10,7 @@
   let submitting = false;
   let submitted = false;
   let lastPayload = null;
-  const challengeActive = () => typeof p !== 'undefined' && !!p && !!p.flags?.rankingChallenge && p.alive === false;
+  const challengeActive = () => typeof p !== 'undefined' && !!p && !!p.flags?.rankingChallenge && typeof finished !== 'undefined' && finished === true;
   const deathPanel = () => $('ranking-death');
   function hideDeathRanking() {
     lastPayload = null;
