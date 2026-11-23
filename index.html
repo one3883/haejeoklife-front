@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#d8f2fd" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -990,6 +990,12 @@
 @keyframes tacKoFade{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.tac-ko-burst,.tac-ko-core,.tac-ko-ring,.tac-ko-spark,.tac-ko-flash{animation-duration:.18s!important}}
 </style>
+<style id="vertical-scroll-lock">
+/* 아이폰 크롬·사파리에서 화면이 옆으로 밀리지 않고 세로로만 스크롤되도록 고정 */
+html, body { width: 100%; max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; touch-action: pan-y; }
+@supports (overflow-x: clip) { html, body { overflow-x: clip; } }
+body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+</style>
 </head>
   <body>
     <div class="wrap">
@@ -1050,6 +1056,7 @@
               <option>족장족</option>
               <option>장수족</option>
               <option>버커니어족</option>
+              <option>스카이피안</option>
             </select>
           </div>
           <div class="field">
@@ -1968,8 +1975,8 @@
           return;
         }
         nameInput.setCustomValidity("");
-        const ids = ["sea", "birthplace", "race", "family", "gender", "charFruit"];
-        const previous = Object.fromEntries(ids.map(id => [id, $(id).value]));
+        const ids = ["sea", "birthplace", "race", "family", "gender", "charFruit", "difficulty"];
+        const previous = Object.fromEntries(ids.map(id => [id, $(id) ? $(id).value : ""]));
         const oldPending = !!window.__rankingChallengePending;
         try {
           $("sea").value = "random";
@@ -1979,6 +1986,8 @@
           $("family").value = "random";
           $("gender").value = "무작위";
           $("charFruit").value = "";
+          // 랭킹 도전은 모두 같은 조건에서 겨루도록 난이도를 '보통'으로 고정한다
+          if ($("difficulty")) $("difficulty").value = "normal";
           window.__rankingChallengePending = true;
           begin();
         } finally {
@@ -2050,8 +2059,16 @@
                 "거인족",
                 "소인족",
                 "버커니어족",
+                "스카이피안",
               ])
             : $("race").value;
+        // 스카이피안은 하늘섬에서 태어난다 (출생지를 직접 고른 경우는 하계로 내려온 가정으로 본다)
+        if (race === "스카이피안" && chosen === "random" && (sea === "random" || sea === "그랜드 라인 전반부")) {
+          const sky = places.find((x) => x.name === "엔젤 아일랜드");
+          if (sky) place = sky;
+          if (fam === "해군 가족" || fam === "천룡인 가문")
+            fam = rand(familyTypes.filter((f) => !["해군 가족", "천룡인 가문"].includes(f)));
+        }
         let parentProfile = makeParentProfile(fam);
         let wealth = {
           "가난한 가정": 150,
@@ -27735,6 +27752,11 @@ function drawSilhouette(g,d,cx,py,ph){
   case "버커니어족":
    h=bust(265,195,py+182,98,106);g.lineWidth=18;
    for(const s of[-1,1]){g.beginPath();g.moveTo(cx+s*52,h.top+20);g.quadraticCurveTo(cx+s*70,h.top-30,cx+s*40,h.top-50);g.stroke()} // 뿔
+   break;
+  case "스카이피안":
+   // 등 뒤의 작은 날개 두 쌍 (몸보다 먼저 그려 어깨 뒤로 보이게 한다)
+   for(const s of[-1,1]){P([cx+s*70,py+ph-60,cx+s*215,py+ph-210,cx+s*190,py+ph-120,cx+s*235,py+ph-150,cx+s*175,py+ph-40]);}
+   h=bust(190,150,py+175,82,96);
    break;
   default:
    h=bust(190,150,py+175,82,96);
