@@ -27557,12 +27557,7 @@ function nationSagaScene(){
 
 /* ===================== v55: 이름 정하기 · 원작 해적단 스카우트 ===================== */
 // ── 출생 설정의 이름 ──
-let _nameWarned=false;
 function chosenName(){const el=document.getElementById("charName");const v=el?String(el.value||"").trim().slice(0,12):"";return v||null}
-function showNameWarning(){
- if(_nameWarned)return;_nameWarned=true;
- showSetupWarning(`<h2 style="margin-top:0">잠깐만요</h2><div>이 게임은 원피스 세상에 <b>평범한 한 사람</b>으로 태어나, 어떤 인생이 펼쳐질지 지켜보는 게임입니다.</div><div class="small" style="margin-top:8px">이름을 직접 정하면 게임의 재미가 반감되거나 몰입을 해칠 수도 있습니다. 그래도 괜찮다면 그대로 진행하세요. 이름 칸을 비워 두면 무작위로 정해집니다.</div>`);
-}
 // 출생 설정 경고창 (이름·악마의 열매 공용)
 function showSetupWarning(html){
  const ov=document.createElement("div");ov.className="setupWarnOv";ov.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px";
@@ -27571,7 +27566,6 @@ function showSetupWarning(html){
  const btn=document.createElement("button");btn.className="btn";btn.style.marginTop="14px";btn.textContent="확인";btn.onclick=()=>ov.remove();box.appendChild(btn);
  ov.appendChild(box);document.body.appendChild(ov);
 }
-{const el=document.getElementById("charName");if(el){el.addEventListener("change",()=>{if(String(el.value||"").trim())showNameWarning()})}}
 
 // ── 해적의 스카우트: 원작 해적단 ──
 // 지금 바다·시대에 실제로 활동하는 원작 해적단 중에서 고른다
