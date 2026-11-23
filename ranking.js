@@ -31,6 +31,7 @@
     if (!list) return;
     if (count > rows.length && rows.length === 10) {
       console.warn('랭킹 서버가 10개 기록만 반환했습니다. 서버의 TOP 30 배포를 확인해야 합니다.');
+      if (total) total.textContent += ' · 서버에서 10개 기록만 전달됨 (서버 업데이트 필요)';
     }
     if (!rows.length) { list.innerHTML = '<p class="small ranking-empty">아직 등록된 기록이 없습니다. 첫 번째 도전자가 되어 보세요!</p>'; return; }
     list.innerHTML = rows.map((r, i) => `<div class="ranking-row">
