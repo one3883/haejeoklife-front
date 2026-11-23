@@ -900,7 +900,16 @@
       }
 
       /* 오늘의 랭킹 — 기존 바다/돛천 테마 */
-      .ranking-panel { margin-top: 16px; }
+      /* 지난 사건: 조작 버튼 바로 아래에 표시, 최신 기록이 가장 눈에 띄도록 */
+      .recentEventsPanel { margin-top: 12px; }
+      .recentEventsPanel .log > div { font-size: 11px; line-height: 1.5; opacity: .65; transition: font-size .15s ease; }
+      .recentEventsPanel .log > div:nth-child(1) { font-size: 16px; font-weight: 700; opacity: 1; }
+      .recentEventsPanel .log > div:nth-child(2) { font-size: 15px; font-weight: 600; opacity: .95; }
+      .recentEventsPanel .log > div:nth-child(3) { font-size: 14px; opacity: .9; }
+      .recentEventsPanel .log > div:nth-child(4) { font-size: 13px; opacity: .85; }
+      .recentEventsPanel .log > div:nth-child(5) { font-size: 12px; opacity: .8; }
+      .recentEventsPanel .log > div:nth-child(n+6):nth-child(-n+10) { font-size: 11px; opacity: .75; }
+            .ranking-panel { margin-top: 16px; }
       /* 랭킹 목록만 독립 스크롤: 30명까지 페이지 전체를 늘리지 않고 탐색 */
       .ranking-panel .ranking-list { max-height: min(58vh, 520px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; padding-right: 5px; }
       .ranking-panel .ranking-list:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
@@ -1234,23 +1243,7 @@
                   저장
                 </button>
               </div>
-              <div class="small" id="hint" aria-live="polite" style="margin-top: 9px">
-                사건이 발생하면 시간이 멈추고 선택을 기다립니다.
-              </div>
-            </main>
-            <section class="panel focusPanel" id="focusPanel">
-              <div class="focusHead">
-                <div>
-                  <h2>올해의 초점</h2>
-                  <div class="small" id="focusSubtitle">
-                    올해 집중할 활동을 선택하세요.
-                  </div>
-                </div>
-                <span class="small">언제든 변경 가능</span>
-              </div>
-              <div class="focusChoices" id="focusChoices"></div>
-            </section>
-            <section class="panel">
+            <section class="panel recentEventsPanel">
               <div
                 style="
                   display: flex;
@@ -1270,6 +1263,23 @@
               </div>
               <div class="log" id="log"></div>
             </section>
+              <div class="small" id="hint" aria-live="polite" style="margin-top: 9px">
+                사건이 발생하면 시간이 멈추고 선택을 기다립니다.
+              </div>
+            </main>
+            <section class="panel focusPanel" id="focusPanel">
+              <div class="focusHead">
+                <div>
+                  <h2>올해의 초점</h2>
+                  <div class="small" id="focusSubtitle">
+                    올해 집중할 활동을 선택하세요.
+                  </div>
+                </div>
+                <span class="small">언제든 변경 가능</span>
+              </div>
+              <div class="focusChoices" id="focusChoices"></div>
+            </section>
+
           </div>
           <aside class="panel">
             <h2 id="lifeTitle">당신의 인생</h2>
