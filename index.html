@@ -1100,7 +1100,7 @@
             onclick="loadGame()"
           >
             이어하기</button
-          ><button class="btn" onclick="begin()">운명에 맡기고 태어나기</button
+          ><button class="btn" onclick="begin()">운명에 맡기고 태어나기</button><button class="btn" id="rankingChallengeBtn" type="button" onclick="beginRankingChallenge()">🏆 랭킹 도전</button>
           ><button class="btn secondary" onclick="openGuide()">게임 설명</button
           ><button
             class="btn secondary"
@@ -1113,7 +1113,7 @@
           </button>
         </div>
         <div class="small" id="saveInfo" style="margin-top: 8px"></div>
-      <section id="ranking-home" class="panel ranking-panel"><div class="ranking-head"><h2>🏆 오늘의 TOP 10</h2><button class="btn secondary ranking-refresh" type="button">새로고침</button></div><p class="ranking-total" aria-live="polite">오늘의 도전자 집계 중…</p><div class="ranking-list" aria-live="polite"><p class="small">랭킹을 불러오는 중입니다…</p></div></section>
+      <section id="ranking-home" class="panel ranking-panel"><div class="ranking-head"><h2>🏆 오늘의 TOP 30</h2><button class="btn secondary ranking-refresh" type="button">새로고침</button></div><p class="ranking-total" aria-live="polite">오늘의 도전자 집계 중…</p><div class="ranking-list" aria-live="polite"><p class="small">랭킹을 불러오는 중입니다…</p></div></section>
       </section>
 
       <section id="game" class="hidden">
@@ -1200,7 +1200,8 @@
               <section id="ranking-death" class="ranking-panel" hidden>
                 <div class="ranking-head"><h2>🏆 오늘의 랭킹 도전</h2><button class="btn secondary ranking-refresh" type="button">새로고침</button></div>
                 <p class="small">이번 인생의 최종 현상금으로 오늘의 랭킹에 도전하세요.</p>
-                <form id="ranking-form" class="ranking-form">
+                <button id="ranking-register-open" class="btn" type="button">🏆 랭킹 등록</button>
+                <form id="ranking-form" class="ranking-form" hidden>
                   <label for="ranking-nickname">등록할 닉네임 (최대 12자)</label>
                   <div class="ranking-formline"><input id="ranking-nickname" type="text" maxlength="12" autocomplete="nickname" required placeholder="닉네임 입력" /><button id="ranking-submit" class="btn" type="submit">랭킹 등록</button></div>
                 </form>
@@ -1936,6 +1937,40 @@
       }
       $("sea").addEventListener("change", updatePlaceOptions);
       updatePlaceOptions();
+      // 랭킹 도전은 이름만 직접 지정하고 나머지 출생 조건은 모두 무작위.
+      function beginRankingChallenge() {
+        const nameInput = $("charName");
+        const name = String(nameInput.value || "").trim();
+        if (!name) {
+          nameInput.focus();
+          nameInput.setCustomValidity("랭킹 도전에서는 이름을 반드시 입력해야 합니다.");
+          nameInput.reportValidity();
+          return;
+        }
+        nameInput.setCustomValidity("");
+        const ids = ["sea", "birthplace", "race", "family", "gender", "charFruit"];
+        const previous = Object.fromEntries(ids.map(id => [id, $(id).value]));
+        const oldPending = !!window.__rankingChallengePending;
+        try {
+          $("sea").value = "random";
+          updatePlaceOptions();
+          $("birthplace").value = "random";
+          $("race").value = "random";
+          $("family").value = "random";
+          $("gender").value = "무작위";
+          $("charFruit").value = "";
+          window.__rankingChallengePending = true;
+          begin();
+        } finally {
+          window.__rankingChallengePending = oldPending;
+          if (!$("setup").classList.contains("hidden")) {
+            $("sea").value = previous.sea;
+            updatePlaceOptions();
+            for (const id of ids.slice(1)) $(id).value = previous[id];
+          }
+        }
+      }
+      $("charName").addEventListener("input", () => $("charName").setCustomValidity(""));
       function begin() {
         if (!pendingLegacy && hasSave()) {
           let ok = true;
@@ -2071,10 +2106,11 @@
           wealth: wealth,
           alive: true,
           history: [],
-          flags: {},
+          flags: { rankingChallenge: !!window.__rankingChallengePending },
           ageBand: "영아",
           familyMood: 0,
         };
+        window.__rankingChallengePending = false;
         p.birthYear = pickBirthYear();
         p.birthPlace = place;
         p.mods = [];
@@ -11589,8 +11625,6 @@
         );
       }
       function winChance(base, opts = {}) {
-        if (p && p.flags && p.flags.raftel && !opts.ignoreRaftelAutoWin)
-          return 1;
         const inj = p.flags && p.flags.injuredUntil >= p.age ? 0.1 : 0;
         let c = 0.5 + (myPower() - foePower(base)) / 110;
         const cap = (base <= -0.2 ? 0.72 : 0.97) + yubashiriBonus(); // 최상위 강적은 능력치만으로 확실히 이길 수 없다
