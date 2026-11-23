@@ -352,6 +352,13 @@
       #log > :nth-child(4) { font-size: 12px; opacity: .80; }
       #log > :nth-child(5) { font-size: 11.5px; opacity: .74; }
       #log { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+      /* 주요 게임 버튼 5개만 부드러운 개별 색상으로 구분 */
+      .actions .btn.action-next { background: #dceefb; color: #173e60; border-color: #9bc6e4; }
+      .actions .btn.action-archive { background: #f0e5fa; color: #593b76; border-color: #cbb0e6; }
+      .actions .btn.action-guide { background: #dff1e6; color: #24583c; border-color: #a7d6b7; }
+      .actions .btn.action-shop { background: #fff0d9; color: #80501d; border-color: #e6c48e; }
+      .actions .btn.action-save { background: #e4eaf5; color: #334c76; border-color: #b0c1de; }
+      .actions .btn.action-next:hover, .actions .btn.action-archive:hover, .actions .btn.action-guide:hover, .actions .btn.action-shop:hover, .actions .btn.action-save:hover { filter: brightness(.95); }
       /* 버튼 영역과 여백을 두고, 은은한 테두리와 깊이감을 가진 사건 카드 */
       .recent-events-panel { margin-top: 16px; border: 1px solid rgba(170, 196, 207, .28) !important; border-radius: 16px; box-shadow: 0 6px 22px rgba(0, 0, 0, .13), inset 0 1px 0 rgba(255, 255, 255, .045) !important; background: linear-gradient(160deg, rgba(110, 150, 165, .085), rgba(15, 31, 44, .045)) !important; padding: 15px 16px; }
       .recent-events-panel .recent-events-head { justify-content: center !important; flex-wrap: wrap; text-align: center; }
@@ -1231,22 +1238,22 @@
               <div class="choices" id="choices"></div>
               <div class="actions">
                 <button
-                  class="btn secondary"
+                  class="btn secondary action-next"
                   id="continueBtn"
                   onclick="continueLife()"
                 >
-                  다음 장면</button
+                  ⏭️ 다음 장면</button
                 ><button class="btn secondary" onclick="showBio()">
                   인생 정보</button
-                ><button class="btn secondary" onclick="openArchive()">
-                  사건 다시 보기</button
-                ><button class="btn secondary" onclick="openGuide()">
-                  게임 설명</button
+                ><button class="btn secondary action-archive" onclick="openArchive()">
+                  📜 사건 다시 보기</button
+                ><button class="btn secondary action-guide" onclick="openGuide()">
+                  📖 게임 설명</button
                 ><button class="btn secondary" onclick="endYearEarly()">
                   올해 마무리</button
-                ><button class="btn secondary" onclick="openShop()">지출</button
-                ><button class="btn secondary" onclick="saveGame(true)">
-                  저장
+                ><button class="btn secondary action-shop" onclick="openShop()">💰 지출</button
+                ><button class="btn secondary action-save" onclick="saveGame(true)">
+                  💾 저장
                 </button>
               </div>
             <section class="panel recent-events-panel">
