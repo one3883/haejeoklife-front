@@ -15,7 +15,7 @@
   function renderRanking(target, data) {
     if (!target) return;
     const count = integer(data?.totalCount);
-    const rows = Array.isArray(data?.topRankings) ? data.topRankings.slice(0, 10) : [];
+    const rows = Array.isArray(data?.topRankings) ? data.topRankings.slice(0, 30) : [];
     const total = target.querySelector('.ranking-total');
     const list = target.querySelector('.ranking-list');
     if (total) total.textContent = `오늘의 도전자 ${format(count)}명`;
@@ -39,7 +39,7 @@
   async function refreshRankings() {
     const panels = [$('ranking-home'), $('ranking-death')];
     try {
-      const data = await request(`${API}/today`);
+      const data = await request(`${API}/today?limit=30`);
       panels.forEach(el => renderRanking(el, data));
     } catch (error) {
       panels.forEach(el => { if (!el) return; const list = el.querySelector('.ranking-list'); if (list && !list.querySelector('.ranking-row')) list.textContent = '랭킹을 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.'; });
@@ -58,17 +58,26 @@
   function openDeathRanking(cause) {
     const panel = $('ranking-death');
     if (!panel) return;
+    const isChallenge = !!(typeof p !== 'undefined' && p && p.flags && p.flags.rankingChallenge);
+    if (!isChallenge) { panel.hidden = true; lastPayload = null; return; }
     lastPayload = deathResult(cause);
     if (!lastPayload) return;
     submitted = false;
     submitting = false;
-    $('ranking-form').hidden = false;
+    $('ranking-form').hidden = true;
+    $('ranking-register-open').hidden = false;
     $('ranking-submit').disabled = false;
     $('ranking-nickname').value = '';
     $('ranking-my-rank').hidden = true;
     $('ranking-message').textContent = '';
     panel.hidden = false;
     refreshRankings();
+  }
+  function showRankingForm() {
+    if (!lastPayload || submitted || submitting) return;
+    $('ranking-form').hidden = false;
+    $('ranking-register-open').hidden = true;
+    $('ranking-nickname').focus();
   }
   async function submitRanking(event) {
     event.preventDefault();
@@ -85,6 +94,7 @@
       const data = await request(API, { method: 'POST', body: JSON.stringify({ nickname: nick, ...lastPayload }) });
       submitted = true;
       $('ranking-form').hidden = true;
+      $('ranking-register-open').hidden = true;
       $('ranking-my-rank').hidden = false;
       $('ranking-my-rank').textContent = `오늘 ${format(data.totalCount)}명 중 ${format(data.myRank)}위`;
       message.textContent = '랭킹 등록이 완료되었습니다!';
@@ -98,6 +108,7 @@
       if (!submitted) $('ranking-submit').disabled = false;
     }
   }
+  $('ranking-register-open')?.addEventListener('click', showRankingForm);
   $('ranking-nickname')?.addEventListener('input', event => { event.target.value = nicknameClean(event.target.value); });
   $('ranking-form')?.addEventListener('submit', submitRanking);
   document.querySelectorAll('.ranking-refresh').forEach(button => button.addEventListener('click', refreshRankings));
