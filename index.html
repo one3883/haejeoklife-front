@@ -352,6 +352,12 @@
       #log > :nth-child(4) { font-size: 12px; opacity: .80; }
       #log > :nth-child(5) { font-size: 11.5px; opacity: .74; }
       #log { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+      /* 지난 사건: 외곽 카드 테두리 제거 및 텍스트 중앙 정렬 */
+      .recent-events-panel { border: none !important; box-shadow: none !important; background: transparent !important; padding-left: 0; padding-right: 0; }
+      .recent-events-panel .recent-events-head { justify-content: center !important; flex-wrap: wrap; text-align: center; }
+      .recent-events-panel #log, .recent-events-panel #log > * { text-align: center !important; }
+      .recent-events-panel #log > * { border-bottom: none; }
+
 
       .clock {
         display: flex;
@@ -1243,8 +1249,8 @@
                   저장
                 </button>
               </div>
-            <section class="panel">
-              <div
+            <section class="panel recent-events-panel">
+              <div class="recent-events-head"
                 style="
                   display: flex;
                   justify-content: space-between;
