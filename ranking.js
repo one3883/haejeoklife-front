@@ -10,6 +10,15 @@
   let submitting = false;
   let submitted = false;
   let lastPayload = null;
+  const challengeActive = () => typeof p !== 'undefined' && !!p && !!p.flags?.rankingChallenge && typeof finished !== 'undefined' && finished === true;
+  const deathPanel = () => $('ranking-death');
+  function hideDeathRanking() {
+    lastPayload = null;
+    const panel = deathPanel();
+    if (panel) { panel.hidden = true; panel.style.display = 'none'; }
+    if ($('ranking-form')) $('ranking-form').hidden = true;
+    if ($('ranking-register-open')) $('ranking-register-open').hidden = true;
+  }
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function renderRanking(target, data) {
@@ -20,6 +29,10 @@
     const list = target.querySelector('.ranking-list');
     if (total) total.textContent = `오늘의 도전자 ${format(count)}명`;
     if (!list) return;
+    if (count > rows.length && rows.length === 10) {
+      console.warn('랭킹 서버가 10개 기록만 반환했습니다. 서버의 TOP 30 배포를 확인해야 합니다.');
+      if (total) total.textContent += ' · 서버에서 10개 기록만 전달됨 (서버 업데이트 필요)';
+    }
     if (!rows.length) { list.innerHTML = '<p class="small ranking-empty">아직 등록된 기록이 없습니다. 첫 번째 도전자가 되어 보세요!</p>'; return; }
     list.innerHTML = rows.map((r, i) => `<div class="ranking-row">
       <span class="ranking-place">${esc(Number.isFinite(Number(r.rank)) ? integer(r.rank) : i + 1)}위</span>
@@ -58,8 +71,7 @@
   function openDeathRanking(cause) {
     const panel = $('ranking-death');
     if (!panel) return;
-    const isChallenge = !!(typeof p !== 'undefined' && p && p.flags && p.flags.rankingChallenge);
-    if (!isChallenge) { panel.hidden = true; lastPayload = null; return; }
+    if (!challengeActive()) { hideDeathRanking(); return; }
     lastPayload = deathResult(cause);
     if (!lastPayload) return;
     submitted = false;
@@ -71,17 +83,18 @@
     $('ranking-my-rank').hidden = true;
     $('ranking-message').textContent = '';
     panel.hidden = false;
+    panel.style.display = '';
     refreshRankings();
   }
   function showRankingForm() {
-    if (!lastPayload || submitted || submitting) return;
+    if (!challengeActive() || !lastPayload || submitted || submitting) { if (!challengeActive()) hideDeathRanking(); return; }
     $('ranking-form').hidden = false;
     $('ranking-register-open').hidden = true;
     $('ranking-nickname').focus();
   }
   async function submitRanking(event) {
     event.preventDefault();
-    if (submitted || submitting || !lastPayload) return;
+    if (!challengeActive() || submitted || submitting || !lastPayload) { if (!challengeActive()) hideDeathRanking(); return; }
     const input = $('ranking-nickname');
     const nick = nicknameClean(input.value).trim();
     input.value = nick;
@@ -108,11 +121,21 @@
       if (!submitted) $('ranking-submit').disabled = false;
     }
   }
+  hideDeathRanking();
   $('ranking-register-open')?.addEventListener('click', showRankingForm);
   $('ranking-nickname')?.addEventListener('input', event => { event.target.value = nicknameClean(event.target.value); });
   $('ranking-form')?.addEventListener('submit', submitRanking);
   document.querySelectorAll('.ranking-refresh').forEach(button => button.addEventListener('click', refreshRankings));
   refreshRankings();
+  // 새 인생 및 이어하기에서 이전 사망의 등록 UI를 반드시 초기화합니다.
+  if (typeof begin === 'function') {
+    const originalBegin = begin;
+    begin = function() { hideDeathRanking(); return originalBegin.apply(this, arguments); };
+  }
+  if (typeof loadGame === 'function') {
+    const originalLoadGame = loadGame;
+    loadGame = function() { hideDeathRanking(); return originalLoadGame.apply(this, arguments); };
+  }
   // 원본 afterDeath 및 기존 수배서/분석 래퍼를 그대로 실행한 뒤 랭킹만 표시합니다.
   if (typeof afterDeath === 'function') {
     const originalAfterDeath = afterDeath;
