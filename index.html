@@ -17210,7 +17210,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           p.abilities.includes("명도•슈스이") &&
           !p.flags.bestSword &&
           p.age >= (p.flags.swordDuelNext || 0) &&
-          Math.random() < 0.3
+          Math.random() < 0.5
         )
           return {
             essential: true,
@@ -17233,14 +17233,14 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                     })
                   )
                     p.flags.bestSword = true;
-                  else p.flags.swordDuelNext = p.age + ri(4, 7);
+                  else p.flags.swordDuelNext = p.age + ri(3, 5);
                 },
               },
               {
                 title: "아직은 이르다",
                 desc: "더 수련한다.",
                 run: () => {
-                  p.flags.swordDuelNext = p.age + ri(3, 5);
+                  p.flags.swordDuelNext = p.age + ri(2, 4);
                   log("결투를 미룸");
                 },
               },
@@ -17251,7 +17251,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           (p.combat >= 55 || ["해적", "혁명군"].includes(p.status)) &&
           !p.flags.revengeDone &&
           p.age >= (p.flags.revengeNext || 0) &&
-          Math.random() < 0.5
+          Math.random() < 0.65
         )
           return {
             essential: true,
@@ -17264,7 +17264,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 desc:
                   "성공하면 세계정부 전체가 당신을 쫓는다." + oddsText(-0.1),
                 run: () => {
-                  p.flags.revengeNext = p.age + ri(4, 7);
+                  p.flags.revengeNext = p.age + ri(3, 5);
                   if (
                     battle({
                       foe: "천룡인의 호위 부대",
@@ -24880,7 +24880,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
 
       // ── 세계 최강의 검사로 가는 길: 다즈 보네스 → 좀비 류마 → 세계 최강의 검사 ──
       function swordPathScene() {
-        if (p.age < (p.flags.swordPathNext || 0) || Math.random() >= 0.4)
+        if (p.age < (p.flags.swordPathNext || 0) || Math.random() >= 0.65)
           return null;
         if (!p.abilities.includes("만물의 호흡") && p.combat >= 60)
           return {
@@ -24907,7 +24907,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                     sk("검술", 50);
                     achieve("만물의 호흡을 깨달음");
                     log("다즈 보네스를 베고 만물의 호흡을 깨달음");
-                  } else p.flags.swordPathNext = p.age + ri(3, 5);
+                  } else p.flags.swordPathNext = p.age + ri(2, 4);
                 },
               },
               {
@@ -24945,7 +24945,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                     sk("검술", 50);
                     achieve("명도 슈스이를 손에 넣음");
                     log("좀비 류마를 쓰러뜨리고 명도 슈스이를 손에 넣음");
-                  } else p.flags.swordPathNext = p.age + ri(3, 5);
+                  } else p.flags.swordPathNext = p.age + ri(2, 4);
                 },
               },
               {
@@ -27110,12 +27110,12 @@ ${p.partner ? "배우자: " + p.partner : ""} / 자녀: ${p.children}명${extraB
             a >= 30 &&
             Math.random() > Math.max(0.08, 1 - (a - 30) / 45)
           )
-            d = a >= 60 ? OLD_AGE() : peacefulDeath();
-          // 60세 이후에는 노환 비중이 점점 커진다
+            d = a >= 80 ? OLD_AGE() : peacefulDeath();
+          // 80세 이후부터 노환 비중이 서서히 커진다
           if (
             d.type !== "노환" &&
-            a >= 60 &&
-            Math.random() < Math.min(0.85, (a - 55) / 40)
+            a >= 80 &&
+            Math.random() < Math.min(0.7, (a - 79) / 45)
           )
             d = OLD_AGE();
           return d;
@@ -31827,8 +31827,10 @@ new MutationObserver(recs=>{
   }
   function friendNeedScene(out) {
     if (!adultLife() || p.age < 22 || who() === "cel") return;
+    if (p.age - (p.flags.sagaLastFriendNeedAge ?? -99) < 9 || !chance(0.16)) return;
     const n = pick(npcsBy((x) => ["친구", "은인", "동료"].includes(x.role) && x.rel >= 50 && ea(x) >= 20 && near(x) && !hasMem(x, "helped") && !hasMem(x, "refused_help")));
     if (!n || done("friend_need_" + n.id)) return;
+    p.flags.sagaLastFriendNeedAge = p.age;
     const j = String(n.job);
     const what = /해적/.test(j) ? "선장에게 버림받아 항구에 홀로 남겨지고" : /해군/.test(j) ? "작전 실패의 책임을 지고 쫓겨나" : /어부/.test(j) ? "폭풍에 배를 잃고" : /상인|상점|여관/.test(j) ? "가게가 망해 빚에 쫓기고" : /의사/.test(j) ? "환자를 잃은 죄책감에 손을 놓고" : rand(["몸을 크게 다쳐 일을 못 하고", "가족을 잃고 술에 빠져 지내고", "빚에 쫓기고"]);
     const good = ["성실한", "다정한", "정의감이 강한"].includes(n.personality);
