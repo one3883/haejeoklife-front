@@ -2132,15 +2132,9 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       updatePlaceOptions();
       // 랭킹 도전은 이름만 직접 지정하고 나머지 출생 조건은 모두 무작위.
       function beginRankingChallenge() {
+        // 이름은 선택: 비워 두면 일반 시작처럼 무작위 이름이 정해지고, 사망 후 랭킹 닉네임 칸에 그 이름이 미리 채워진다.
         const nameInput = $("charName");
-        const name = String(nameInput.value || "").trim();
-        if (!name) {
-          nameInput.focus();
-          nameInput.setCustomValidity("랭킹 도전에서는 이름을 반드시 입력해야 합니다.");
-          nameInput.reportValidity();
-          return;
-        }
-        nameInput.setCustomValidity("");
+        if (nameInput) nameInput.setCustomValidity("");
         const ids = ["sea", "birthplace", "race", "family", "gender", "charFruit", "difficulty"];
         const previous = Object.fromEntries(ids.map(id => [id, $(id) ? $(id).value : ""]));
         const oldPending = !!window.__rankingChallengePending;
