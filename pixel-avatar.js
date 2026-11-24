@@ -757,7 +757,7 @@
     const ground = Math.round(H * 0.94);
     const slots = frames.map((fr) => 15 * u * fr.a.size + 3 * u);
     let total = slots.reduce((s, v) => s + v, 0);
-    let x = W * anchorFor(sceneCtx) - total / 2;
+    let x = W * 0.03;
     x = Math.max(W * 0.03, Math.min(W * 0.97 - total, x));
     // 바닥 그림자 먼저
     const pos = frames.map((fr, i) => { const cxp = x + slots[i] / 2; x += slots[i]; return cxp; });

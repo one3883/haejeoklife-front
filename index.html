@@ -2749,13 +2749,13 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             },
           },
         };
-        if ((p.haki || []).length)
+        if ((p.haki || []).some(h => (p.hakiLv?.[h] || 0) < 100))
           common["패기 수련"] = {
             desc: "패기 숙련도↑",
             effect: () => {
               syncHaki();
               for (const h of p.haki)
-                p.hakiLv[h] = Math.min(100, p.hakiLv[h] + ri(1, 2));
+                if (p.hakiLv[h] < 100) p.hakiLv[h] = Math.min(100, p.hakiLv[h] + ri(1, 2));
             },
           };
         if (p.fruit)
@@ -16975,16 +16975,18 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         syncHaki();
         const L = p.hakiLv,
           pool = [];
-        pool.push({
+        const trainable = (p.haki || []).filter(h => (L[h] || 0) < 100);
+        if (trainable.length) pool.push({
           key: "hk_train",
           minAge: 14,
           essential: true,
           title: "패기 수련의 벽",
           body: "패기는 의지의 힘입니다. 더 강해지려면 자신을 극한까지 몰아붙여야 합니다.",
-          choices: (p.haki || []).map((h) => ({
+          choices: trainable.map((h) => ({
             title: `${h} 패기를 단련한다`,
             desc: `현재 ${L[h]} → 수련으로 성장`,
             run: () => {
+              if (L[h] >= 100) return;
               L[h] = Math.min(100, L[h] + ri(6, 12));
               p.health -= 2;
               log(`${h} 패기를 단련함 (${L[h]})`);
