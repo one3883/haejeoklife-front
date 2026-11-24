@@ -4862,7 +4862,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                   "삶의 기반을 다짐",
                 ),
           );
-        if (age === 60 && !p.flags.retired && p.job !== "은퇴자")
+        if (age === 65 && !p.flags.retired && p.job !== "은퇴자")
           scenes.push(retirementScene());
         scenes.push(...adultChildrenScenes());
         if (age >= 75 && Math.random() < 0.25)
@@ -17025,7 +17025,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ending: "세계 최강의 검사",
         },
         doctor: {
-          name: "세계 최고의 의사가 되기",
+          name: "만병통치약과도 같은 의사 되기",
           eligible: () => p.knowledge >= 25,
           progress: () =>
             Math.min(
@@ -17047,8 +17047,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         rich: {
           name: "엄청난 부자가 되기",
           eligible: () => true,
-          progress: () => Math.min(1, Math.max(0, p.money) / 20000000),
-          done: () => p.money >= 20000000,
+          progress: () => Math.min(1, Math.max(0, p.money) / 80000000),
+          done: () => p.money >= 80000000,
           ending: "바다의 거부",
         },
         family: {
@@ -17148,18 +17148,26 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ending: "평범하고 행복한 일생",
         },
       };
+      function dreamWasCompleted(id) {
+        return !!((p.dream && p.dream.id === id && p.dream.status === "달성") || (p.completedDreams || []).some(d => d.id === id));
+      }
       function setDream(id) {
+        if (dreamWasCompleted(id)) return;
+        if (p.dream && p.dream.status === "달성") {
+          p.completedDreams = p.completedDreams || [];
+          p.completedDreams.push({...p.dream});
+        }
         p.dream = { id, since: p.age, status: "진행" };
         log(`꿈을 정함: ${DREAMS[id].name}`);
       }
       function dreamPickScene(retry) {
         let ids = Object.keys(DREAMS)
-          .filter((k) => k !== "happy" && DREAMS[k].eligible())
+          .filter((k) => k !== "happy" && !dreamWasCompleted(k) && DREAMS[k].eligible())
           .sort(() => Math.random() - 0.5)
           .slice(0, 4);
         const kd = p.kid && p.kid.dream && KID_DREAMS[p.kid.dream].adult;
-        if (kd && !ids.includes(kd)) ids = [kd, ...ids.slice(0, 3)];
-        ids.push("happy");
+        if (kd && !dreamWasCompleted(kd) && !ids.includes(kd)) ids = [kd, ...ids.slice(0, 3)];
+        if (!dreamWasCompleted("happy")) ids.push("happy");
         return {
           essential: true,
           key: retry ? "dream_repick" : "dream_pick",
@@ -17182,6 +17190,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             return dreamPickScene(false);
           }
           return null;
+        }
+        if (d.status === "달성" && p.age < 60 && !d.newDreamOffered) {
+          d.newDreamOffered = true;
+          return newDreamAfterCompletion();
         }
         if (d.status !== "진행") return null;
         const D = DREAMS[d.id];
@@ -24429,7 +24441,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       function worldFreed() {
         return !!(
           p.flags.imuDefeated ||
-          (p.dream && p.dream.id === "overthrow" && p.dream.status === "달성")
+          dreamWasCompleted("overthrow")
         );
       }
       // 세계 침수를 피하는 사람과 장소
@@ -25065,11 +25077,11 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ) +
           sec(
             "직업·직급·은퇴",
-            `• 해군, 해적, 혁명군, 현상금 사냥꾼, 학자, 민간 직업, 천룡인. 직업마다 고유 사건과 승진이 있습니다.<br>• 해군이 해적과 결혼하거나 현상금이 걸리면 제명됩니다. 해군 대장은 강등되지 않고, 상관의 명령이나 천룡인 사건도 겪지 않습니다.<br>• 직급이 높을수록 전투 없는 피살·기습이 줄어듭니다(해군 중장 약 20%, 대장 0%).<br>• 60세 무렵이나 꿈을 이룬 뒤 은퇴할 수 있습니다. 혁명군이 이무를 완전히 쓰러뜨리면 혁명이 끝나 은퇴합니다.`,
+            `• 해군, 해적, 혁명군, 현상금 사냥꾼, 학자, 민간 직업, 천룡인. 직업마다 고유 사건과 승진이 있습니다.<br>• 해군이 해적과 결혼하거나 현상금이 걸리면 제명됩니다. 해군 대장은 강등되지 않고, 상관의 명령이나 천룡인 사건도 겪지 않습니다.<br>• 직급이 높을수록 전투 없는 피살·기습이 줄어듭니다(해군 중장 약 20%, 대장 0%).<br>• 65세 무렵이나 꿈을 이룬 뒤 은퇴할 수 있습니다. 60세 미만에 꿈을 이루면 새로운 꿈을 정할 수도 있습니다. 혁명군이 이무를 완전히 쓰러뜨리면 혁명이 끝나 은퇴합니다.`,
           ) +
           sec(
             "현상금·평판·꿈",
-            `• 해적은 현상금이 오르고 악명이 쌓입니다. 평판은 신분별로 따로 관리됩니다: 악명, 공적, 신뢰도, 사냥 실적, 사회적 지위, 권세. 30·60·90에 신문에 실립니다.<br>• <b>꿈</b>(15세 이후): 해적왕, 세계 최고의 검사, 모든 명검 모으기(어릴 적 꿈이 최강의 검사일 때), 세계 최고의 의사, 세계일주, 부자, 가족 지키기, 천룡인에게 복수, 세계정부 타도, 해군 영웅, 고향 발전, 평범한 행복. 이루면 전용 엔딩이 나옵니다.<br>• 검사의 꿈: 다즈 보네스(만물의 호흡) → 좀비 류마(명도•슈스이) → 세계 최강의 검사와의 결투. 지거나 미뤄도 몇 년 뒤 재도전할 수 있습니다.`,
+            `• 해적은 현상금이 오르고 악명이 쌓입니다. 평판은 신분별로 따로 관리됩니다: 악명, 공적, 신뢰도, 사냥 실적, 사회적 지위, 권세. 30·60·90에 신문에 실립니다.<br>• <b>꿈</b>(15세 이후): 해적왕, 세계 최고의 검사, 모든 명검 모으기(어릴 적 꿈이 최강의 검사일 때), 만병통치약과도 같은 의사 되기, 세계일주, 부자, 가족 지키기, 천룡인에게 복수, 세계정부 타도, 해군 영웅, 고향 발전, 평범한 행복. 이루면 전용 엔딩이 나옵니다.<br>• 검사의 꿈: 다즈 보네스(만물의 호흡) → 좀비 류마(명도•슈스이) → 세계 최강의 검사와의 결투. 지거나 미뤄도 몇 년 뒤 재도전할 수 있습니다.`,
           ) +
           sec(
             "인간관계·가족·후대",
@@ -25181,7 +25193,23 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         p.happiness += 5;
         log(why || "은퇴함");
       }
+      function newDreamAfterCompletion() {
+        const sc = dreamPickScene(true);
+        if (!sc.choices.length) return null;
+        sc.key = "dream_after_completion";
+        sc.body = "이미 하나의 꿈을 이루었습니다. 새로운 꿈을 정하거나 지금의 삶을 이어갈 수 있습니다.";
+        sc.choices.push({title:"지금의 삶을 이어간다",desc:"달성한 꿈을 유지한다.",run:()=>log("새로운 꿈을 정하지 않기로 함")});
+        return sc;
+      }
       function dreamRetireScene(D) {
+        if (p.age < 60 && p.dream) {
+          p.dream.newDreamOffered = true;
+          const sc = newDreamAfterCompletion();
+          if (sc) {
+            if (p.job !== "은퇴자" && p.job !== "노예" && p.status !== "천룡인") sc.choices.push({title:"은퇴하고 조용히 여생을 보낸다",desc:"일과 소속을 내려놓는다.",run:()=>retireNow("꿈 '"+D.name+"'을(를) 이룬 뒤 은퇴함")});
+            return sc;
+          }
+        }
         if (p.job === "은퇴자" || p.job === "노예" || p.status === "천룡인")
           return null;
         return {
@@ -27460,9 +27488,6 @@ function celKidFriendScene(){
 }
 {const _celestialChildScene=celestialChildScene;celestialChildScene=function(){const x=celKidFriendScene();if(x&&Math.random()<.35)return x;return _celestialChildScene.apply(this,arguments)}}
 
-// 4) 엄청난 부자 되기: 3억 베리
-DREAMS.rich.progress=()=>Math.min(1,Math.max(0,p.money)/80000000);
-DREAMS.rich.done=()=>p.money>=80000000;
 
 // 5) 번쩍번쩍 열매 전용: 베가펑크와의 우정, 그리고 친구를 죽이라는 임무
 function vegapunkNpc(){return (p.npcs||[]).find(n=>n.name==="베가펑크")}
@@ -27568,7 +27593,7 @@ function nationSagaScene(){
  const st=p.flags.nationStage??-1;
  if(p.job==="노예"||p.status==="천룡인")return null;
  if(st===-1){
-  if(!(p.dream&&p.dream.id==="rich"&&p.dream.status==="달성")||!["상인","과학자"].includes(p.job)||p.flags.nationAsked||!(p.money>=80000000))return null;
+  if(!dreamWasCompleted("rich")||!["상인","과학자"].includes(p.job)||p.flags.nationAsked||!(p.money>=80000000))return null;
   p.flags.nationAsked=true;
   return {essential:true,major:true,key:"nation_found",tags:["kingdom"],title:"나만의 나라",body:`8천만 베리 이상의 재산. 이제 당신에게는 섬 하나를 사들여 사람을 모으고, 법과 깃발을 정할 힘이 있습니다. 당신만의 나라를 세우시겠습니까?`,choices:[
    {title:"나라를 세운다",desc:"8천만 베리가 들지만 한 나라의 왕이 된다.",run:()=>{if(!(p.money>=80000000)){p.flags.nationAsked=false;log("재산이 8천만 베리 미만이라 나라를 세울 수 없음");return;}p.money-=80000000;const nm=`${p.name} 왕국`;p.flags.nation=nm;p.flags.nationStage=1;p.flags.nationNext=p.age+ri(2,4);achieve("나라를 세움");addNews(`신생국 '${nm}' 건국 — 세계정부 가맹 신청`);log(`${nm}을(를) 세우고 왕이 됨`)}},
@@ -28043,7 +28068,7 @@ DREAMS.blades={name:"모든 명검 모으기",
  done:()=>MEIKEN.every(x=>p.abilities.includes(x)),
  ending:"천하의 명검을 모두 모은 검사"};
 {const _dp65=dreamPickScene;dreamPickScene=function(){const sc=_dp65.apply(this,arguments);
- if(sc&&sc.choices&&p.kid&&p.kid.dream==="검사"&&!sc.choices.some(c=>c.title===DREAMS.blades.name)){
+ if(sc&&sc.choices&&!dreamWasCompleted("blades")&&p.kid&&p.kid.dream==="검사"&&!sc.choices.some(c=>c.title===DREAMS.blades.name)){
   const c={title:DREAMS.blades.name,desc:`세상의 명검(${MEIKEN.join(", ")})을 모두 손에 넣는다. 좀비 류마와 롤로노아 조로가 가진 검도 있다.`,run:()=>setDream("blades")};
   sc.choices.splice(Math.max(0,sc.choices.length-1),0,c)}
  return sc}}
