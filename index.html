@@ -25340,7 +25340,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ) +
           sec(
             "패기",
-            `• <b>견문색</b>: 16세 이상, 전투력 35 이상. <b>무장색</b>: 16세 이상, 전투력 45 이상. 연 20% 확률로 '패기의 문턱' 사건이 찾아오고, 스물다섯 살 사건 등에서도 배울 수 있습니다.<br>• <b>육식</b>: 18세 이상, 전투력 35 이상.<br>• <b>패왕색</b>: 해군 대장·해적 선장·현상금 사냥꾼 최고 직급·혁명군 참모총장이 되면 자동으로 발현됩니다(그 밖에는 매우 드묾).<br>• '패기 수련' 초점과 수련 사건으로 숙련도가 오르고, 40에 도달하면 류오(무장색)·미래 예지(견문색)·패휘감(패왕색)을 얻습니다.`,
+            `• <b>견문색</b>: 16세 이상, 전투력 35 이상. <b>무장색</b>: 16세 이상, 전투력 45 이상. 첫 습득 전 연 60% 확률로 (재등장 간격 최소 2년) '패기의 문턱' 사건이 찾아오고, 스물다섯 살 사건 등에서도 배울 수 있습니다.<br>• <b>육식</b>: 18세 이상, 전투력 35 이상.<br>• <b>패왕색</b>: 해군 대장·해적 선장·현상금 사냥꾼 최고 직급·혁명군 참모총장이 되면 자동으로 발현됩니다(그 밖에는 매우 드묾).<br>• '패기 수련' 초점과 수련 사건으로 숙련도가 오르고, 40에 도달하면 류오(무장색)·미래 예지(견문색)·패휘감(패왕색)을 얻습니다.`,
           ) +
           sec(
             "악마의 열매",
@@ -25399,9 +25399,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       function hakiLearnScene() {
         if (p.age < 16 || p.job === "노예") return null;
         const hasOne = ["견문색 패기", "무장색 패기"].some(h => p.abilities.includes(h));
-        if (!hasOne && Math.random() >= 0.36) return null;
-        // 두 번째 패기는 첫 패기 습득 후에도 독립적으로 등장한다.
-        if (hasOne && p.age - (p.seenScenes?.haki_learn ?? -99) < 2) return null;
+        if (p.age - (p.seenScenes?.haki_learn ?? -99) < 2) return null;
+        if (!hasOne && Math.random() >= 0.60) return null;
         const ch = [];
         if (!p.abilities.includes("견문색 패기") && p.combat >= 35)
           ch.push({
@@ -25440,7 +25439,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         return {
           major: true,
           key: "haki_learn",
-          essential: hasOne,
+          essential: true,
           cooldown: 2,
           title: "패기의 문턱",
           body: "싸움 속에서 이상한 감각을 느꼈습니다. 눈으로 보기 전에 상대의 움직임이 느껴지고, 주먹에 무언가 단단한 기운이 깃드는 것 같습니다. 모든 생물에 잠재된 힘, '패기'의 문턱에 서 있습니다.",
@@ -31057,7 +31056,19 @@ new MutationObserver(recs=>{
         n.spouseGender = g;
         n.marriedAt = realAge();
         remember(n, `${n.spouse}${wa(n.spouse)} 결혼함`, "married", 1);
-        if (close) schedule("saga_wedding", 0, { id: n.id });
+        if (close) {
+          // NPC의 결혼 자체는 그대로 진행하고, 플레이어에게 보여 줄 사건만 제한한다.
+          const pending = (p.delayed || []).filter(d => d.id === "saga_wedding");
+          const last = Math.max(p.flags.lastNpcWeddingScheduledAge ?? -99, ...pending.map(d => d.age));
+          if (n.role === "자녀") {
+            const at = Math.max(p.age, last + 3);
+            schedule("saga_wedding", at - p.age, { id: n.id });
+            p.flags.lastNpcWeddingScheduledAge = at;
+          } else if (p.age - last >= 5 && chance(0.35)) {
+            schedule("saga_wedding", 0, { id: n.id });
+            p.flags.lastNpcWeddingScheduledAge = p.age;
+          }
+        }
       }
       // 출산 — 자녀가 아이를 낳으면 손주가 된다
       if (n.spouse && e >= 22 && e <= 42 && n.kidsN < 3 && chance(0.12)) {
@@ -33630,6 +33641,7 @@ new MutationObserver(recs=>{
       const x = scenes[i];
       if (!x || x.promotion || x.saga || x.kid) continue;
       const k = String(sceneKey(x));
+      if (k === "haki_learn") continue; // 습득 기회는 자체 2년 간격만 적용
       const c = s.cnt[k] || 0,
         last = seen[k];
       let drop = false;
