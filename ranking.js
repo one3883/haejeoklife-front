@@ -76,10 +76,12 @@
     if (!lastPayload) return;
     submitted = false;
     submitting = false;
-    $('ranking-form').hidden = true;
-    $('ranking-register-open').hidden = false;
+    // 단계 줄이기: 닉네임 입력칸을 처음부터 펼치고 캐릭터 이름을 미리 채워, '랭킹 등록' 한 번만 누르면 되게 한다.
+    // (휴대폰 키보드가 갑자기 올라오지 않도록 자동 포커스는 하지 않는다)
+    $('ranking-form').hidden = false;
+    $('ranking-register-open').hidden = true;
     $('ranking-submit').disabled = false;
-    $('ranking-nickname').value = '';
+    $('ranking-nickname').value = nicknameClean(typeof p !== 'undefined' && p ? p.name : '').trim();
     $('ranking-my-rank').hidden = true;
     $('ranking-message').textContent = '';
     panel.hidden = false;
@@ -124,6 +126,8 @@
   hideDeathRanking();
   $('ranking-register-open')?.addEventListener('click', showRankingForm);
   $('ranking-nickname')?.addEventListener('input', event => { event.target.value = nicknameClean(event.target.value); });
+  // 미리 채운 캐릭터 이름을 바꾸고 싶을 때 바로 새로 쓸 수 있게, 입력칸을 누르면 전체 선택한다.
+  $('ranking-nickname')?.addEventListener('focus', event => { try { event.target.select(); } catch (e) {} });
   $('ranking-form')?.addEventListener('submit', submitRanking);
   document.querySelectorAll('.ranking-refresh').forEach(button => button.addEventListener('click', refreshRankings));
   refreshRankings();
