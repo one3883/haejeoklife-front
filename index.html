@@ -4018,7 +4018,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         p.flags.raftel = true;
         p.flags.onePiece = true;
         p.flags.imuDefeated = true;
-        p.bounty = 5000000000;
+        // 이미 50억을 넘긴 수배액을 해적왕 달성으로 낮추지 않는다.
+        p.bounty = Math.max(p.bounty || 0, 5000000000);
         p.bountyIssued = true;
         queuePirateKingEnding();
         p.reputation = clamp(p.reputation + 40);
@@ -4026,10 +4027,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         achieve("원피스를 손에 넣음");
         achieve("해적왕 달성");
         addNews(
-          `${p.name}, 라프텔에서 원피스를 손에 넣고 해적왕에 오르다 — 현상금 50억 베리`,
+          `${p.name}, 라프텔에서 원피스를 손에 넣고 해적왕에 오르다 — 현상금 ${Math.floor(p.bounty).toLocaleString()} 베리`,
         );
         log(
-          "이무와의 최종 결전에서 승리해 원피스를 손에 넣음. 해적왕 달성, 현상금 50억 베리로 확정됨",
+          `이무와의 최종 결전에서 승리해 원피스를 손에 넣음. 해적왕 달성, 현상금 ${Math.floor(p.bounty).toLocaleString()} 베리로 확정됨`,
         );
         const d = p.dream;
         if (d && d.id === "pirate_king" && d.status === "진행") {
@@ -9566,7 +9567,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = fruitScene();
           if (s) scenes.push(s);
         }
-        if ((p.haki || []).length && p.age - (p.seenScenes?.hk_train ?? -99) >= 3 && Math.random() < 0.65) {
+        if ((p.haki || []).length && p.age - (p.seenScenes?.hk_train ?? -99) >= 5 && Math.random() < 0.35) {
           const s = hakiScene();
           if (s) scenes.push(s);
         }
@@ -33821,9 +33822,9 @@ new MutationObserver(recs=>{
   }
 
   /* ───────────────────────── 현상금 50억 이후의 상승 둔화 ───────────────────────── */
-  // 어느 사건에서 현상금이 오르든, 50억 베리를 넘는 부분은 원래 상승폭의 15%만 반영한다
+  // 50억은 최대치가 아니다. 50억 초과 증가분에도 원래 상승폭의 40%를 반영한다.
   const BOUNTY_SOFT_CAP = 5000000000,
-    BOUNTY_OVER_RATE = 0.15;
+    BOUNTY_OVER_RATE = 0.4;
   function dampBounty() {
     if (!p || typeof p.bounty !== "number") return;
     const ref = typeof p._bountyRef === "number" ? p._bountyRef : p.bounty;
