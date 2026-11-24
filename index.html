@@ -2857,25 +2857,6 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         if (!choices && !phase.startsWith("출생") && !finished)
           armAutoAdvance();
       }
-      function finishScene() {
-        sceneIndex++;
-        if (sceneIndex < scenes.length) {
-          showScene();
-        } else {
-          scenes = [];
-          sceneIndex = 0;
-          yearElapsed = 0;
-          paused = false;
-          startClock();
-          $("continueBtn").disabled = false;
-          setEvent(
-            `${realAge()}세 — 한 해가 저물다`,
-            `올해의 여러 일이 지나갔습니다. 다음 해에는 새로운 일상과 사건이 기다립니다. 시간은 자동으로 흐릅니다.`,
-            null,
-            "연말",
-          );
-        }
-      }
       function continueLife() {
         if (finished || awaiting) return;
         if (autoAdvanceTimer) {
@@ -9499,6 +9480,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         return pickFresh(v, v.length);
       }
 
+      let appendLifeSagaScenes = null;
       function buildExtraScenes() {
         const age = p.age;
         if (age >= 16 && Math.random() < 0.24) {
@@ -9634,6 +9616,29 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             if (vs) scenes.push(vs);
           }
         }
+
+        // Preserve the original expansion order and independent error boundaries.
+        try{const a=pikaVegaScene();if(a)scenes.push(a);const b=pikaMissionScene();if(b)scenes.push(b)}catch(e){}
+        try{const s=swordChallengeScene();if(s)scenes.push(s)}catch(e){}
+        try{
+ const n=nationSagaScene();if(n)scenes.push(n);
+ // 과학자도 학자처럼 공백의 100년 연구 제안을 받는다
+ if(p.job==="과학자"&&!p.flags.voidResearch&&(p.flags.voidOffers||0)<2&&p.careerStartAge!=null&&p.age-p.careerStartAge>=3&&p.age-(p.flags.voidLastOffer??-99)>=8&&Math.random()<.45)scenes.push(voidOfferScene());
+}catch(e){}
+        try{const s=martialScene();if(s)scenes.push(s)}catch(e){}
+        try{const g=garpScene();if(g)scenes.push(g);const sj=sanjiScene();if(sj)scenes.push(sj)}catch(e){}
+        try{const s=chosenFruitScene();if(s)scenes.unshift(s)}catch(e){}
+        try {
+      if (Math.random() < 0.4) {
+        const s = jobExtraScene();
+        if (s) scenes.push(s);
+      }
+    } catch (e) {}
+        try {
+      const s = pirateExpoScene();
+      if (s) scenes.push(s);
+    } catch (e) {}
+        if (appendLifeSagaScenes) appendLifeSagaScenes();
       }
       function extraBio() {
         let s = `\n출생 연도: 해원력 ${p.birthYear}년 (현재 ${canonYear()}년)`;
@@ -27480,7 +27485,7 @@ function pikaMissionScene(){
   {title:"빛이 되어 친구를 지키러 간다",desc:"세계정부의 처단 부대와 맞선다."+oddsText(-.25),run:()=>{if(battle({foe:canonFoe("cp",3,4).label,base:-.25,loseHp:[20,40]})){p.flags.vegapunkSaved=true;p.flags.wgHunt=true;n.rel+=20;achieve("베가펑크를 지켜 냄");log("세계정부의 처단 부대로부터 베가펑크를 지켜 냄")}else{n.alive=false;n.deathAge=n.age;n.deathCause="에그헤드 사건";log("베가펑크를 지키지 못함")}}},
   {title:"멀리서 무사하기를 빈다",desc:"세계정부와 엮이지 않는다.",run:()=>{p.happiness-=5;log("친구의 무사를 빌기만 함")}}]};
 }
-{const _buildExtraScenes=buildExtraScenes;buildExtraScenes=function(){const r=_buildExtraScenes.apply(this,arguments);try{const a=pikaVegaScene();if(a)scenes.push(a);const b=pikaMissionScene();if(b)scenes.push(b)}catch(e){}return r}}
+
 // 에그헤드 사건이 일어나면, 구해 내지 못한 친구 베가펑크는 세상을 떠난다
 {const _eg=CANON_PERSONAL.egghead;CANON_PERSONAL.egghead=function(){if(_eg)_eg();const n=vegapunkNpc();if(n&&n.alive&&!p.flags.vegapunkSaved){n.alive=false;n.deathAge=n.age;n.deathCause="에그헤드 사건";p.happiness-=10;log("친구 베가펑크가 에그헤드 사건으로 세상을 떠남")}}}
 /* =========================================================== */
@@ -27505,7 +27510,7 @@ function swordChallengeScene(){
   {title:"검을 맞댄다",desc:"사황과의 대결. 지면 크게 다칠 수 있다."+oddsText(-.42),run:()=>{if(battle({foe:"사황 '붉은 머리' 샹크스",base:-.42,loseHp:[25,45],win:()=>{p.reputation+=12;gainStanding(8);p.combat=clamp(p.combat+3)}}))log("사황 샹크스와의 대결에서 승리함");else if(p.health>0){p.reputation-=3;log("사황 샹크스와의 대결에서 패배함")}}},
   {title:"술잔만 기울인다",desc:"싸움 대신 술자리를 함께한다.",run:()=>{p.happiness+=6;p.relationship+=3;log("사황 샹크스와 술잔을 기울임")}}]};
 }
-{const _be53=buildExtraScenes;buildExtraScenes=function(){const r=_be53.apply(this,arguments);try{const s=swordChallengeScene();if(s)scenes.push(s)}catch(e){}return r}}
+
 /* =========================================================== */
 
 /* ===================== v54: 과학자 직업 · 나라 세우기 루트 ===================== */
@@ -27563,10 +27568,10 @@ function nationSagaScene(){
  const st=p.flags.nationStage??-1;
  if(p.job==="노예"||p.status==="천룡인")return null;
  if(st===-1){
-  if(!(p.dream&&p.dream.id==="rich"&&p.dream.status==="달성")||!["상인","과학자"].includes(p.job)||p.flags.nationAsked)return null;
+  if(!(p.dream&&p.dream.id==="rich"&&p.dream.status==="달성")||!["상인","과학자"].includes(p.job)||p.flags.nationAsked||!(p.money>=80000000))return null;
   p.flags.nationAsked=true;
-  return {essential:true,major:true,key:"nation_found",tags:["kingdom"],title:"나만의 나라",body:`8천만 베리가 넘는 재산. 이제 당신에게는 섬 하나를 사들여 사람을 모으고, 법과 깃발을 정할 힘이 있습니다. 당신만의 나라를 세우시겠습니까?`,choices:[
-   {title:"나라를 세운다",desc:"8천만 베리가 들지만 한 나라의 왕이 된다.",run:()=>{p.money-=80000000;const nm=`${p.name} 왕국`;p.flags.nation=nm;p.flags.nationStage=1;p.flags.nationNext=p.age+ri(2,4);achieve("나라를 세움");addNews(`신생국 '${nm}' 건국 — 세계정부 가맹 신청`);log(`${nm}을(를) 세우고 왕이 됨`)}},
+  return {essential:true,major:true,key:"nation_found",tags:["kingdom"],title:"나만의 나라",body:`8천만 베리 이상의 재산. 이제 당신에게는 섬 하나를 사들여 사람을 모으고, 법과 깃발을 정할 힘이 있습니다. 당신만의 나라를 세우시겠습니까?`,choices:[
+   {title:"나라를 세운다",desc:"8천만 베리가 들지만 한 나라의 왕이 된다.",run:()=>{if(!(p.money>=80000000)){p.flags.nationAsked=false;log("재산이 8천만 베리 미만이라 나라를 세울 수 없음");return;}p.money-=80000000;const nm=`${p.name} 왕국`;p.flags.nation=nm;p.flags.nationStage=1;p.flags.nationNext=p.age+ri(2,4);achieve("나라를 세움");addNews(`신생국 '${nm}' 건국 — 세계정부 가맹 신청`);log(`${nm}을(를) 세우고 왕이 됨`)}},
    {title:"부자로 사는 것으로 충분하다",desc:"나라는 세우지 않는다.",run:()=>{log("나라를 세우지 않기로 함")}}]};
  }
  if(st<1||p.age<(p.flags.nationNext??0))return null;
@@ -27595,11 +27600,7 @@ function nationSagaScene(){
  }
  return null;
 }
-{const _be54=buildExtraScenes;buildExtraScenes=function(){const r=_be54.apply(this,arguments);try{
- const n=nationSagaScene();if(n)scenes.push(n);
- // 과학자도 학자처럼 공백의 100년 연구 제안을 받는다
- if(p.job==="과학자"&&!p.flags.voidResearch&&(p.flags.voidOffers||0)<2&&p.careerStartAge!=null&&p.age-p.careerStartAge>=3&&p.age-(p.flags.voidLastOffer??-99)>=8&&Math.random()<.45)scenes.push(voidOfferScene());
-}catch(e){}return r}}
+
 /* =========================================================== */
 
 /* ===================== v55: 이름 정하기 · 원작 해적단 스카우트 ===================== */
@@ -27996,7 +27997,7 @@ function martialScene(){
    {title:"견학만 한다",desc:"무투술이 조금 는다.",run:()=>{sk("무투술",2);log("어인 가라테 도장을 견학함")}}]});
  return rand(list);
 }
-{const _be64=buildExtraScenes;buildExtraScenes=function(){const r=_be64.apply(this,arguments);try{const s=martialScene();if(s)scenes.push(s)}catch(e){}return r}}
+
 /* =========================================================== */
 
 /* ===================== v65: 가프·상디와의 만남, 명검 ===================== */
@@ -28022,7 +28023,7 @@ function sanjiScene(){
    {title:"'검은다리 유파'를 배운다",desc:"손을 쓰지 않는 발차기 무술을 익힌다. (사용 기술 등록 · 무투술 +30)",run:()=>{p.flags.sanjiMet=true;addAbility("검은다리 유파");sk("무투술",30);if(p.job==="요리사")sk("요리",5);achieve("상디에게 검은다리 유파를 배움");log("상디에게 '검은다리 유파'를 배워 사용 기술에 등록함 (무투술 +30)")}},
    {title:"상디와 싸운다",desc:"검은다리의 실력을 직접 확인한다. 져도 목숨은 잃지 않는다."+oddsText(-.2),run:()=>{p.flags.sanjiMet=true;if(battle({foe:"'검은다리' 상디",base:-.2,loseHp:[12,30],nonFatal:true,win:()=>{p.reputation+=6;gainStanding(5);sk("무투술",8)}}))log("'검은다리' 상디와의 대결에서 승리함");else{sk("무투술",4);log("상디의 발차기에 쓰러졌지만 많은 것을 배움")}}}]};
 }
-{const _be65=buildExtraScenes;buildExtraScenes=function(){const r=_be65.apply(this,arguments);try{const g=garpScene();if(g)scenes.push(g);const sj=sanjiScene();if(sj)scenes.push(sj)}catch(e){}return r}}
+
 
 // ── 지출: 검 구입 ──
 const SHOP_SWORDS=[
@@ -28111,7 +28112,7 @@ function chosenFruitScene(){
   body:`다섯 살이 되던 해, 바닷가 바위틈에서 소용돌이 무늬가 새겨진 기묘한 열매를 주웠습니다. 배가 고팠던 당신은 어른들이 말릴 새도 없이 한입 크게 베어 물었습니다.\n\n세상에서 가장 끔찍한 맛이 입안에 퍼졌고, 그날부터 몸속에 낯선 힘이 깃들기 시작했습니다. 당신이 먹은 것은 '${f}'였습니다.`,
   choices:null,effect:()=>{if(!p.fruit)eatFirstFruit(f)},summary:`5살에 ${f}을(를) 먹음`};
 }
-{const _be68=buildExtraScenes;buildExtraScenes=function(){const r=_be68.apply(this,arguments);try{const s=chosenFruitScene();if(s)scenes.unshift(s)}catch(e){}return r}}
+
 /* =========================================================== */
 
 /* ===================== v69: 직업별 전용 사건 추가 · 어린 열매 능력자 사건 ===================== */
@@ -28329,19 +28330,7 @@ function jobExtraScene() {
   const fresh = f().filter((s) => seen[s.key] === undefined || p.age - seen[s.key] >= s.cooldown);
   return fresh.length ? rand(fresh) : null;
 }
-{
-  const _be69 = buildExtraScenes;
-  buildExtraScenes = function () {
-    const r = _be69.apply(this, arguments);
-    try {
-      if (Math.random() < 0.4) {
-        const s = jobExtraScene();
-        if (s) scenes.push(s);
-      }
-    } catch (e) {}
-    return r;
-  };
-}
+
 
 // ── 어린 열매 능력자 사건 (6~15세, 각각 한 번) ──
 function kidFruitPool() {
@@ -28546,17 +28535,7 @@ function pirateExpoScene() {
     ],
   };
 }
-{
-  const _be70 = buildExtraScenes;
-  buildExtraScenes = function () {
-    const r = _be70.apply(this, arguments);
-    try {
-      const s = pirateExpoScene();
-      if (s) scenes.push(s);
-    } catch (e) {}
-    return r;
-  };
-}
+
 /* =========================================================== */
 
 /* ===================== v66: 전략 전투 (Slay the Spire 풍 행동 선택) ===================== */
@@ -30012,21 +29991,56 @@ new MutationObserver(recs=>{
   window.LIFE_SAGA_VERSION = "20261124c";
   // 다른 버전의 index.html과 함께 실렸을 때 일부만 설치되는 일이 없도록, 필요한 기존 기능을 먼저 확인한다
   {
-    const need = [
-      "buildExtraScenes", "makeNpc", "npcName", "npcStory", "npcChoosePath", "npcTick", "npcDie", "npcsBy", "npcById",
-      "achieve", "failRecord", "marry", "setDream", "retireNow", "showResult", "focusOptions", "annualDrift",
-      "deathRiskBase", "deathDetails", "finalizeScenes", "fitScene", "sceneKey", "lifeRecord", "afterDeath",
-      "applyLegacy", "begin", "schedule", "realAge", "lifeScale", "travelPlaces", "setCareer", "jobTitle",
-      "roleLabel", "relWord", "npcDesc", "myAff", "opposed", "standing", "money", "log", "addNews", "normalize",
-      "isHighNoble", "ga", "eul", "wa", "eun", "ro",
-    ];
-    let missing = need.filter((k) => {
-      try {
-        return typeof eval(k) !== "function";
-      } catch (e) {
-        return true;
-      }
-    });
+    const missing = [
+      ["buildExtraScenes", typeof buildExtraScenes],
+      ["makeNpc", typeof makeNpc],
+      ["npcName", typeof npcName],
+      ["npcStory", typeof npcStory],
+      ["npcChoosePath", typeof npcChoosePath],
+      ["npcTick", typeof npcTick],
+      ["npcDie", typeof npcDie],
+      ["npcsBy", typeof npcsBy],
+      ["npcById", typeof npcById],
+      ["achieve", typeof achieve],
+      ["failRecord", typeof failRecord],
+      ["marry", typeof marry],
+      ["setDream", typeof setDream],
+      ["retireNow", typeof retireNow],
+      ["showResult", typeof showResult],
+      ["focusOptions", typeof focusOptions],
+      ["annualDrift", typeof annualDrift],
+      ["deathRiskBase", typeof deathRiskBase],
+      ["deathDetails", typeof deathDetails],
+      ["finalizeScenes", typeof finalizeScenes],
+      ["fitScene", typeof fitScene],
+      ["sceneKey", typeof sceneKey],
+      ["lifeRecord", typeof lifeRecord],
+      ["afterDeath", typeof afterDeath],
+      ["applyLegacy", typeof applyLegacy],
+      ["begin", typeof begin],
+      ["schedule", typeof schedule],
+      ["realAge", typeof realAge],
+      ["lifeScale", typeof lifeScale],
+      ["travelPlaces", typeof travelPlaces],
+      ["setCareer", typeof setCareer],
+      ["jobTitle", typeof jobTitle],
+      ["roleLabel", typeof roleLabel],
+      ["relWord", typeof relWord],
+      ["npcDesc", typeof npcDesc],
+      ["myAff", typeof myAff],
+      ["opposed", typeof opposed],
+      ["standing", typeof standing],
+      ["money", typeof money],
+      ["log", typeof log],
+      ["addNews", typeof addNews],
+      ["normalize", typeof normalize],
+      ["isHighNoble", typeof isHighNoble],
+      ["ga", typeof ga],
+      ["eul", typeof eul],
+      ["wa", typeof wa],
+      ["eun", typeof eun],
+      ["ro", typeof ro],
+    ].filter(([, type]) => type !== "function").map(([name]) => name);
     try {
       if (typeof DELAYED !== "object" || typeof NPC_FIRST !== "object" || typeof DREAMS !== "object") missing.push("DELAYED/NPC_FIRST/DREAMS");
     } catch (e) {
@@ -33319,16 +33333,13 @@ new MutationObserver(recs=>{
 
 
   {
-    const _be = buildExtraScenes;
-    buildExtraScenes = function () {
-      const r = _be.apply(this, arguments);
+    appendLifeSagaScenes = function () {
       try {
         pruneRepeats();
         sagaScenes().forEach((x) => scenes.push(x));
       } catch (e) {
         console.error("saga scenes", e);
       }
-      return r;
     };
     const _fin = finalizeScenes;
     finalizeScenes = function () {
