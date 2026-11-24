@@ -33822,9 +33822,9 @@ new MutationObserver(recs=>{
   }
 
   /* ───────────────────────── 현상금 50억 이후의 상승 둔화 ───────────────────────── */
-  // 50억은 최대치가 아니다. 50억 초과 증가분에도 원래 상승폭의 40%를 반영한다.
+  // 50억은 최대치가 아니다. 50억 초과 증가분에는 기존처럼 원래 상승폭의 15%만 반영한다.
   const BOUNTY_SOFT_CAP = 5000000000,
-    BOUNTY_OVER_RATE = 0.4;
+    BOUNTY_OVER_RATE = 0.15;
   function dampBounty() {
     if (!p || typeof p.bounty !== "number") return;
     const ref = typeof p._bountyRef === "number" ? p._bountyRef : p.bounty;
