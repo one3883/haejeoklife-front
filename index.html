@@ -944,6 +944,20 @@
       .ranking-formline input { min-width:0; flex:1; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); color:var(--ink); font:inherit; }
       .ranking-my-rank { padding:12px; margin:10px 0; font-weight:900; font-size:19px; color:var(--gold); border:1px solid var(--line); border-radius:10px; }
       .ranking-message { margin:8px 0; font-size:13px; }
+      /* 결과 화면 원탭 반응: '더보기 — 상세 인생 기록' 버튼과 같은 너비·높이 */
+      .lifeFbWrap { width:100%; max-width:400px; margin:10px auto 0; }
+      .lifeFb { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:45px; padding:4px 4px 4px 15px; border-radius:11px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); text-align:left; }
+      .lifeFbOpts { display:flex; gap:2px; flex:0 0 auto; }
+      .lifeFbBtn { width:44px; height:36px; border:0; border-radius:7px; background:transparent; font-size:22px; line-height:1; cursor:pointer; transition-property:transform, background-color; transition-duration:150ms; transition-timing-function:ease-out; }
+      .lifeFbBtn:hover { background:var(--panel); }
+      .lifeFbBtn:active { transform:scale(0.96); }
+      .lifeFbNote { min-height:36px; border:0; border-radius:7px; background:transparent; color:var(--sea); font:inherit; font-weight:700; padding:0 10px; cursor:pointer; transition:background-color 150ms ease-out; }
+      .lifeFbNote:hover { background:var(--panel); }
+      .lifeFbForm { margin-top:8px; text-align:left; }
+      .lifeFbForm textarea { width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:11px; padding:10px 12px; font:inherit; font-size:16px; background:var(--panel); color:var(--ink); resize:vertical; }
+      .lifeFbFoot { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; }
+      .lifeFbFoot .btn { flex:0 0 auto; white-space:nowrap; }
+      @media (prefers-reduced-motion: reduce) { .lifeFbBtn:active { transform:none; } }
 
       /* ================= 다크 모드: 한밤의 그랜드 라인 =================
          기기가 다크 모드면 같은 구조에 달빛 아래 밤바다 색을 쓴다. 글꼴·배치는 낮 테마와 같다.
@@ -28076,6 +28090,37 @@ async function shareKakao(cv,d,btn){
 }
 const WANTED_HIDE=["sceneArt","eventTitle","scene","lastResult"];
 function clearWanted(){const b=document.getElementById("wantedBox");if(b)b.remove();WANTED_HIDE.forEach(id=>{const e=document.getElementById(id);if(e&&e.dataset.wantedHidden){e.style.display=e.dataset.wantedHidden==="-"?"":e.dataset.wantedHidden;delete e.dataset.wantedHidden}})}
+// ── 결과 화면 원탭 반응: 누르기만 하면 되는 😆 😐 😴, 누른 뒤엔 선택으로 '한마디 남기기' ──
+// 응답은 GA로 보낸다. life_rating(rating, age, race, difficulty) / life_feedback(+ text, 최대 100자)
+// GA는 매개변수 값을 100자까지만 저장하므로 입력칸도 100자로 막는다. GA에는 개인정보를 보내면 안 돼서 안내 문구를 둔다.
+function lifeFeedback(d){
+ const wrap=document.createElement("div");wrap.className="lifeFbWrap";
+ const bar=document.createElement("div");bar.className="lifeFb";
+ const q=document.createElement("span");q.className="lifeFbQ";q.textContent="이번 인생 어땠어요?";
+ const opts=document.createElement("div");opts.className="lifeFbOpts";
+ const base={age:d.age,race:d.race||"",difficulty:(p&&p.difficulty)||"normal"};
+ let rating="";
+ const note=document.createElement("button");note.type="button";note.className="lifeFbNote";note.textContent="✏️ 한마디 남기기";
+ [["😆","fun","재밌었어요"],["😐","okay","그저 그래요"],["😴","boring","지루했어요"]].forEach(([emo,val,lab])=>{
+  const b=document.createElement("button");b.type="button";b.className="lifeFbBtn";b.textContent=emo;b.title=lab;b.setAttribute("aria-label",lab);
+  b.onclick=()=>{if(rating)return;rating=val;gaEvent("life_rating",{...base,rating:val});
+   q.textContent=`${emo} 고마워요!`;opts.replaceChildren(note)};
+  opts.appendChild(b)});
+ const form=document.createElement("div");form.className="lifeFbForm";form.hidden=true;
+ const ta=document.createElement("textarea");ta.maxLength=100;ta.rows=3;ta.placeholder="좋았던 점이나 바라는 점을 적어 주세요…";ta.setAttribute("aria-label","한마디 남기기");
+ const foot=document.createElement("div");foot.className="lifeFbFoot";
+ const PRIV="이름·연락처 같은 개인정보는 적지 말아 주세요";
+ const hint=document.createElement("span");hint.className="small";hint.textContent=`0/100 · ${PRIV}`;
+ const send=document.createElement("button");send.type="button";send.className="btn";send.textContent="보내기";
+ ta.oninput=()=>{hint.textContent=`${ta.value.length}/100 · ${PRIV}`};
+ note.onclick=()=>{form.hidden=false;note.remove();ta.focus()};
+ send.onclick=()=>{const t=ta.value.trim().slice(0,100);if(!t){ta.focus();return}
+  gaEvent("life_feedback",{...base,rating,text:t});
+  const done=document.createElement("div");done.className="small";done.setAttribute("role","status");done.textContent="보냈어요. 다음 업데이트에 참고할게요!";
+  form.replaceChildren(done)};
+ foot.append(hint,send);form.append(ta,foot);bar.append(q,opts);wrap.append(bar,form);
+ return wrap;
+}
 function wantedPoster(cause){
  clearWanted();
  const d=posterData(cause),cv=drawWanted(d),file=`WANTED_${d.name}.png`;
@@ -28092,7 +28137,7 @@ function wantedPoster(cause){
  const more=document.createElement("button");more.className="btn secondary";more.style.cssText="display:block;width:100%;max-width:400px;margin:10px auto 0";
  const setMore=open=>{["eventTitle","scene"].forEach(id=>{const e=$(id);if(e)e.style.display=open?"":"none"});more.textContent=open?"▲ 상세 기록 접기":"▼ 더보기 — 상세 인생 기록"};
  let open=false;more.onclick=()=>{open=!open;setMore(open);if(open)$("eventTitle").scrollIntoView({behavior:"smooth",block:"start"})};
- box.appendChild(img);box.appendChild(row);box.appendChild(more);
+ box.appendChild(img);box.appendChild(row);box.appendChild(lifeFeedback(d));box.appendChild(more);
  WANTED_HIDE.forEach(id=>{const e=document.getElementById(id);if(e){e.dataset.wantedHidden=e.style.display||"-";e.style.display="none"}});
  setMore(false);
  const art=$("sceneArt");art.parentNode.insertBefore(box,art);
