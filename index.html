@@ -4637,7 +4637,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         if (
           age >= 18 &&
           p.status === "해적" &&
-          Math.random() < (p.bountyIssued ? 0.16 : 0.42)
+          Math.random() < (p.bountyIssued ? 0.20 : 0.45)
         )
           scenes.push(bountyScene());
         if (age >= 18 && p.job === "현상금 사냥꾼" && Math.random() < 0.62)
@@ -25107,7 +25107,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         }
       }
       function hakiLearnScene() {
-        if (p.age < 16 || p.job === "노예" || Math.random() >= 0.2) return null;
+        if (p.age < 16 || p.job === "노예" || Math.random() >= 0.36) return null;
         const ch = [];
         if (!p.abilities.includes("견문색 패기") && p.combat >= 35)
           ch.push({
@@ -25146,7 +25146,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         return {
           major: true,
           key: "haki_learn",
-          cooldown: 3,
+          cooldown: 2,
           title: "패기의 문턱",
           body: "싸움 속에서 이상한 감각을 느꼈습니다. 눈으로 보기 전에 상대의 움직임이 느껴지고, 주먹에 무언가 단단한 기운이 깃드는 것 같습니다. 모든 생물에 잠재된 힘, '패기'의 문턱에 서 있습니다.",
           choices: ch,
@@ -33691,6 +33691,9 @@ new MutationObserver(recs=>{
   // ── 어둠어둠 열매: 썩은 과일을 악마의 열매라 속이다 ──
   function darkTrickScene(out) {
     if (p.fruit !== "어둠어둠 열매" || p.age < 18 || done("dark_trick") || !free()) return;
+    // 최초 조건 충족 후 최소 3년이 지나야 등장하며, 이후에도 매년 25% 확률로만 후보에 오른다.
+    if (!Number.isFinite(p.flags.darkTrickEligibleAge)) p.flags.darkTrickEligibleAge = p.age;
+    if (p.age - p.flags.darkTrickEligibleAge < 3 || Math.random() >= 0.25) return;
     let mate = closeNpcs((n) => ["동료", "친구"].includes(n.role) && near(n) && ea(n) >= 16)[0];
     // 곁에 동료가 없어도, 배를 타거나 소속이 있으면 함께 지내는 동료 하나를 만든다
     if (!mate) {
