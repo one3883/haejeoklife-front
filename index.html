@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#d8f2fd" />
+    <meta name="theme-color" content="#d8f2fd" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1a2b" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&display=swap" />
@@ -957,6 +958,157 @@
       .lifeFbFoot { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; }
       .lifeFbFoot .btn { flex:0 0 auto; white-space:nowrap; }
       @media (prefers-reduced-motion: reduce) { .lifeFbBtn:active { transform:none; } }
+
+      /* ================= 다크 모드: 한밤의 그랜드 라인 =================
+         기기가 다크 모드면 같은 구조에 달빛 아래 밤바다 색을 쓴다. 글꼴·배치는 낮 테마와 같다.
+         랭킹 화면은 색 변수를 쓰므로 변수만 바꿔도 함께 바뀐다. */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #08121b;
+          --panel: #172735;
+          --panel2: #20394b;
+          --line: #385366;
+          --ink: #edf4f7;
+          --muted: #a9bdc9;
+          --gold: #f2c66d;
+          --straw: #f2c66d;
+          --sea: #77c9df;
+          --green: #8ed0a2;
+          --red: #ed9287;
+          color-scheme: dark;
+        }
+        body {
+          background: linear-gradient(180deg, #1b3a52 0, #132b3d 520px, #0f2232 1000px, #0b1a26 1700px, #08121b 2600px);
+          background-color: #08121b;
+        }
+        .hero {
+          background:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 90' preserveAspectRatio='none'%3E%3Cpath d='M0 38 C150 18 300 58 450 38 S750 18 900 38 S1100 58 1200 38 V90 H0Z' fill='%23214e6e'/%3E%3Cpath d='M0 56 C200 40 350 74 600 56 S1000 40 1200 56 V90 H0Z' fill='%23173b55'/%3E%3Cpath d='M0 72 C250 62 450 84 700 72 S1050 62 1200 72 V90 H0Z' fill='%23102c40'/%3E%3C/svg%3E")
+              bottom / 100% 90px no-repeat,
+            radial-gradient(circle at 88% calc(100% - 96px), #fff3c4 0, #fff3c4 11px, #fff3c42e 12px, #fff3c400 90px),
+            linear-gradient(180deg, #0b1a2b 0%, #12304a 70%, #1a3f5d 100%);
+        }
+        .hero h1 {
+          color: var(--ink);
+        }
+        .hero > div[style] {
+          color: #8fd3f4 !important;
+        }
+        .hero p {
+          color: #c9dce6;
+        }
+        .tag {
+          border-color: #ffffff33;
+          background: #ffffff14;
+          color: var(--ink);
+        }
+        .panel {
+          border-color: #ffffff14;
+          box-shadow: 0 1px 0 #ffffff0d inset, 0 14px 34px #0007;
+        }
+        .scene {
+          color: #e2edf1;
+        }
+        .choice {
+          background: #1d3344;
+        }
+        .choice:hover {
+          background: #24425a;
+        }
+        .choice:disabled:hover {
+          background: #1d3344;
+        }
+        .btn,
+        #continueBtn {
+          color: #2a2418;
+        }
+        .btn.secondary {
+          background: #2b4558;
+          border-color: #527184;
+          color: var(--ink);
+        }
+        .field select,
+        .field input,
+        #charName {
+          background: #0e1b25 !important;
+          border-color: #496678 !important;
+        }
+        .stat,
+        .profile div,
+        .travel,
+        .abilityBox {
+          background: #0e1b25;
+        }
+        .abilityTag,
+        .badge {
+          background: #294b5d;
+          border-color: #456579;
+          color: #e1f0f5;
+        }
+        .notice {
+          background: #2b3028;
+          border-color: #716044;
+          color: #f2dbab;
+        }
+        .bar,
+        .progress {
+          background: #344a58;
+        }
+        .fill {
+          background: linear-gradient(90deg, #3a9fd0, #77c9df);
+        }
+        .log {
+          color: #c1d2da;
+        }
+        .log div {
+          border-color: #304654;
+        }
+        .focusChoice {
+          background: #0e1b25;
+          border-color: #527184;
+        }
+        .focusChoice.active {
+          background: #1f6f99;
+          border-color: var(--sea);
+        }
+        .footer {
+          color: #7f95a3;
+        }
+        #sceneArt {
+          background: #0b1622 !important;
+          outline-color: #ffffff1a;
+        }
+        #guideOverlay details {
+          border-color: #ffffff1f !important;
+          background: #ffffff08;
+        }
+        #archiveOverlay select {
+          background: #0e1b25;
+        }
+        .tac-box .tac-art {
+          background: #0b1622;
+        }
+        .tac-box .tac-bar,
+        .tac-box .tac-badges span,
+        .tac-box .tac-intent,
+        .tac-box .tac-log {
+          background: #0e1b25;
+          border-color: #2d4657;
+        }
+        .tac-box .tac-intent {
+          border-color: var(--gold);
+        }
+        .tac-box .tac-log {
+          color: #cfe0e8;
+        }
+        .tac-box .tac-act {
+          background: #223b4d;
+          border-color: #47667a;
+        }
+        .tac-box .tac-act:hover:not(:disabled) {
+          background: #2c4d62;
+        }
+      }
       [hidden] { display:none !important; }
       @media(max-width:480px) { .ranking-row { gap:7px; } .ranking-place { flex-basis:35px; } .ranking-bounty { font-size:12px; } .ranking-bounty small { font-size:10px; } .ranking-formline { flex-wrap:wrap; } .ranking-formline button { flex:1; } }
     </style>
@@ -33984,6 +34136,47 @@ new MutationObserver(schedule).observe(art,{childList:true,subtree:true,characte
 /* Avoid class-observer recursion: the observer must never mutate the class it watches.
    CSS handles battle appearance and impacts without watching combat state. */
 })();
+</script>
+<script>
+/* ===================== GA: 몇 살쯤 이탈했는지 보기 위한 이벤트 ===================== */
+// age_reached: 한 인생에서 5살 단위(5·10·15…)에 처음 도달할 때마다 보낸다.
+//   GA 유입경로 탐색에서 5살→10살→20살… 단계로 놓으면 어느 나이에서 많이 그만두는지 보인다.
+// game_exit: 인생이 끝나기 전에 화면을 떠날 때(창 닫기·다른 앱으로 전환) 그때 나이를 보낸다.
+//   휴대폰에서는 가끔 전송이 안 될 수 있어 age_reached의 보조로 쓴다.
+// 게임 진행 코드는 건드리지 않고, newYear를 감싸 나이 변화만 지켜본다.
+(()=>{
+ if(typeof newYear!=="function"||typeof realAge!=="function"||typeof gaEvent!=="function")return;
+ const STEP=5,lastMs=new WeakMap(); // 인생(p)마다 마지막으로 보낸 5살 단위
+ const diff=()=>(p&&p.difficulty)||"normal";
+ const race=()=>(p&&p.race)||""; // 거인족(3배)·소인족처럼 나이 흐름이 다른 종족을 나눠 보기 위해 함께 보낸다
+ const _ny=newYear;
+ newYear=function(){
+  const life=p,before=life?realAge():0;
+  const r=_ny.apply(this,arguments);
+  try{
+   if(life&&life===p){
+    // 처음 보는 인생이면(이어하기 포함) 이미 지난 나이는 보내지 않는다
+    if(!lastMs.has(life))lastMs.set(life,Math.floor(before/STEP)*STEP);
+    const now=realAge();let m=lastMs.get(life);
+    while(m+STEP<=now){m+=STEP;gaEvent("age_reached",{age:m,difficulty:diff(),race:race()})}
+    lastMs.set(life,m);
+   }
+  }catch(e){}
+  return r;
+ };
+ // 같은 인생·같은 나이로는 한 번만 보낸다 (앱을 잠깐 내렸다 돌아오는 경우 중복 방지)
+ const exitSent=new WeakMap();
+ const sendExit=()=>{
+  try{
+   if(!p||finished)return;
+   const age=realAge();if(exitSent.get(p)===age)return;exitSent.set(p,age);
+   gaEvent("game_exit",{age,difficulty:diff(),race:race(),transport_type:"beacon"});
+  }catch(e){}
+ };
+ document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")sendExit()});
+ window.addEventListener("pagehide",sendExit);
+})();
+/* =========================================================== */
 </script>
 </body>
 </html>
