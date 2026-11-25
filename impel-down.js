@@ -90,13 +90,13 @@ const oldBuild=buildYearScenes;
 buildYearScenes=function(){
  const s=prison();if(!s)return oldBuild.apply(this,arguments);
  scenes=[];sceneIndex=0;
- if(canonYear()===1522&&!s.seen.luffy){
- s.seen.luffy=true;
+ if(canonYear()===1522&&!p.flags.impelLuffySeen){
+ p.flags.impelLuffySeen=true;
  scenes.push(event("luffy","밀짚모자 루피의 침입","에이스를 구하려는 루피의 침입으로 임펠다운이 혼란에 빠졌습니다.",[
  choice("혼란을 틈타 탈옥한다","특별 탈옥 기회",()=>attempt("루피의 침입",.42)),choice("감방에 남는다","안전 · 기회 포기",()=>happy(-3))]));
  }
- if(canonYear()===1522&&!s.seen.teach){
- s.seen.teach=true;
+ if(canonYear()===1522&&!p.flags.impelTeachSeen){
+ p.flags.impelTeachSeen=true;
  scenes.push(event("teach","검은수염의 방문","검은수염 해적단이 임펠다운에 나타났습니다. LEVEL 6의 죄수들 사이에서 소동이 일어납니다.",[
  choice("소동을 이용한다","탈옥 기회 · 부상 위험",()=>attempt("검은수염의 방문",.25)),choice("몸을 숨긴다","안전 · 행복 감소",()=>happy(-2))]));
  }
@@ -106,7 +106,7 @@ buildYearScenes=function(){
 const oldFit=fitScene;
 fitScene=function(s){if(active())return s&&(/^(impel_|battle_)/.test(String(s.key)))?s:null;return oldFit.apply(this,arguments);};
 const oldDrift=annualDrift;
-annualDrift=function(){if(!active())return oldDrift.apply(this,arguments);hp(prison().hidden?2:-Math.ceil(prison().level/2));happy(-2);normalize();};
+annualDrift=function(){if(!active())return oldDrift.apply(this,arguments);hp((prison().hidden?2:-Math.ceil(prison().level/2))+(p.focus==="휴식"?2:0));if(p.focus==="감옥에서 단련"){p.combat+=1;hp(-1);}happy(-2);normalize();};
 const oldFocus=focusOptions;
 focusOptions=function(){if(!active())return oldFocus.apply(this,arguments);return {"감옥에서 단련":{desc:"감옥 사건에서 단련",effect:()=>{}},"휴식":{desc:"감옥에서 휴식",effect:()=>{}}};};
 const oldSalary=annualSalary;
