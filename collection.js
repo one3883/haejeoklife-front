@@ -360,14 +360,7 @@
     } catch (e) {}
   }
 
-  // 상단(첫 화면 머리)과 시작 버튼 줄에 도감 버튼을 단다
-  const hero = document.querySelector("header.hero");
-  if (hero) {
-    const row = document.createElement("div");
-    row.className = "col-open-row";
-    row.appendChild(makeButton("secondary"));
-    hero.appendChild(row);
-  }
+  // 시작 버튼 줄(랭킹 도전 옆)에 도감 버튼을 단다. 첫 화면 상단 버튼은 두지 않는다.
   const rankBtn = document.getElementById("rankingChallengeBtn");
   if (rankBtn && rankBtn.parentNode) rankBtn.after(makeButton("secondary"));
   refreshButtons();
