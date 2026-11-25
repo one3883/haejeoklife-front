@@ -28696,7 +28696,7 @@ DREAMS.blades={name:"모든 명검 모으기",
  ending:"천하의 명검을 모두 모은 검사"};
 {const _dp65=dreamPickScene;dreamPickScene=function(){const sc=_dp65.apply(this,arguments);
  if(sc&&sc.choices&&!dreamWasCompleted("blades")&&p.kid&&p.kid.dream==="검사"&&!sc.choices.some(c=>c.title===DREAMS.blades.name)){
-  const c={title:DREAMS.blades.name,desc:`세상의 명검(${MEIKEN.join(", ")})을 모두 손에 넣는다. 좀비 류마와 롤로노아 조로가 가진 검도 있다.`,run:()=>setDream("blades")};
+  const c={title:DREAMS.blades.name,desc:`세상의 명검(${MEIKEN.join(", ")})을 모두 손에 넣는다. 좀비 류마와 롤로노아 조로가 가진 검도 있다.`,_pe:{traits:["야심"]},run:()=>{setDream("blades");p.flags.f_goal_blades=true;p.happiness+=3;p.money=Math.max(0,p.money-(p.age>=16?Math.max(1000,Math.round(annualSalary()*0.02)):30))}}; // 다른 꿈처럼 플래그와 득실(명검을 좇는 데 돈이 듦)을 남긴다
   sc.choices.splice(Math.max(0,sc.choices.length-1),0,c)}
  return sc}}
 // 명검을 노리는 사람 앞에는 좀비 류마(슈스이)와 조로(화도 일문자·엔마)가 나타난다
@@ -34591,7 +34591,9 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261125b" defer></script>
+  <script src="place-events.js?v=20261125c" defer></script>
+  <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
+  <script src="callback-events.js?v=20261125a" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>

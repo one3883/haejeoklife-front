@@ -6521,6 +6521,129 @@
     };
   }
 
+  /* ───────────── 회수 사건 (CB) ─────────────
+     어린 시절 선택이 남긴 플래그를 보고 몇 년 뒤 돌아오는 사건. 데이터는 callback-events.js에서 CB([...])로 넣는다.
+     - 플래그가 생긴 나이를 p.flagAge에 기록하고, after(기본 5)년이 지나야 나온다.
+     - 16세 이후 해마다 CB_YEAR_CHANCE 확률로, 조건이 맞는 회수 사건 하나를 그해 사건에 끼운다(최소 CB_GAP년 간격).
+     - 반드시 보여 주는 사건(essential)이고, 나오면 f_cbdone_<key>로 닫혀 다시 나오지 않는다(CLAUDE.md 5절).
+       고른 선택지는 f_cbpick_<key>_<번호>(1부터)로 남는다 — 이어지는 회수 사건의 조건으로 쓴다.
+     - by: { "해적|혁명군": {...}, "해군": {...}, "*": {...} } 로 신분마다 제목·본문·선택지를 바꾼다.
+     - 본문 토큰: {고향} {여기} {해적단} {단짝} {npc:칭호}, 기본값 {npc:칭호=그 아이}, 조사 {고향|로} (을·이·은·와·로) */
+  const CALLBACKS = [];
+  const CB_YEAR_CHANCE = 0.35;
+  const CB_GAP = 2;
+  window.CB = function (list) {
+    for (const d of [].concat(list || [])) if (d && d.key && Array.isArray(d.choices)) CALLBACKS.push(d);
+  };
+  // 현상금 사냥꾼은 신분이 민간인이라 직업으로 따로 가른다
+  const cbStatus = () => (p.status === "민간인" && p.job === "현상금 사냥꾼" ? "현상금 사냥꾼" : p.status);
+  function cbVariant(d) {
+    if (!d.by) return d;
+    const st = cbStatus();
+    let v = null;
+    for (const [k, x] of Object.entries(d.by)) {
+      if (k === "*") continue;
+      if (k.split("|").map((s) => s.trim()).some((s) => s === st || s === p.status)) { v = x; break; }
+    }
+    v = v || d.by["*"];
+    if (!v) return d;
+    const out = { ...d, ...v };
+    if (Array.isArray(v.choices)) {
+      out.choices = d.choices.map((c, i) => ({ ...c, ...(v.choices[i] || {}) }));
+      if (v.choices.length > d.choices.length) out.choices.push(...v.choices.slice(d.choices.length));
+    } else out.choices = d.choices;
+    return out;
+  }
+  const JOSA = { 을: "eul", 를: "eul", 이: "ga", 가: "ga", 은: "eun", 는: "eun", 와: "wa", 과: "wa", 로: "ro", 으로: "ro" };
+  function cbToken(name, def) {
+    try {
+      if (name === "고향") return (p.birthPlace && p.birthPlace.name) || def || "고향";
+      if (name === "여기") return (p.place && p.place.name) || def || "이곳";
+      if (name === "해적단") return typeof p.flags.pirateContact === "string" ? p.flags.pirateContact : def || "그 해적단";
+      if (name === "단짝") {
+        const f = typeof bestFriend === "function" ? bestFriend(false) : null;
+        return (f && f.name) || def || "옛 친구";
+      }
+      if (name.startsWith("npc:")) {
+        const t = name.slice(4), n = (p.npcs || []).find((x) => x.title === t);
+        return (n && n.name) || def || "그 아이";
+      }
+    } catch (e) {}
+    return def || name;
+  }
+  function cbFill(s) {
+    return String(s || "").replace(/\{([^{}|=]+)(?:=([^{}|]*))?(?:\|(을|를|이|가|은|는|와|과|로|으로))?\}/g, (m, name, def, josa) => {
+      const w = cbToken(name.trim(), def);
+      if (!josa) return w;
+      const fn = window[JOSA[josa]]; // 게임의 조사 함수 eul·ga·eun·wa·ro
+      return w + (typeof fn === "function" ? fn(w) : josa);
+    });
+  }
+  function cbFits(d) {
+    const f = p.flags || {}, fa = p.flagAge || {}, w = d.when || {};
+    if (f["f_cbdone_" + d.key]) return false;
+    const need = d.flags || [];
+    if (!need.every((x) => f[x] && fa[x] !== undefined && p.age - fa[x] >= Math.max(5, d.after ?? 5))) return false;
+    // 노예·천룡인에게는 따로 status로 열지 않는 한 나오지 않는다
+    if (!w.status && (p.job === "노예" || /노예/.test(p.status || "") || p.status === "천룡인")) return false;
+    if (p.age < Math.max(16, w.minAge ?? 18)) return false;
+    if (w.maxAge !== undefined && p.age > w.maxAge) return false;
+    if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) return false;
+    if (Array.isArray(w.job) && !w.job.includes(p.job)) return false;
+    return flagsOk(w);
+  }
+  function cbScene(d0) {
+    const d = cbVariant(d0), done = "f_cbdone_" + d0.key;
+    const fe = (ef) => (ef ? { ...ef, log: cbFill(ef.log), memory: ef.memory ? cbFill(ef.memory) : undefined } : ef);
+    // 고른 선택지도 f_cbpick_<key>_<번호>로 남겨, 다음 회수 사건이 무엇을 골랐는지 볼 수 있게 한다
+    const choices = d.choices.map((c, i) =>
+      makeChoice({
+        ...c,
+        title: cbFill(c.title),
+        desc: cbFill(c.desc),
+        effect: { ...fe(c.effect || {}), flags: [...((c.effect && c.effect.flags) || []), done, `f_cbpick_${d0.key}_${i + 1}`] },
+        risk: c.risk ? { ...c.risk, effect: fe(c.risk.effect) } : undefined,
+      }),
+    );
+    return { key: d0.key, title: cbFill(d.title), body: cbFill(d.body), tags: [d0.key], choices, essential: true, callback: true };
+  }
+  // 플래그가 생긴 나이 기록: 해가 바뀌기 직전에, 아직 기록이 없는 f_ 플래그를 지금 나이로 적는다
+  function noteFlagAges() {
+    if (typeof p === "undefined" || !p || !p.flags) return;
+    const fa = (p.flagAge = p.flagAge || {});
+    for (const [k, v] of Object.entries(p.flags)) if (v && /^f_/.test(k) && fa[k] === undefined) fa[k] = p.age;
+  }
+  if (typeof newYear === "function") {
+    const _ny = newYear;
+    newYear = function () {
+      try { noteFlagAges(); } catch (e) {}
+      return _ny.apply(this, arguments);
+    };
+  }
+  // 어른의 한 해 사건을 만들 때 회수 사건을 하나 끼운다
+  if (typeof buildExtraScenes === "function") {
+    const _bes = buildExtraScenes;
+    buildExtraScenes = function () {
+      const r = _bes.apply(this, arguments);
+      try {
+        if (CALLBACKS.length && p && p.age >= 16 && p.age - (p.cbLastAge ?? -99) >= CB_GAP && Math.random() < CB_YEAR_CHANCE) {
+          const ok = CALLBACKS.filter(cbFits);
+          if (ok.length) {
+            const d = ok[Math.floor(Math.random() * ok.length)];
+            scenes.push(cbScene(d));
+            p.cbLastAge = p.age;
+          }
+        }
+      } catch (e) {
+        console.error("callback events", e);
+      }
+      return r;
+    };
+  }
+  window.__CALLBACKS = CALLBACKS;
+  window.__cbScene = cbScene; // 점검용
+  window.__cbFits = cbFits;
+
   // 점검용: 개발자 도구 콘솔에서 확인할 수 있게 노출
   window.__PLACE_EVENTS_DATA = DATA;
   window.__PLACE_EVENTS_GLOBAL = GLOBAL;
