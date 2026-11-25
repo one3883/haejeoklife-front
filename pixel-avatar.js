@@ -649,6 +649,10 @@
       captain: n.aff === "해적" && /선장/.test(String(n.rank || "")),
     });
   }
+  window.drawCompanionSD = function(n) {
+    const P=G("p"),a=npcActor(P,n,playerActor(P),false),sp=sprite(a,false,0);
+    const c=document.createElement("canvas");c.width=GW;c.height=GH;c.getContext("2d").drawImage(sp.c,0,0);c.setAttribute("aria-label",n.name);return c;
+  };
   function buildCast(P, ctx, maxC) {
     const pl = playerActor(P);
     if (["battle", "encounter", "sea", "crisis", "work"].includes(ctx)) return { list: [pl], pl };
