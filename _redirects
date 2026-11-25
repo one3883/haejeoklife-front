@@ -1,1 +1,4 @@
 https://sage-marzipan-0d0dca.netlify.app/* https://haejeoklife.com/:splat 301!
+
+# 개발용 검증 도구는 사이트에 공개하지 않는다
+/tools/*  /  302
