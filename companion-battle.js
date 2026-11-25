@@ -36,7 +36,7 @@ function use(st,n,opt){
  else if(t==="break"){const d=Math.min(st.eblock,Math.round(st.A0*.45*scale));st.eblock-=d;st.eWeak=Math.max(st.eWeak,.12*scale);msg="방어 "+d+" 감소 · 이번 적 공격 약화";}
  else if(t==="guard"){st.eWeak=Math.max(st.eWeak,.2*scale);msg="이번 적 공격 약화";}
  else {const d=tacDamageFoe(st,Math.min(Math.max(0,st.ehp-1),Math.round(st.A0*.4*scale*tacFoeTakeMult(st,{pierce:false,slash:/검격/.test(name)}))),false);msg=d+" 피해";}
- q.used[n.id]=true;q.last=st.turn;q.total++;q.locked=true;const line=n.name+" — "+name+" · "+msg;q.logs.push(line);tacLog(st,line);tacRender(st);
+ q.used[n.id]=true;q.last=st.turn;q.total++;q.locked=true;const line=n.name+" — "+name+" · "+msg;q.logs.push(line);tacLog(st,line);tacRender(st);if(window.battleSupportVisual)window.battleSupportVisual(st,n,t,msg);
 }
 function button(label,fn,disabled=false){const b=document.createElement("button");b.className="tac-act";b.textContent=label;b.disabled=disabled;b.onclick=fn;return b;}
 function supportUI(st){
