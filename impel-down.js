@@ -6,7 +6,7 @@ const place={name:"임펠다운",country:"세계정부",sea:"그랜드라인"};
 const names=["","홍련지옥","맹수지옥","기아지옥","초열지옥","극한지옥","무한지옥"];
 const hazards=["","칼날 나무 사이의 노동","맹수의 울음","물 한 모금","끓어오르는 열기","얼어붙은 감방","빛 없는 독방"];
 const fields=["job","status","careerTrack","careerStartAge","rankTitle","rankLevel","place","sea","ship","crew","focus"];
-const event=(key,title,body,choices)=>({key:"impel_"+key,essential:true,title,body,choices});
+const event=(key,title,body,choices)=>({key:"impel_"+key,essential:true,tags:[["arrival","escaped"].includes(key)?"Impel Down":"prison"],title,body,choices});
 const choice=(title,desc,run)=>({title,desc,run});
 const note=(key,title,body)=>event(key,title,body,null);
 const hp=n=>{p.health+=n;};
