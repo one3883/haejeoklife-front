@@ -19,7 +19,8 @@ jobs:
           printf '#!/bin/bash\nexec "%s" --no-sandbox --disable-dev-shm-usage "$@"\n' "$EDGE" > "$wrapper"
           chmod +x "$wrapper"
           export EDGE="$wrapper"
-          bash tools/autoplay/check.sh intervention_ --final --procs 4
+          chmod +x tools/autoplay/*.sh
+          bash tools/autoplay/check.sh "intervention_,impel_" --final --procs 4
       - uses: actions/upload-artifact@v4
         if: always()
         with:
