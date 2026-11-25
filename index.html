@@ -14149,40 +14149,74 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           cooldown: 4,
           title: `${roleLabel(n)} ${n.name}${wa(n.name)}의 재회`,
           body: `${p.age - n.lastSeen}년 만에 ${n.name}${eul(n.name)} 다시 만났습니다. 그는 지금 ${npcDesc(n)}입니다.${n.story[0] ? `\n최근 소식: ${n.story[0]}` : ""}`,
+          // 세 선택지가 지금의 즐거움 / 내 일 / 앞으로의 인연이라는 다른 가치를 건다.
+          // 세 번째 자리는 옛 친구의 사정에 따라 '함께 일하자는 제안' 또는 '돈을 빌려 달라는 부탁'이 된다.
+          // 두 선택지는 플래그(f_drifted_<id>, f_partner_<id>)나 빌려준 돈의 회수로 몇 년 뒤 다시 이어진다.
           choices: [
             {
               title: "밤새 이야기를 나눈다",
-              desc: "관계가 깊어진다.",
+              desc: "즐겁지만 다음 날이 고되다",
+              _pe: { traits: ["선량"] },
               run: () => {
                 n.lastSeen = p.age;
-                n.rel += 8;
-                p.happiness += 4;
-                log(`${n.name}${wa(n.name)} 재회함`);
+                n.rel += 6;
+                p.relationship += 4;
+                p.happiness += 3;
+                p.health -= 3;
+                mem("등불 아래 길었던 밤");
+                npcStory(n, "등불 아래에서 밤새 옛이야기를 나눔");
+                log(`${n.name}${wa(n.name)} 밤새 옛이야기를 나눔`);
               },
             },
             {
-              title: "형편이 어렵다며 돈을 빌려 달라는 부탁을 들어준다",
-              desc: "돌려받을 수 있을지는 모른다.",
+              title: "짧게 인사만 하고 일터로 간다",
+              desc: "일은 챙기지만 사이가 멀어진다",
+              _pe: { traits: ["야심"] },
               run: () => {
                 n.lastSeen = p.age;
-                const amt = Math.max(
-                  50000,
-                  Math.floor(Math.max(0, p.money) * 0.1),
-                );
-                p.money -= amt;
-                n.rel += 10;
-                schedule("loan_repay", ri(2, 5), { id: n.id, amount: amt });
-                log(`${n.name}에게 ${money(amt)}${eul(money(amt))} 빌려줌`);
+                n.rel -= 2;
+                p.relationship -= 1;
+                gainStanding(3);
+                p.flags["f_drifted_" + n.id] = true;
+                log(`${n.name}${wa(n.name)} 짧게 인사만 하고 헤어짐`);
               },
             },
-            {
-              title: "짧게 인사만 하고 헤어진다",
-              desc: "각자의 삶이 있다.",
-              run: () => {
-                n.lastSeen = p.age;
-                log(`${n.name}${wa(n.name)} 짧게 인사함`);
-              },
-            },
+            Math.random() < 0.4
+              ? {
+                  title: "부탁대로 돈을 빌려준다",
+                  desc: "돌려받을 수 있을지는 모른다",
+                  _pe: { traits: ["선량"] },
+                  run: () => {
+                    n.lastSeen = p.age;
+                    const amt = Math.max(
+                      50000,
+                      Math.floor(Math.max(0, p.money) * 0.1),
+                    );
+                    p.money -= amt;
+                    n.rel += 10;
+                    schedule("loan_repay", ri(2, 5), { id: n.id, amount: amt });
+                    log(`${n.name}에게 ${money(amt)}${eul(money(amt))} 빌려줌`);
+                  },
+                }
+              : {
+                  title: "함께 할 일을 제안한다",
+                  desc: "인연이 깊어지지만 손해 볼 수 있다",
+                  _pe: { traits: ["용기"] },
+                  run: () => {
+                    n.lastSeen = p.age;
+                    n.rel += 3;
+                    p.happiness += 3;
+                    p.relationship += 2;
+                    p.flags["f_partner_" + n.id] = true;
+                    npcStory(n, "당신과 함께 일을 시작함");
+                    log(`${n.name}에게 함께 일하자고 제안함`);
+                    if (Math.random() < 0.3) {
+                      const loss = Math.max(10000, Math.round((p.age >= 16 ? annualSalary() : 0) * 0.1));
+                      p.money = Math.max(0, p.money - loss);
+                      log(`${n.name}${wa(n.name)} 벌인 일이 틀어져 손해를 봄`);
+                    }
+                  },
+                },
           ],
         };
       }
@@ -17221,23 +17255,78 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const L = p.hakiLv,
           pool = [];
         const trainable = (p.haki || []).filter(h => (L[h] || 0) < 100);
-        if (trainable.length) pool.push({
-          key: "hk_train",
-          minAge: 14,
-          essential: true,
-          title: "패기 수련의 벽",
-          body: "패기는 의지의 힘입니다. 더 강해지려면 자신을 극한까지 몰아붙여야 합니다.",
-          choices: trainable.map((h) => ({
-            title: `${h} 패기를 단련한다`,
-            desc: `현재 ${L[h]} → 수련으로 성장`,
-            run: () => {
-              if (L[h] >= 100) return;
-              L[h] = Math.min(100, L[h] + ri(6, 12));
-              p.health -= 2;
-              log(`${h} 패기를 단련함 (${L[h]})`);
-            },
-          })),
-        });
+        // 패기 수련. 예전에는 같은 제목·글이 한 인생에 다섯 번까지 나왔다(CLAUDE.md 7절).
+        // 수련 단계(가장 낮은 패기 수준)마다 제목과 첫 문장이 다르고, 이미 본 제목은 다시 쓰지 않는다.
+        // 선택지: 꾸준한 단련(소 등급 대가) / 실전에 몸을 던짐(크게 늘지만 위험) / 이번에는 몸을 추스름
+        if (trainable.length) {
+          const low = Math.min(...trainable.map((h) => L[h] || 0));
+          const stages = [
+            [0, [["패기 수련의 벽", "패기는 의지의 힘입니다. 더 강해지려면 자신을 극한까지 몰아붙여야 합니다."], ["보이지 않는 벽", "아무리 수련해도 패기가 한 뼘도 자라지 않는 날이 이어집니다."]]],
+            [30, [["의지를 벼리는 나날", "패기가 몸에 익기 시작했습니다. 이제는 그것을 얼마나 오래, 얼마나 단단하게 유지하느냐의 싸움입니다."], ["무뎌지는 감각", "익숙해진 만큼 패기가 무뎌지는 것 같습니다. 처음의 날카로움을 되찾아야 합니다."]]],
+            [60, [["한계 너머의 수련", "웬만한 상대는 패기만으로 물러섭니다. 하지만 그 너머의 경지는 아직 멀기만 합니다."], ["홀로 서는 시간", "가르쳐 줄 사람도 이제 남지 않았습니다. 남은 길은 스스로 찾아야 합니다."]]],
+            [90, [["패기의 정점 앞에서", "패기의 정점이 손끝에 닿을 듯합니다. 마지막 한 걸음이 가장 멉니다."]]],
+          ];
+          const seenT = (p.flags.hakiTitles = p.flags.hakiTitles || {});
+          const cand = stages.filter(([lv]) => low >= lv).reverse().flatMap(([, list]) => list);
+          const pick = cand.find(([t]) => !seenT[t]);
+          if (pick) {
+            const mark = () => (seenT[pick[0]] = true);
+            const lowest = trainable.slice().sort((a, b) => (L[a] || 0) - (L[b] || 0));
+            pool.push({
+              key: "hk_train",
+              minAge: 14,
+              essential: true,
+              title: pick[0],
+              body: `${pick[1]} 지금의 패기 — ${trainable.map((h) => `${h} ${L[h]}`).join(", ")}.`,
+              choices: [
+                // 가장 낮은 패기 두 개까지는 골라서 꾸준히 단련할 수 있다
+                ...lowest.slice(0, 2).map((h) => ({
+                  title: `${h} 패기를 꾸준히 단련한다`,
+                  desc: "확실하지만 고되다",
+                  _pe: { traits: ["신중"] },
+                  run: () => {
+                    mark();
+                    if (L[h] >= 100) return;
+                    L[h] = Math.min(100, L[h] + ri(6, 10));
+                    p.health -= 2;
+                    p.happiness -= 2;
+                    p.knowledge += 2;
+                    log(`${h} 패기를 단련함 (${L[h]})`);
+                  },
+                })),
+                {
+                  title: "강한 상대에게 몸을 던진다",
+                  desc: "크게 늘지만 크게 다칠 수 있다",
+                  _pe: { traits: ["용기"] },
+                  run: () => {
+                    mark();
+                    const h = rand(trainable);
+                    L[h] = Math.min(100, L[h] + ri(10, 16));
+                    p.health -= 3;
+p.combat += 1;
+                    log(`실전 속에서 ${h} 패기가 크게 자람 (${L[h]})`);
+                    if (Math.random() < 0.25) {
+                      p.health -= ri(6, 10);
+                      log("실전 수련 중 크게 다침");
+                    }
+                  },
+                },
+                {
+                  title: "이번에는 몸을 추스른다",
+                  desc: "몸은 회복되지만 패기는 그대로다",
+                  _pe: { traits: ["신중"] },
+                  run: () => {
+                    mark();
+                    p.health += 5;
+                    p.happiness += 2;
+                    p.flags.f_haki_rested = true;
+                    log("패기 수련을 쉬고 몸을 추스름");
+                  },
+                },
+              ],
+            });
+          }
+        }
         if ((L.무장색 || 0) >= 40 && !p.flags.ryuo)
           pool.push({
             essential: true,
@@ -25720,55 +25809,96 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           lr.style.display = "";
         }
       }
+      // 패기 각성 장면. 예전에는 같은 제목·글로 한 인생에 다섯 번까지 나왔다(CLAUDE.md 7절).
+      // - 미루기를 두 번 하면 더는 오지 않는다(p.flags.hakiDeclines).
+      // - 처음/미룬 뒤/패기 하나를 얻은 뒤마다 제목과 첫 문장이 다르고, 이미 본 제목은 다시 쓰지 않는다.
+      // - 각성에는 대가가 따르고, 미루는 선택도 그 나름의 이득과 기록을 남긴다.
       function hakiLearnScene() {
         if (p.age < 16 || p.job === "노예") return null;
-        const hasOne = ["견문색 패기", "무장색 패기"].some(h => p.abilities.includes(h));
+        const dec = p.flags.hakiDeclines || 0;
+        if (dec >= 2) return null;
+        const hasObs = p.abilities.includes("견문색 패기"),
+          hasArm = p.abilities.includes("무장색 패기"),
+          hasOne = hasObs || hasArm;
         if (!hasOne && Math.random() >= 0.36) return null;
-        // 두 번째 패기는 첫 패기 습득 후에도 독립적으로 등장한다.
-        if (hasOne && p.age - (p.seenScenes?.haki_learn ?? -99) < 2) return null;
+        // 두 번째 패기는 첫 패기 습득 후에도 따로 오되, 미룬 뒤에는 더 오래 기다린다.
+        if (p.age - (p.seenScenes?.haki_learn ?? -99) < (dec ? 4 : 2)) return null;
         const ch = [];
-        if (!p.abilities.includes("견문색 패기") && p.combat >= 35)
+        if (!hasObs && p.combat >= 35)
           ch.push({
-            title: "견문색 패기를 수련한다",
-            desc: "상대의 기척과 마음을 읽는 감각을 깨운다.",
+            title: "눈을 감고 기척을 좇는다",
+            desc: "감각이 깨지만 몸과 마음이 지친다",
+            _pe: { traits: ["신중"] },
             run: () => {
               p.abilities.push("견문색 패기");
               p.haki = p.haki || [];
               p.haki.push("견문색");
               syncHaki();
               p.knowledge += 4;
+              p.happiness -= 3;
+              p.health -= 2;
               log("견문색 패기를 각성함");
             },
           });
-        if (!p.abilities.includes("무장색 패기") && p.combat >= 45)
+        if (!hasArm && p.combat >= 45)
           ch.push({
-            title: "무장색 패기를 수련한다",
-            desc: "의지를 갑옷처럼 몸에 두르는 법을 익힌다.",
+            title: "맨주먹으로 바위를 친다",
+            desc: "의지가 단단해지지만 몸이 상한다",
+            _pe: { traits: ["용기"] },
             run: () => {
               p.abilities.push("무장색 패기");
               p.haki = p.haki || [];
               p.haki.push("무장색");
               syncHaki();
               p.combat += 6;
+              p.health -= 4;
+              if (Math.random() < 0.2) {
+                p.health -= ri(3, 6);
+                log("수련 중 주먹뼈에 금이 감");
+              }
               log("무장색 패기를 각성함");
             },
           });
         if (!ch.length) return null;
         ch.push({
-          title: "지금은 수련할 때가 아니다",
-          desc: "다음 기회를 기다린다.",
+          title: dec ? "끝내 그 감각을 내려놓는다" : "지금은 수련할 때가 아니다",
+          desc: dec ? "몸은 편하지만 다시 오지 않는다" : "몸은 편하지만 기회는 드물어진다",
+          _pe: { traits: ["신중"] },
           run: () => {
-            log("패기 수련을 미룸");
+            p.flags.hakiDeclines = dec + 1;
+            p.flags.f_haki_declined = true;
+            p.health += 3;
+            p.happiness += 2;
+            log(dec ? "패기 수련을 끝내 내려놓음" : "패기 수련을 미룸");
           },
         });
+        // 상황별 제목과 첫 문장 후보. 이미 본 제목은 건너뛴다.
+        const pool = hasOne
+          ? hasObs
+            ? [
+                ["주먹에 깃드는 기운", "상대의 움직임을 읽는 눈은 이미 뜨였습니다. 그런데 요즘은 주먹을 쥘 때마다 손등이 검게 물드는 듯한 착각이 듭니다."],
+                ["검게 물드는 손등", "다시 한 번, 맨주먹에 단단한 기운이 모이는 것을 느꼈습니다. 이번에는 착각이 아닌 것 같습니다."],
+              ]
+            : [
+                ["들리기 시작한 숨소리", "의지를 몸에 두르는 법은 이미 익혔습니다. 그런데 요즘은 등 뒤에 선 사람의 숨소리까지 귀에 들어옵니다."],
+                ["눈을 감아도 보이는 것", "다시 한 번, 보이지 않는 곳의 기척이 손에 잡힐 듯 다가왔습니다. 이번에는 착각이 아닌 것 같습니다."],
+              ]
+          : dec
+            ? [["다시 찾아온 기척", "예전에 미뤄 두었던 그 감각이 다시 찾아왔습니다. 이번에도 등을 돌리면 다시는 오지 않을 것 같습니다."]]
+            : [["패기의 문턱", "싸움 속에서 이상한 감각을 느꼈습니다. 눈으로 보기 전에 상대의 움직임이 느껴지고, 주먹에 무언가 단단한 기운이 깃드는 것 같습니다."]];
+        const seenT = (p.flags.hakiTitles = p.flags.hakiTitles || {});
+        const pick = pool.find(([t]) => !seenT[t]);
+        if (!pick) return null;
         return {
           major: true,
           key: "haki_learn",
           essential: hasOne,
           cooldown: 2,
-          title: "패기의 문턱",
-          body: "싸움 속에서 이상한 감각을 느꼈습니다. 눈으로 보기 전에 상대의 움직임이 느껴지고, 주먹에 무언가 단단한 기운이 깃드는 것 같습니다. 모든 생물에 잠재된 힘, '패기'의 문턱에 서 있습니다.",
-          choices: ch,
+          minCooldown: 2,
+          title: pick[0],
+          body: `${pick[1]} 모든 생물에 잠재된 힘, '패기'의 문턱에 서 있습니다.`,
+          // 장면이 실제로 보일 때만 제목을 '본 것'으로 적도록, 선택지 실행 때 기록한다
+          choices: ch.map((c) => ({ ...c, run: () => { seenT[pick[0]] = true; c.run(); } })),
         };
       }
       function retireNow(why) {
