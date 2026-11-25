@@ -12216,6 +12216,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             p.combat = clamp(p.combat + 1);
             extra = "\n\n실전 경험이 쌓였습니다. (전투력 +1)";
           }
+        } else if (_tac && _tac.fled) {
+          p.health = Math.max(1,p.health-3);
+          p.reputation = Math.max(0,p.reputation-2);
+          extra = "\n\n전투에서 이탈했습니다. 건강 -3 · 명성 -2";
         } else if (nobleVsImu) {
           // 오로성·신의 기사단이 이무에게 지면 살아남을 수 없다
           p.health = 0;
@@ -12275,8 +12279,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           essential: true,
           tags: (scenes[sceneIndex] && scenes[sceneIndex].tags) || undefined,
           key: "battle_" + Math.random(),
-          title: ok ? `전투 승리 — ${foe}` : `전투 패배 — ${foe}`,
-          body: `${foe}${wa(foe)}의 전투가 벌어졌습니다.\n당신의 전투력 ${cb} · 특수 능력치 ${sp}${comboBonus() ? ` · 능력 조합 보정 +${Math.round(comboBonus() * 100)}%` : ""} → 승리 확률 ${pct}%${nonFatal && !ok ? "\n\n이번 결전에서 패배했지만 목숨은 건졌습니다. 부상을 치료하고 다시 도전할 수 있습니다." : ""}\n\n${ok ? "치열한 공방 끝에 상대를 쓰러뜨렸습니다!" : "상대의 힘에 밀려 쓰러지고 말았습니다."}${_tac && _tac.note ? "\n\n" + _tac.note : ""}${extra}`,
+          title: _tac?.fled ? `전투 도주 — ${foe}` : ok ? `전투 승리 — ${foe}` : `전투 패배 — ${foe}`,
+          body: `${foe}${wa(foe)}의 전투가 벌어졌습니다.\n당신의 전투력 ${cb} · 특수 능력치 ${sp}${comboBonus() ? ` · 능력 조합 보정 +${Math.round(comboBonus() * 100)}%` : ""} → 승리 확률 ${pct}%${nonFatal && !ok ? "\n\n이번 결전에서 패배했지만 목숨은 건졌습니다. 부상을 치료하고 다시 도전할 수 있습니다." : ""}\n\n${_tac?.fled ? "전투에서 벗어났습니다." : ok ? "치열한 공방 끝에 상대를 쓰러뜨렸습니다!" : "상대의 힘에 밀려 쓰러지고 말았습니다."}${_tac && _tac.note ? "\n\n" + _tac.note : ""}${extra}`,
           choices: null,
           effect: () => {},
           summary: null,
@@ -34747,7 +34751,8 @@ new MutationObserver(recs=>{
   <script src="callback-events.js?v=20261125a" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
-  <script src="pixel-avatar.js?v=20261124a" defer></script>
+  <script src="pixel-avatar.js?v=20261125b" defer></script>
+  <script src="companion-battle.js?v=20261125a" defer></script>
   <script src="canon-intervention.js?v=20261125a" defer></script>
   <script src="impel-down.js?v=20261125a" defer></script>
   <script>
