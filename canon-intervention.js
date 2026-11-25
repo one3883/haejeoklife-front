@@ -56,11 +56,12 @@ function crewResult(members,won,a){
  else {n.power=Math.max(1,n.power-2);npcStory(n,a[3]+"에서 부상당함");log(n.name+"이 부상당함");}
  }
 }
+function befriendLuffy(){if(p.health<=0||p.flags.impelDown||!alive("몽키 D. 루피"))return;if(p.flags.strawHat!=="friend"){p.flags.strawHat="friend";p.flags.knewLuffy=true;p.relationship+=4;log("몽키 D. 루피와 친구가 됨");}}
 function fight(a,foe,ally,withCrew,hostile){
  const members=withCrew?npcsBy(n=>n.role==="동료"&&n.aff===myAff()).slice(0,3):[];
  const strong=foe===a[6];const base=strong?-.25:.18;
  const won=battle({foe,base,extra:Math.min(.12,members.reduce((s,n)=>s+n.power*.0007,0)),loseHp:strong?[22,45]:[10,25],win:()=>reward(strong?ri(300000,900000):ri(80000,300000),true)});
- crewResult(members,won,a);tie(foe,-12,a);tie(ally,won?20:8,a);
+ crewResult(members,won,a);if(!hostile)befriendLuffy();tie(foe,-12,a);tie(ally,won?20:8,a);
  if(won)log(a[3]+"에서 "+foe+"와의 국지전 승리 — 원작 결말은 유지됨");
 }
 function scene(a){
@@ -73,11 +74,11 @@ function scene(a){
  }
  if(fighter&&enemy&&alive(enemy)&&["해군","해적","현상금 사냥꾼"].includes(myAff())&&id!=="amazon")
  cs.push(choice("밀짚모자 측을 저지한다 — "+enemy,"적대 세력 협력 · 원작 결말은 유지",()=>fight(a,enemy,foe,false,true)));
- if(p.age>=13)cs.push(choice(rescue,"건강 감소 · 주민과 인연 및 명성 증가",()=>{p.health-=ri(2,7);p.relationship+=3;gainStanding(1);tie(ally,8,a);log(rescue);}));
+ if(p.age>=13)cs.push(choice(rescue,"건강 감소 · 주민과 인연 및 명성 증가",()=>{p.health-=ri(2,7);p.relationship+=3;gainStanding(1);tie(ally,8,a);befriendLuffy();log(rescue);}));
  if(adult&&loot&&wanted())cs.push(choice("혼란을 틈타 "+loot+"을 확보한다","재산과 현상금 증가 · 주민 관계 감소",()=>{reward(ri(100000,400000),true);p.relationship-=5;p.health-=ri(1,8);tie(ally,-8,a);}));
  cs.push(choice("관여하지 않고 몸을 숨긴다","전투 위험 회피 · 개입 기회 포기",()=>{p.happiness-=1;log(title+"을 멀리서 지켜봄");}));
  for(const c of cs){const run=c.run;c.run=()=>{state().done[id]=true;run();};}
- return {key:"intervention_"+id,essential:true,title,body:body+" 당신은 이 사건에 직접 개입할 수 있습니다. 원작의 큰 결말은 바뀌지 않습니다.",choices:cs,callbackValid:()=>!blocked()&&canonYear()===year&&here(a)&&!state().done[id]};
+ return {key:"intervention_"+id,essential:true,tags:["Luffy Battle"],title,body:body+" 당신은 이 사건에 직접 개입할 수 있습니다. 원작의 큰 결말은 바뀌지 않습니다.",choices:cs,callbackValid:()=>!blocked()&&canonYear()===year&&here(a)&&!state().done[id]};
 }
 const oldCanon=canonScenes;
 canonScenes=function(){return oldCanon.apply(this,arguments).filter(s=>!oldTitles.has(s.title)||blocked()||p.age<13);};
