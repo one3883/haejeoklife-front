@@ -1,0 +1,189 @@
+<!doctype html>
+<meta charset="utf-8">
+<body>
+<iframe id="a" style="width:390px;height:700px"></iframe>
+<pre id="o">waiting</pre>
+<script>
+// 자동 플레이 감사 도구: 선택 사건의 등장 빈도와, 각 선택지를 실제로 실행했을 때의 효과를 잰다.
+// 직접 열지 말고 run.sh로 돌린다. 결과는 아래 id="o" 칸에 JSON 한 줄로 나온다.
+// 해시 인자: lives(판 수) maxEval(사건당 측정할 인생 수) samples(선택지당 실행 횟수)
+//   game(게임 index.html의 file:// 주소, 기본 ../../index.html) keys(쉼표로 구분한 key 접두어나 제목 — 주면 그 사건만 측정해 빠름)
+const Q = Object.fromEntries(location.hash.slice(1).split("&").filter(Boolean).map((s) => s.split("=")));
+const LIVES = +(Q.lives || 5), MAXEVAL = +(Q.maxEval || 2), SAMPLES = +(Q.samples || 6);
+const KEYS = Q.keys ? decodeURIComponent(Q.keys).split(",").filter(Boolean) : null;
+const wantScene = (key, title) => !KEYS || KEYS.some((k) => String(key).startsWith(k) || String(title).includes(k));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fr = document.getElementById("a");
+fr.src = Q.game ? decodeURIComponent(Q.game) : "../../index.html";
+const L = new Promise((r) => fr.addEventListener("load", r, { once: true }));
+(async () => {
+  const t0 = Date.now();
+  const R = { lives: 0, ages: [], scenesTotal: 0, choiceScenes: 0, events: {}, errors: [], at15: [], end: [] };
+  try {
+    await L; await sleep(400);
+    const w = fr.contentWindow, d = w.document, E = (s) => w.eval(s);
+    w.addEventListener("error", (e) => R.errors.push(String(e.message).slice(0, 120)));
+    w.gtag = () => {}; w.confirm = () => true; w.alert = () => {};
+    const STD = ["health", "happiness", "knowledge", "relationship", "combat", "reputation"];
+    const snapM = () => {
+      const p = E("p"), k = p.kid || {}, sk = k.skills || {};
+      return {
+        health: p.health, happiness: p.happiness, knowledge: p.knowledge, relationship: p.relationship,
+        combat: p.combat, reputation: p.reputation, money: p.money || 0, bounty: p.bounty || 0,
+        standing: Object.values(p.standing || {}).reduce((a, b) => a + (+b || 0), 0),
+        skills: Object.values(sk).reduce((a, b) => a + (+b || 0), 0), lrep: k.rep || 0,
+        flags: Object.keys(p.flags || {}).filter((x) => p.flags[x] && !/^(pePlaceCount|peVisited|injuredUntil|_)/.test(x)),
+        mem: (k.memories || []).length, ach: (p.achievements || []).length, npc: (p.npcs || []).length,
+        job: p.job, status: p.status, place: p.place && p.place.name, alive: p.health > 0,
+        sched: JSON.stringify(p.delayed || p.scheduled || p.pending || []).length,
+        sk: { ...sk },
+        // 지속 상태: 스탯·돈·기록·반복방지 같은 '지나가는 값'을 뺀 나머지 전부. 선택 후 이것이 바뀌면 게임이 그 선택을 기억한 것.
+        per: persistMap(p),
+      };
+    };
+    const EXCL = new Set(["health", "happiness", "knowledge", "relationship", "combat", "reputation", "money", "bounty", "standing",
+      "history", "log", "traits", "seenScenes", "recentChoices", "_pk", "_pr", "_bountyRef", "age", "lastArchive", "archive"]);
+    const persistMap = (p) => {
+      const m = {};
+      for (const [k, v] of Object.entries(p)) {
+        if (EXCL.has(k) || typeof v === "function") continue;
+        let vv = v;
+        if (k === "kid" && v) vv = { ...v, skills: undefined, rep: undefined };
+        if (k === "flags" && v) vv = { ...v, pePlaceCount: undefined, injuredUntil: undefined };
+        // 큰 상태 객체는 안쪽 항목별로 나눠 어떤 기록이 바뀌는지 보이게 한다
+        if ((k === "saga" || k === "flags" || k === "kid") && vv && typeof vv === "object") {
+          for (const [sk2, sv] of Object.entries(vv)) { if (sv === undefined) continue; try { m[k + "." + sk2] = JSON.stringify(sv, (kk, x) => (typeof x === "function" ? undefined : x)); } catch (e) { m[k + "." + sk2] = "?"; } }
+          continue;
+        }
+        try { m[k] = JSON.stringify(vv, (kk, x) => (typeof x === "function" ? undefined : x)); } catch (e) { m[k] = "?"; }
+      }
+      // 반복 방지·기록용 장부는 '게임이 선택을 기억한 것'으로 치지 않는다
+      for (const x of ["saga.done", "saga.chron", "lastPromotionOfferAge", "newsQueue"]) delete m[x];
+      return m;
+    };
+    const names = () => { try { const p = E("p"); const full = [p.name, ...(p.npcs || []).map((n) => n.name)].filter((x) => x && x.length > 1); return [...new Set([...full, ...full.flatMap((n) => String(n).split(/\s+/))])].filter((x) => x && x.length > 1).sort((a, b) => b.length - a.length); } catch (e) { return []; } };
+    const groupOf = (sc, title) => {
+      let t = String(title || "").replace(/^[0-9]+세(\s*\([^)]*\))?\s*—\s*/, "").trim();
+      for (const n of names()) t = t.split(n).join("○");
+      t = t.replace(/[0-9][0-9,]*/g, "#");
+      return t;
+    };
+    for (let life = 0; life < LIVES; life++) {
+      try { w.localStorage.clear(); } catch (e) {}
+      w.begin(); await sleep(30);
+      try { w.setAutoPlay(false); } catch (e) {}
+      try { if (E("typeof tacOn") !== "undefined" && E("tacOn")) w.setTacOn(false); } catch (e) {}
+      let steps = 0, lastTitle = "", snapped = false;
+      while (steps < 3000) {
+        steps++;
+        if (E("finished")) break;
+        // 15세를 마친 시점(턴 나이 16이 된 첫 순간)의 스탯·기술·장래희망 기록
+        if (!snapped && E("p.age") >= 16) {
+          snapped = true;
+          const p = E("p"), k = p.kid || {};
+          R.at15.push({ health: p.health, happiness: p.happiness, knowledge: p.knowledge, relationship: p.relationship, combat: p.combat, reputation: p.reputation,
+            money: p.money, lrep: k.rep || 0, sk: { ...(k.skills || {}) }, dream: k.dream || "", school: p.school ? 1 : 0, job: p.job,
+            friend: (p.npcs || []).some((n) => n.best) ? 1 : 0, hobby: (p.saga && p.saga.hobby) || "", traits: { ...(p.traits || {}) },
+            fl: Object.keys(p.flags || {}).filter((f) => /^f_/.test(f) && p.flags[f]), mem: (k.memories || []).length });
+        }
+        const ov = d.querySelector(".setupWarnOv button"); if (ov) { ov.click(); continue; }
+        const titleEl = d.getElementById("eventTitle"), title = (titleEl.textContent || "").trim();
+        if (title !== lastTitle) { lastTitle = title; R.scenesTotal++; }
+        const btns = [...d.querySelectorAll("#choices button")];
+        if (btns.length && E("awaiting")) {
+          let sc = null; try { sc = E("scenes[sceneIndex]"); } catch (e) {}
+          if (sc && Array.isArray(sc.choices) && sc.choices.length >= 2) {
+            const g = groupOf(sc, title);
+            const ev = (R.events[g] = R.events[g] || { title: g, key: String(sc.key || ""), count: 0, evals: [] });
+            if (!ev._seenThisLife) ev._seenThisLife = new Set();
+            ev.count++; R.choiceScenes++;
+            if (ev.evals.length < MAXEVAL && wantScene(sc.key || "", title)) {
+              // 상태 저장 → 선택지마다 SAMPLES번 실행해 변화를 잼 → 되돌림
+              const snap = E("serializeGame()"), sceneSave = E("scenes.slice()"), idxSave = E("sceneIndex");
+              const p0 = E("p"), ctx = { age: E("realAge()"), status: p0.status, job: p0.job };
+              // 되돌리기: p를 새 객체로 바꾸면 사건이 붙잡아 둔 옛 객체(인연 기록·NPC)에 쓴 변화를 못 보므로,
+              // 원래 객체를 그대로 두고 안쪽 값만 저장본대로 되돌린다. 장소 객체는 공용이라 참조만 바꾸고 relinkPlaces로 다시 잇는다.
+              const P0 = E("p");
+              const dr = (t, s) => {
+                if (Array.isArray(s)) {
+                  for (let i = 0; i < s.length; i++) t[i] = t[i] && typeof t[i] === "object" && s[i] && typeof s[i] === "object" && Array.isArray(t[i]) === Array.isArray(s[i]) ? dr(t[i], s[i]) : s[i];
+                  t.length = s.length; return t;
+                }
+                for (const k of Object.keys(t)) if (!(k in s) && typeof t[k] !== "function") delete t[k];
+                for (const k of Object.keys(s)) {
+                  const sv = s[k], tv = t[k];
+                  if (k === "place" || k === "birthPlace") { t[k] = sv; continue; }
+                  if (sv && typeof sv === "object" && tv && typeof tv === "object" && Array.isArray(sv) === Array.isArray(tv)) dr(tv, sv); else t[k] = sv;
+                }
+                return t;
+              };
+              const restore = () => {
+                w.__S = snap; const s = E("reviveGame(__S).p");
+                w.__P0 = P0; E("p = __P0"); dr(P0, s); E("relinkPlaces()");
+                w.__SC = sceneSave; E("scenes = __SC.slice(); sceneIndex = " + idxSave + "; finished = false;");
+              };
+              const res = [];
+              for (const c of sc.choices) {
+                const lock = (() => { try { return w.lockReason(c); } catch (e) { return null; } })();
+                const acc = { title: c.title, locked: !!lock, n: 0, sum: {}, min: {}, max: {}, flags: 0, mem: 0, ach: 0, npc: 0, life: 0, death: 0, sched: 0, traits: {}, errors: 0 };
+                if (!lock) for (let s = 0; s < SAMPLES; s++) {
+                  restore();
+                  const b = snapM();
+                  const keysBefore = E("scenes.map((s) => s && (s.key || s.title))");
+                  try {
+                    c.run();
+                    const tr = w.traitFrom ? w.traitFrom(c, String(c.run)) : null;
+                    if (tr) acc.traits[tr[0]] = (acc.traits[tr[0]] || 0) + 1;
+                  } catch (e) { acc.errors++; }
+                  try { E("normalize()"); } catch (e) {}
+                  const a = snapM();
+                  acc.n++;
+                  for (const k of [...STD, "money", "bounty", "standing", "skills", "lrep"]) {
+                    const dv = (+a[k] || 0) - (+b[k] || 0);
+                    acc.sum[k] = (acc.sum[k] || 0) + dv;
+                    acc.min[k] = Math.min(acc.min[k] ?? dv, dv); acc.max[k] = Math.max(acc.max[k] ?? dv, dv);
+                  }
+                  if (a.flags.some((f) => !b.flags.includes(f))) acc.flags++;
+                  if (a.mem > b.mem) acc.mem++;
+                  if (a.ach > b.ach) acc.ach++;
+                  if (a.npc > b.npc) acc.npc++;
+                  if (a.job !== b.job || a.status !== b.status || a.place !== b.place) acc.life++;
+                  if (!a.alive && b.alive) acc.death++;
+                  if (a.sched !== b.sched) acc.sched++;
+                  // 기술은 종류별로 따로 (검술과 항해술을 합쳐 비교하지 않는다)
+                  for (const s of new Set([...Object.keys(a.sk), ...Object.keys(b.sk)])) {
+                    const dv = (+a.sk[s] || 0) - (+b.sk[s] || 0), kk = "sk_" + s;
+                    acc.sum[kk] = (acc.sum[kk] || 0) + dv;
+                    acc.min[kk] = Math.min(acc.min[kk] ?? dv, dv); acc.max[kk] = Math.max(acc.max[kk] ?? dv, dv);
+                  }
+                  const ch = Object.keys({ ...a.per, ...b.per }).filter((k) => a.per[k] !== b.per[k]);
+                  // 후속 장면: 선택 결과가 다음 장면(followUp 등)으로 이어지면 그것도 선택의 결과로 센다
+                  try {
+                    const keysAfter = E("scenes.map((s) => s && (s.key || s.title))"), before = new Set(keysBefore);
+                    for (const k of keysAfter) if (k && !before.has(k)) ch.push("후속:" + String(k).replace(/[0-9.]+$/, "#"));
+                  } catch (e) {}
+                  if (ch.length) { acc.persist = (acc.persist || 0) + 1; acc.perKeys = acc.perKeys || {}; for (const k of ch) acc.perKeys[k] = (acc.perKeys[k] || 0) + 1; }
+                }
+                res.push(acc);
+              }
+              restore();
+              try { if (E("finished")) E("finished=false"); if (w.clearWanted) w.clearWanted(); } catch (e) {}
+              ev.evals.push({ ctx, choices: res, money: Math.max(1, Math.round((w.annualSalary ? w.annualSalary() : 0) || 0)) });
+            }
+          }
+          btns.filter((b) => !b.disabled)[Math.floor(Math.random() * btns.filter((b) => !b.disabled).length)]?.click();
+        } else {
+          try { w.continueLife(); } catch (e) {}
+        }
+        if (steps % 50 === 0) await sleep(0);
+      }
+      { const p = E("p"); R.end.push({ dream: (p.dream && p.dream.id) || "", kidDream: (p.kid && p.kid.dream) || "", hobby: (p.saga && p.saga.hobby) || "", age: E("realAge()"), job: p.job, status: p.status, track: p.careerTrack || p.job, rank: p.rankLevel || 0, rankTitle: p.rankTitle || "", fl: Object.keys(p.flags || {}).filter((f) => /^f_/.test(f) && p.flags[f]) }); }
+      R.lives++; R.ages.push(E("realAge()"));
+    }
+  } catch (e) { R.errors.push("ERR " + (e.stack || e)); }
+  for (const ev of Object.values(R.events)) delete ev._seenThisLife;
+  R.ms = Date.now() - t0;
+  R.errors = [...new Set(R.errors)].slice(0, 20);
+  document.getElementById("o").textContent = JSON.stringify(R);
+})();
+</script>

@@ -1,0 +1,66 @@
+<!doctype html><meta charset="utf-8"><body><pre id="o">waiting</pre>
+<script>
+// 자동 플레이 결과 두 묶음(a: 기준, b: 작업본)을 비교한다. 직접 열지 말고 check.sh로 돌린다.
+// 해시 인자: a, b(결과 폴더 file:// 주소) pa, pb(각 폴더의 part 파일 수)
+// 비교 항목: 평균 수명, 15세를 마친 시점의 스탯·기술·성향, 15세 장래희망, 인생의 꿈·취미, 최종 직업과 직급, 새 f_ 플래그
+const Q = Object.fromEntries(location.hash.slice(1).split("&").filter(Boolean).map((s) => s.split("=")));
+const dirOf = (x) => decodeURIComponent(x || "").replace(/[\/]?$/, "/");
+const load = async (dir, n) => {
+  const R = { at15: [], end: [], errors: [], lives: 0 };
+  for (let i = 1; i <= n; i++) {
+    const j = JSON.parse(await (await fetch(`${dir}part${i}.json`)).text());
+    R.at15.push(...(j.at15 || [])); R.end.push(...(j.end || [])); R.errors.push(...(j.errors || [])); R.lives += j.lives;
+  }
+  return R;
+};
+const mean = (L, f) => L.reduce((s, x) => s + f(x), 0) / (L.length || 1);
+const med = (L, f) => { const v = L.map(f).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+const dist = (L, f) => { const c = {}; for (const x of L) { const k = f(x) || "(없음)"; c[k] = (c[k] || 0) + 1; } return c; };
+const pct = (n, d) => (d ? ((100 * n) / d).toFixed(1) : "0.0") + "%";
+(async () => {
+  const o = [];
+  try {
+    const a = await load(dirOf(Q.a), +(Q.pa || 4)), b = await load(dirOf(Q.b), +(Q.pb || 4));
+    const ea = [...new Set(a.errors)], eb = [...new Set(b.errors)];
+    o.push(`판 수: 기준 ${a.lives} · 작업본 ${b.lives}`);
+    o.push(`페이지 오류: 기준 ${ea.length ? ea.join(" / ") : "없음"} · 작업본 ${eb.length ? eb.join(" / ") : "없음"}`);
+    o.push(`평균 수명: ${mean(a.end, (x) => x.age).toFixed(1)} → ${mean(b.end, (x) => x.age).toFixed(1)}`);
+    o.push("");
+    o.push("| 15세를 마친 시점 | 기준 | 작업본 | 차이 |");
+    o.push("| --- | --- | --- | --- |");
+    const row = (nm, f, d = 1) => { const x = mean(a.at15, f), y = mean(b.at15, f); o.push(`| ${nm} | ${x.toFixed(d)} | ${y.toFixed(d)} | ${(y - x >= 0 ? "+" : "") + (y - x).toFixed(d)} |`); };
+    for (const [k, nm] of [["health", "건강"], ["happiness", "행복"], ["knowledge", "지식"], ["relationship", "관계"], ["combat", "전투력"], ["reputation", "명성(저장값)"], ["lrep", "동네 평판"], ["mem", "추억 수"]]) row(nm, (x) => +x[k] || 0);
+    const civ = (L) => L.filter((x) => x.money < 50000); // 천룡인 가문(시작 재산 6만)은 빼고 본다
+    { const x = med(civ(a.at15), (x) => x.money), y = med(civ(b.at15), (x) => x.money); o.push(`| 돈 중간값(천룡인 제외) | ${x} | ${y} | ${y - x} |`); }
+    for (const s of ["검술", "무투술", "항해술", "요리", "제작", "의술", "장사"]) row("기술 " + s, (x) => +(x.sk || {})[s] || 0);
+    row("학교 다님 %", (x) => x.school * 100);
+    row("단짝 있음 %", (x) => x.friend * 100);
+    for (const t of ["용기", "신중", "선량", "야심"]) row("성향 " + t, (x) => +(x.traits || {})[t] || 0);
+    o.push("");
+    const cmp = (nm, f, LA, LB) => {
+      const da = dist(LA, f), db = dist(LB, f), keys = [...new Set([...Object.keys(da), ...Object.keys(db)])].sort((p, q) => (db[q] || 0) + (da[q] || 0) - (db[p] || 0) - (da[p] || 0));
+      o.push(`**${nm}**`);
+      o.push("| 값 | 기준 | 작업본 |"); o.push("| --- | --- | --- |");
+      for (const k of keys) o.push(`| ${k} | ${pct(da[k] || 0, LA.length)} | ${pct(db[k] || 0, LB.length)} |`);
+      o.push("");
+    };
+    cmp("15세 장래희망", (x) => x.dream, a.at15, b.at15);
+    cmp("인생의 꿈 (판 끝)", (x) => x.dream, a.end, b.end);
+    cmp("취미 (판 끝)", (x) => x.hobby, a.end, b.end);
+    // 직업별 평균 최종 직급 (두 묶음 합쳐 10판 이상인 직업만)
+    o.push("**직업별 최종 직급 (판 끝)**");
+    o.push("| 직업 | 판 비율 | 평균 직급 단계 |"); o.push("| --- | --- | --- |");
+    const tr = {}; for (const [t, L] of [["a", a.end], ["b", b.end]]) for (const x of L) if (x.track) ((tr[x.track] = tr[x.track] || { a: [], b: [] })[t]).push(x);
+    for (const [t, v] of Object.entries(tr).sort((x, y) => y[1].a.length + y[1].b.length - x[1].a.length - x[1].b.length))
+      if (v.a.length + v.b.length >= 10) o.push(`| ${t} | ${pct(v.a.length, a.end.length)} → ${pct(v.b.length, b.end.length)} | ${mean(v.a, (x) => x.rank).toFixed(2)} → ${mean(v.b, (x) => x.rank).toFixed(2)} |`);
+    o.push("");
+    // 작업본에서 새로 생긴 f_ 플래그 (기준에는 없던 것)
+    const fset = (L) => { const c = {}; for (const x of L) for (const f of x.fl || []) c[f] = (c[f] || 0) + 1; return c; };
+    const fa = fset(a.end), fb = fset(b.end);
+    const nw = Object.entries(fb).filter(([k]) => !fa[k]).sort((p, q) => q[1] - p[1]);
+    o.push("**작업본에서 새로 생긴 f_ 플래그 (판이 끝날 때 남은 판 비율)**");
+    o.push(nw.map(([k, n]) => `${k} ${pct(n, b.end.length)}`).join(" · ") || "없음");
+  } catch (e) { o.push("ERR " + e.stack); }
+  document.getElementById("o").textContent = o.join("\n");
+})();
+</script>
