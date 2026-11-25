@@ -177,7 +177,7 @@ const L = new Promise((r) => fr.addEventListener("load", r, { once: true }));
         }
         if (steps % 50 === 0) await sleep(0);
       }
-      { const p = E("p"); R.end.push({ dream: (p.dream && p.dream.id) || "", kidDream: (p.kid && p.kid.dream) || "", hobby: (p.saga && p.saga.hobby) || "", age: E("realAge()"), job: p.job, status: p.status, track: p.careerTrack || p.job, rank: p.rankLevel || 0, rankTitle: p.rankTitle || "", fl: Object.keys(p.flags || {}).filter((f) => /^f_/.test(f) && p.flags[f]) }); }
+      { const p = E("p"); R.end.push({ dream: (p.dream && p.dream.id) || "", kidDream: (p.kid && p.kid.dream) || "", hobby: (p.saga && p.saga.hobby) || "", age: E("realAge()"), job: p.job, status: p.status, track: p.careerTrack || p.job, rank: p.rankLevel || 0, rankTitle: p.rankTitle || "", fa: p.flagAge || {}, tage: p.age, fl: Object.keys(p.flags || {}).filter((f) => /^f_/.test(f) && p.flags[f]) }); }
       R.lives++; R.ages.push(E("realAge()"));
     }
   } catch (e) { R.errors.push("ERR " + (e.stack || e)); }
