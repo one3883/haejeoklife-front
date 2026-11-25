@@ -81,7 +81,7 @@ function pool(s){
  if(n>=4&&!s.hidden)list.push(event("newkama","뉴커머 랜드 발견","감옥 깊은 곳에서 숨겨진 LEVEL 5.5의 존재를 알게 됩니다.",[
  choice("뉴커머 랜드에 합류한다","건강 회복 · 탈옥 준비",()=>{s.hidden=true;hp(10);s.plan+=2;s.allies++;happy(-2);}),
  choice("감방으로 돌아간다","기회 포기 · 건강 감소",()=>hp(-3))]));
- if(n>=5&&p.age-s.age>=2)list.push(event("execution","사형 선고","세계정부가 당신의 처형을 결정했습니다.",[
+ if(n>=5&&p.age-s.age>=4&&!s.executionSeen&&Math.random()<.035)list.push(event("execution","사형 선고","세계정부가 당신의 처형을 결정했습니다.",[
  choice("마지막 탈옥을 시도한다","실패하면 사형",()=>{attempt("사형 직전 탈옥",.1);if(active()){p.health=0;p.flags.deathCause={type:"임펠다운에서 처형",detail:"탈옥에 실패하여 처형되었습니다."};}}),
  choice("운명을 받아들인다","사망",()=>{p.health=0;p.flags.deathCause={type:"임펠다운에서 처형",detail:"세계정부의 사형 선고가 집행되었습니다."};})]));
  return list;
@@ -90,23 +90,25 @@ const oldBuild=buildYearScenes;
 buildYearScenes=function(){
  const s=prison();if(!s)return oldBuild.apply(this,arguments);
  scenes=[];sceneIndex=0;
- if(canonYear()===1522&&!p.flags.impelLuffySeen){
+ if(canonYear()===1522&&p.canonSeen?.marineford===undefined&&!p.flags.impelLuffySeen){
  p.flags.impelLuffySeen=true;
  scenes.push(event("luffy","밀짚모자 루피의 침입","에이스를 구하려는 루피의 침입으로 임펠다운이 혼란에 빠졌습니다.",[
  choice("혼란을 틈타 탈옥한다","특별 탈옥 기회",()=>attempt("루피의 침입",.42)),choice("감방에 남는다","안전 · 기회 포기",()=>happy(-3))]));
  }
- if(canonYear()===1522&&!p.flags.impelTeachSeen){
+ if(canonYear()===1522&&p.canonSeen?.marineford===undefined&&!p.flags.impelTeachSeen){
  p.flags.impelTeachSeen=true;
  scenes.push(event("teach","검은수염의 방문","검은수염 해적단이 임펠다운에 나타났습니다. LEVEL 6의 죄수들 사이에서 소동이 일어납니다.",[
  choice("소동을 이용한다","탈옥 기회 · 부상 위험",()=>attempt("검은수염의 방문",.25)),choice("몸을 숨긴다","안전 · 행복 감소",()=>happy(-2))]));
  }
- const candidates=pool(s).filter(x=>x.key!==s.last);
- const e=candidates[Math.floor(Math.random()*candidates.length)];s.last=e.key;scenes.push(e);
+ s.seen=s.seen||{};
+ const candidates=pool(s).filter(x=>x.key!==s.last&&(s.seen[x.key]===undefined||p.age-s.seen[x.key]>=4));
+ if(candidates.length){const e=candidates[Math.floor(Math.random()*candidates.length)];s.last=e.key;s.seen[e.key]=p.age;if(e.key==="impel_execution")s.executionSeen=true;scenes.push(e);}
+ else scenes.push(note("quiet_"+p.age,"수감 "+(p.age-s.age)+"년째","당신은 감방에서 배급을 기다리며 하루하루를 견딥니다."));
 };
 const oldFit=fitScene;
 fitScene=function(s){if(active())return s&&(/^(impel_|battle_)/.test(String(s.key)))?s:null;return oldFit.apply(this,arguments);};
 const oldDrift=annualDrift;
-annualDrift=function(){if(!active())return oldDrift.apply(this,arguments);hp((prison().hidden?2:-Math.ceil(prison().level/2))+(p.focus==="휴식"?2:0));if(p.focus==="감옥에서 단련"){p.combat+=1;hp(-1);}happy(-2);normalize();};
+annualDrift=function(){if(!active())return oldDrift.apply(this,arguments);hp(-Math.max(2,3+prison().level-(prison().hidden?2:0)-(p.focus==="휴식"?1:0)));if(p.focus==="감옥에서 단련"){p.combat+=1;hp(-1);}happy(-2);normalize();};
 const oldFocus=focusOptions;
 focusOptions=function(){if(!active())return oldFocus.apply(this,arguments);return {"감옥에서 단련":{desc:"감옥 사건에서 단련",effect:()=>{}},"휴식":{desc:"감옥에서 휴식",effect:()=>{}}};};
 const oldSalary=annualSalary;
