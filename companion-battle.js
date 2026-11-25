@@ -56,7 +56,11 @@ function supportUI(st){
 tacRender=function(st){oldRender(st);init(st);const acts=document.getElementById("tacActs");if(!st.over){
  const children=[...acts.children],actions=tacActionList(st);const map=new Map(actions.map((a,i)=>[a.id,children[i]]));acts.replaceChildren();
  if(st.menu==="skills"){for(const a of actions)if(!["strong","guard"].includes(a.id)&&map.get(a.id))acts.append(map.get(a.id));const back=button("뒤로",()=>{st.menu=null;tacRender(st);});back.classList.add("ts-back");acts.append(back);}
- else {acts.append(button("일반 공격",()=>tacClick(st,"strong"),st.busy||st.acted),button("기술 사용",()=>{st.menu="skills";tacRender(st);},st.busy||st.acted),button("방어",()=>tacClick(st,"guard"),st.busy||st.acted),button("도주",()=>flee(st),st.busy||st.acted||st.boss));}
+ else {
+ const describe=(b,title,desc,preview)=>{b.replaceChildren();const h=document.createElement("b");h.textContent=title;b.append(h);for(const [t,c] of [[desc,""],[preview,"tac-pv"]]){const x=document.createElement("small");x.className=c;x.textContent=t;b.append(x);}return b;};
+ const original=(id,title)=>{const b=map.get(id);if(b){b.querySelector("b").textContent=title;return b;}return button(title,()=>tacClick(st,id),true);};
+ acts.append(original("strong","⚔️ 일반 공격"),describe(button("",()=>{st.menu="skills";tacRender(st);},st.busy||st.acted),"🔥 기술 사용","패기 · 열매 · 전투 기술","기술별 예상 피해 확인"),original("guard","🛡️ 방어"),describe(button("",()=>flee(st),st.busy||st.acted||st.boss),"💨 도주",st.boss?"보스 전투에서는 도주 불가":"실패 시 적의 공격을 받음",st.boss?"사용 불가":"성공 확률 "+Math.round(Math.min(.8,.35+(st.supportEscape||0))*100)+"%"));
+ }
  }supportUI(st);};
 tacClick=function(st,id){if(st===tacCur&&!st.busy&&!st.over&&!st.acted){init(st);st.support.locked=true;st.menu=null;}return oldClick(st,id);};
 function flee(st){if(st!==tacCur||st.busy||st.over||st.acted||st.boss)return;init(st);st.support.locked=true;const chance=Math.min(.8,.35+(st.supportEscape||0));st.supportEscape=0;if(Math.random()<chance){st.fled=true;st.over=true;st.won=false;tacLog(st,"전투에서 도주했습니다.");tacFinishUI(st);}else{tacLog(st,"도주 실패 — 적의 공격에 노출됩니다.");st.acted=true;st.mods=tacModsIf(st,null);tacEnemyAct(st,Math.random);if(st.over)tacFinishUI(st);else tacRender(st);}}
