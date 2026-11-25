@@ -26,6 +26,10 @@ const arcs=[
 ["elbaf",1524,"엘바프","거인들의 술렁임","밀짚모자 일당의 도착 소식에 거인들이 움직입니다.",null,null,"도리","항구의 방문객들을 돕는다",null,null]
 ];
 const oldTitles=new Set(arcs.map(a=>a[3]));
+const closing={orange:"crocodile",syrup:"crocodile",baratie:"crocodile",arlong:"crocodile",loguetown:"crocodile",drum:"crocodile",alabasta:"crocodile",sky:"enies",water:"enies",thriller:"sabaody",sabaody:"sabaody",amazon:"ace_exec",fish:"return",punk:"return",dress:"dressrosa",cake:"totland",wano:"wano",egg:"egghead"};
+const order=["crocodile","enies","sabaody","ace_exec","marineford","newera","return","dressrosa","totland","reverie","wano","egghead"];
+function past(a,seen){const i=order.indexOf(closing[a[0]]);return i>=0&&order.slice(i).some(k=>seen[k]!==undefined);}
+
 const state=()=>p.flags.canonIntervention||(p.flags.canonIntervention={done:{},ties:{}});
 const blocked=()=>!p||!p.flags||p.job==="노예"||p.job==="수감자"||p.flags.impelDown||p.fruit==="고무고무 열매"||p.status==="천룡인";
 const here=a=>p.place&&(p.place.name===a[2]||p.place.country===a[2]||(a[0]==="dress"&&p.place.name==="그린 비트"));
@@ -61,7 +65,7 @@ function fight(a,foe,ally,withCrew,hostile){
 }
 function scene(a){
  const [id,year,loc,title,body,minor,major,ally,rescue,loot,enemy]=a;
- const cs=[];const adult=realAge()>=16;const fighter=adult&&p.combat>=15;
+ const cs=[];const adult=p.age>=16;const fighter=adult&&p.combat>=15;
  const foe=p.combat>=65&&alive(major)?major:alive(minor)?minor:null;
  if(fighter&&foe&&p.status!=="해군"&&alive(ally)){
  cs.push(choice("밀짚모자 일행과 협력한다 — "+foe,"국지전 · 승리 시 명성 및 보상 · 패배 시 부상 또는 사망",()=>fight(a,foe,ally,false,false)));
@@ -69,22 +73,23 @@ function scene(a){
  }
  if(fighter&&enemy&&alive(enemy)&&["해군","해적","현상금 사냥꾼"].includes(myAff())&&id!=="amazon")
  cs.push(choice("밀짚모자 측을 저지한다 — "+enemy,"적대 세력 협력 · 원작 결말은 유지",()=>fight(a,enemy,foe,false,true)));
- if(realAge()>=8)cs.push(choice(rescue,"건강 감소 · 주민과 인연 및 명성 증가",()=>{p.health-=ri(2,7);p.relationship+=3;gainStanding(1);tie(ally,8,a);log(rescue);}));
+ if(p.age>=13)cs.push(choice(rescue,"건강 감소 · 주민과 인연 및 명성 증가",()=>{p.health-=ri(2,7);p.relationship+=3;gainStanding(1);tie(ally,8,a);log(rescue);}));
  if(adult&&loot&&wanted())cs.push(choice("혼란을 틈타 "+loot+"을 확보한다","재산과 현상금 증가 · 주민 관계 감소",()=>{reward(ri(100000,400000),true);p.relationship-=5;p.health-=ri(1,8);tie(ally,-8,a);}));
  cs.push(choice("관여하지 않고 몸을 숨긴다","전투 위험 회피 · 개입 기회 포기",()=>{p.happiness-=1;log(title+"을 멀리서 지켜봄");}));
  for(const c of cs){const run=c.run;c.run=()=>{state().done[id]=true;run();};}
  return {key:"intervention_"+id,essential:true,title,body:body+" 당신은 이 사건에 직접 개입할 수 있습니다. 원작의 큰 결말은 바뀌지 않습니다.",choices:cs,callbackValid:()=>!blocked()&&canonYear()===year&&here(a)&&!state().done[id]};
 }
 const oldCanon=canonScenes;
-canonScenes=function(){return oldCanon.apply(this,arguments).filter(s=>!oldTitles.has(s.title)||blocked());};
+canonScenes=function(){return oldCanon.apply(this,arguments).filter(s=>!oldTitles.has(s.title)||blocked()||p.age<13);};
 const oldBuild=buildYearScenes;
 buildYearScenes=function(){
- const r=oldBuild.apply(this,arguments);if(blocked()||p.health<=0)return r;
+ const before={...(p.canonSeen||{})};
+ const r=oldBuild.apply(this,arguments);if(blocked()||p.health<=0||p.age<13)return r;
  const st=state();
- const matches=arcs.filter(a=>a[1]===canonYear()&&here(a)&&!st.done[a[0]]);
- scenes.unshift(...matches.map(scene));
- if(!matches.length&&realAge()>=16){
- const pair=Object.entries(st.ties).find(([name,t])=>!t.followed&&alive(name)&&p.age-t.age>=3&&(p.place.name===t.place||p.place.country===t.place)&&Math.abs(t.score)>=8);
+ const matches=arcs.filter(a=>a[1]===canonYear()&&here(a)&&!st.done[a[0]]&&!past(a,before));
+ scenes.unshift(...matches.slice(0,1).map(scene));
+ if(!matches.length&&p.age>=16){
+ const pair=Object.entries(st.ties).find(([name,t])=>!t.followed&&alive(name)&&p.age-t.age>=6&&(p.place.name===t.place||p.place.country===t.place)&&Math.abs(t.score)>=8);
  if(pair){const [name,t]=pair;const friendly=t.score>0;const done=()=>{t.followed=true;};
  scenes.unshift({key:"intervention_reunion_"+t.arc+"_"+name,essential:true,title:name+"와의 인연",body:friendly?"과거 사건에서 맺은 인연이 다시 이어집니다. 연락을 통해 도움을 주고받을 기회가 생겼습니다.":"과거의 적대 관계 때문에 경계와 갈등이 이어집니다.",choices:[choice(friendly?"협력 관계를 이어간다":"갈등을 피하고 화해를 시도한다","재산 감소 · 관계 개선",()=>{done();p.money-=Math.min(Math.max(0,p.money),100000);t.score+=10;gainStanding(1);}),...(friendly?[choice("구호 물자를 지원한다","재산 감소 · 우호 관계 강화",()=>{done();p.money-=Math.min(Math.max(0,p.money),150000);t.score+=15;p.relationship+=3;log(name+" 측에 구호 물자를 보냄");})]:[]),choice("거리를 둔다","관계 유지 · 위험 회피",done)]});}
  }
