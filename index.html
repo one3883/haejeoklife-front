@@ -3179,7 +3179,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                   : -ri(1, 3)),
         );
         p.happiness = clamp(p.happiness + ri(-3, 3));
-        p.relationship = clamp(p.relationship + ri(-2, 2));
+        // 관계는 16세부터 해마다 1~3씩 자연히 줄어든다. 사람을 챙기는 선택을 계속해야 유지된다 (companion-events.js)
+        p.relationship = clamp(p.relationship + (p.age >= 16 ? -ri(1, 3) : ri(-2, 2)));
         if (p.age % 2 === 0) p.knowledge = clamp(p.knowledge + 1);
         if (p.money < 0) {
           p.happiness = clamp(p.happiness - 4);
@@ -34790,13 +34791,15 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261125c" defer></script>
+  <script src="place-events.js?v=20261125d" defer></script>
   <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
   <script src="callback-events.js?v=20261125a" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>
   <script src="impel-down.js?v=20261125a" defer></script>
+  <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
+  <script src="companion-events.js?v=20261125a" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
