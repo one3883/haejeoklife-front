@@ -21,9 +21,15 @@
   function P(name, d) {
     DATA[name] = d;
   }
-  // 조건 사건 추가: when = { status:[신분], job:[직업], minAge, maxAge } 중 맞는 사람에게만 나온다
+  // 조건 사건 추가: when = { status:[신분], job:[직업], minAge, maxAge, flags:[], notFlags:[] } 중 맞는 사람에게만 나온다
   function X(name, list) {
     (DATA[name] = DATA[name] || { events: [] }).events.push(...list);
+  }
+  // 공통 사건: 장소와 상관없이 어디서나 나오는 사건 (사는 동안 사건·어린 시절 사건). 배로 도착할 때는 나오지 않는다.
+  const GLOBAL = { events: [], kid: [] };
+  function G(d) {
+    if (d.events) GLOBAL.events.push(...d.events);
+    if (d.kid) GLOBAL.kid.push(...[].concat(d.kid));
   }
 
   /* ───────────── 사건 데이터 ───────────── */
@@ -6218,8 +6224,70 @@
     }
   ]);
 
+  /* ───────────── 공통 사건 (CLAUDE.md 11절 모범 예시) ─────────────
+     문서 예시의 성향 '원칙·자비·대담'은 게임에 없어서 실제 성향으로 바꿨다: 원칙→신중, 자비→선량, 대담→용기 */
+  G({
+    kid: {
+      key: "pk_ex1",
+      when: { minAge: 7, maxAge: 11 },
+      title: "찢어진 그물",
+      body: "어부 할아버지가 찢어진 그물 앞에서 한숨을 쉽니다. 내일 새벽 조업까지 고치지 못하면 한 달 벌이를 놓친다고 합니다. 그물 더미 옆에는 쓰다 남은 밧줄과 바늘이 굴러다닙니다.",
+      img: "새벽 부두에 펼쳐진 찢어진 그물과 바늘을 든 아이, 옆에서 한숨 쉬는 노인 어부",
+      choices: [
+        { title: "밤새 그물을 꿰맨다", desc: "손은 아프지만 배우는 게 많다",
+          effect: { skills: { "제작": 3 }, relationship: 2, health: -2, memory: "새벽 부두의 젖은 그물", log: "어부 할아버지의 그물을 밤새 꿰맴" },
+          risk: { chance: 0.2, effect: { health: -4, log: "바늘에 손을 깊이 찔림" } } },
+        { title: "동네 아이들을 불러 모은다", desc: "빨리 끝나지만 솜씨는 덜 는다",
+          effect: { relationship: 4, skills: { "제작": 1 }, log: "동네 아이들과 그물을 나눠 고침" } },
+        { title: "남은 밧줄로 연을 만든다", desc: "신나지만 할아버지는 섭섭하다",
+          effect: { happiness: 5, relationship: -3, memory: "하늘 높이 뜬 밧줄 연", log: "그물 대신 밧줄로 연을 만들어 날림" } }
+      ]
+    },
+    events: [
+      {
+        key: "pe_ex2",
+        when: { status: ["해군"], minAge: 16, maxAge: 35 },
+        title: "곡물 창고의 아이",
+        body: "해적 협력자를 찾는 수색 중, 당신은 곡물 창고 구석에서 떨고 있는 아이를 발견합니다. 아이의 손에는 해적 깃발이 수놓인 손수건이 쥐여 있습니다. 밖에서 상관이 \"다 찾았나?\" 하고 묻습니다.",
+        img: "어두운 곡물 창고 구석에 웅크린 아이와 문틈으로 비치는 해군 수색대의 등불",
+        choices: [
+          { title: "상관에게 보고한다", desc: "원칙대로다. 마음은 무겁다",
+            effect: { standing: 6, happiness: -4, traits: { "신중": 1 }, log: "창고의 아이를 상관에게 보고함" } },
+          { title: "아무도 없다고 답한다", desc: "아이를 지키지만 들킬 수 있다",
+            effect: { happiness: 3, traits: { "선량": 1 }, flags: ["f_navy_spared_child"], log: "창고의 아이를 못 본 척 넘김" },
+            risk: { chance: 0.25, effect: { standing: -6, reputation: -5, log: "거짓 보고가 들통나 징계받음" } } },
+          { title: "아이를 마을 밖으로 빼돌린다", desc: "확실히 지키지만 위험이 크다",
+            effect: { relationship: 3, traits: { "선량": 1 }, flags: ["f_navy_spared_child", "f_navy_smuggled"], memory: "새벽 언덕길의 작은 손", log: "창고의 아이를 마을 밖으로 빼돌림" },
+            risk: { chance: 0.35, effect: { standing: -8, health: -5, log: "탈출 중 순찰대에 쫓겨 다침" } } }
+        ]
+      },
+      {
+        key: "pe_ex3",
+        when: { status: ["해적"], minAge: 18, maxAge: 50 },
+        title: "게시판의 낯익은 얼굴",
+        body: "항구 게시판에 새 현상수배서가 붙었습니다. 그중 하나는 당신 배의 갑판원입니다. 현상금은 크지 않지만, 이 항구의 해군 지부는 작은 공도 놓치지 않기로 유명합니다.",
+        img: "항구 게시판에 빽빽이 붙은 현상수배서와 그 앞에서 모자를 눌러쓴 선원",
+        choices: [
+          { title: "오늘 밤 바로 출항한다", desc: "안전하지만 보급을 포기한다",
+            effect: { health: -3, happiness: -2, traits: { "신중": 1 }, log: "보급을 포기하고 밤중에 출항함" } },
+          { title: "동료를 숨기고 보급을 마친다", desc: "평소대로지만 들킬 수 있다",
+            effect: { relationship: 4, log: "갑판원을 숨긴 채 보급을 마침" },
+            risk: { chance: 0.3, effect: { health: -10, log: "보급 중 해군과 총격전을 벌임" } } },
+          { title: "수배서를 몽땅 떼어 간다", desc: "속 시원하지만 이름이 퍼진다",
+            effect: { reputation: 6, standing: 5, bounty: "+20%", traits: { "용기": 1 }, log: "항구의 수배서를 전부 떼어 감" } },
+          { title: "엉뚱한 수배서를 덧붙인다", desc: "신중한 사람만 떠올릴 수 있는 수",
+            req: { traits: { "신중": 3 } },
+            effect: { relationship: 3, knowledge: 2, log: "가짜 수배서로 해군의 눈을 돌림" } }
+        ]
+      }
+    ]
+  });
+
   /* ───────────── 게임에 연결 ───────────── */
   const STATS = ["health", "happiness", "knowledge", "relationship", "reputation", "combat"];
+  const TRAITS = ["용기", "신중", "선량", "야심"]; // 게임의 실제 성향 (p.traits)
+  const OUTLAWS = ["해적", "혁명군"]; // 현상금이 붙는 신분
+  const FIRST_BOUNTY_BASE = 30000000; // 현상금이 0일 때 '+N%'의 기준액 (게임의 첫 현상금 하한 3,000만)
   const SKILLS = ["검술", "무투술", "요리", "의술", "장사", "제작", "항해술"];
   const EVENT_MIN_AGE = 13;
 
@@ -6229,6 +6297,22 @@
     if (typeof ef.money === "number") p.money = Math.max(0, (p.money || 0) + ef.money);
     if (ef.skills && typeof sk === "function")
       for (const [k, v] of Object.entries(ef.skills)) if (SKILLS.includes(k) && typeof v === "number") sk(k, v);
+    // 플래그: 한 번 세우면 지우지 않는다 (when.flags / when.notFlags와 회수 사건의 조건)
+    if (Array.isArray(ef.flags) && p.flags) for (const f of ef.flags) p.flags[f] = true;
+    // 신분별 평판: 반드시 gainStanding()으로 (14세 미만·노예는 게임이 막는다)
+    if (typeof ef.standing === "number" && typeof gainStanding === "function") gainStanding(ef.standing);
+    // 현상금: "+20%" 또는 숫자. 해적·혁명군에게만 붙는다(2절). 현상금이 0이면 첫 현상금 하한을 기준으로 계산한다.
+    if (ef.bounty !== undefined && OUTLAWS.includes(p.status)) {
+      const cur = Math.max(0, p.bounty || 0);
+      let add = 0;
+      const m = /^([+-]?\d+(?:\.\d+)?)%$/.exec(String(ef.bounty).trim());
+      if (m) add = Math.round(Math.max(cur, FIRST_BOUNTY_BASE) * (Number(m[1]) / 100));
+      else if (typeof ef.bounty === "number") add = Math.round(ef.bounty);
+      if (add) {
+        p.bounty = Math.max(0, cur + add);
+        if (p.bounty > 0) p.bountyIssued = true;
+      }
+    }
     if (ef.memory && typeof mem === "function") mem(ef.memory);
     if (ef.log && typeof log === "function") log(ef.log);
   }
@@ -6238,12 +6322,34 @@
       if (c.risk && Math.random() < (c.risk.chance || 0)) apply(c.risk.effect);
     };
   }
+  // 성향: 게임은 원래 선택지 실행 코드의 글자를 읽어 성향을 정하는데(traitFrom), 선언형 선택지는 코드가 같아
+  // 전부 '신중'으로 판정됐다. 그래서 effect.traits가 있으면 그것을, 없으면 효과 데이터로 게임과 같은 규칙을 적용한다.
+  //   목숨·건강을 건 선택 → 용기 / 돈을 얻으며 관계·행복·명성을 잃음 → 야심 / 관계·평판을 얻음 → 선량 / 잃는 게 없음 → 신중
+  function traitPlan(c) {
+    const ef = c.effect || {};
+    if (ef.traits) {
+      const t = Object.keys(ef.traits).filter((k) => TRAITS.includes(k) && ef.traits[k] > 0);
+      return t.length ? t : null;
+    }
+    if (c.risk || ef.health < 0) return ["용기"];
+    if (ef.money > 0 && (ef.relationship < 0 || ef.happiness < 0 || ef.reputation < 0)) return ["야심"];
+    if (ef.relationship > 0 || ef.standing > 0) return ["선량"];
+    if (!(ef.health < 0) && !(ef.money < 0)) return ["신중"];
+    return null;
+  }
+  function makeChoice(c) {
+    const out = { title: c.title, desc: c.desc || "", run: runChoice(c), _pe: { traits: traitPlan(c) } };
+    if (c.req) {
+      const { traits, ...rest } = c.req; // 스탯·기술 조건은 게임의 req 그대로, 성향 조건은 따로 잠근다
+      if (Object.keys(rest).length) out.req = rest;
+      if (traits) out._reqTraits = traits;
+    }
+    return out;
+  }
   // 데이터 한 개를 게임 사건 객체로 바꾼다. tags에 키를 넣어 두면 그림이 등록됐을 때 그 그림이 나온다.
   function scene(d, kind) {
     const base = { key: d.key, title: d.title, body: d.body, tags: [d.key] };
-    const choices = Array.isArray(d.choices) && d.choices.length
-      ? d.choices.map((c) => ({ title: c.title, desc: c.desc || "", run: runChoice(c) }))
-      : null;
+    const choices = Array.isArray(d.choices) && d.choices.length ? d.choices.map(makeChoice) : null;
     if (kind === "kid") return { ...base, choices, major: true, cooldown: 99, minAge: 6, kid: true };
     if (choices) return { ...base, choices, cooldown: 5 };
     return { ...base, choices: null, effect: () => apply(d.effect), summary: (d.effect && d.effect.log) || "", cooldown: 5 };
@@ -6257,8 +6363,8 @@
       CUSTOM_SCENE_ART[m[1]] = "assets/events/" + f;
       if (typeof ART_LABEL === "object") {
         let title = "";
-        for (const d of Object.values(DATA))
-          for (const x of [...(d.events || []), d.kid, d.first]) if (x && x.key === m[1]) title = x.title;
+        for (const d of [...Object.values(DATA), GLOBAL])
+          for (const x of [...(d.events || []), ...[].concat(d.kid || []), d.first]) if (x && x.key === m[1]) title = x.title;
         ART_LABEL[m[1].toLowerCase()] = title || "장면";
       }
     }
@@ -6274,11 +6380,57 @@
     if (w.maxAge !== undefined && p.age > w.maxAge) return false;
     if (Array.isArray(w.status) && !w.status.includes(p.status)) return false;
     if (Array.isArray(w.job) && !w.job.includes(p.job)) return false;
+    return flagsOk(w);
+  }
+  function flagsOk(w) {
+    const f = (p && p.flags) || {};
+    if (Array.isArray(w.flags) && !w.flags.every((x) => f[x])) return false;
+    if (Array.isArray(w.notFlags) && w.notFlags.some((x) => f[x])) return false;
     return true;
+  }
+  // 어린 시절 사건: 기본 6~12세, when으로 좁히거나 플래그 조건을 걸 수 있다
+  function fitsKid(d) {
+    if (typeof p === "undefined" || !p) return false;
+    const w = d.when || {};
+    if (p.age < Math.max(6, w.minAge ?? 6) || p.age > Math.min(12, w.maxAge ?? 12)) return false;
+    return flagsOk(w);
+  }
+
+  // 성향 반영: 선언형 선택지(_pe)는 traitPlan대로 올린다. 한 선택지는 성향마다 +1까지만(9절).
+  if (typeof traitFrom === "function") {
+    const _tf = traitFrom;
+    traitFrom = function (c, src) {
+      if (!c || !c._pe) return _tf.apply(this, arguments);
+      const plan = c._pe.traits;
+      if (!plan || !plan.length) return null;
+      const T = (p.traits = p.traits || { 용기: 0, 신중: 0, 선량: 0, 야심: 0 });
+      let first = null;
+      for (const t of plan) {
+        const before = T[t] || 0;
+        T[t] = before + 1;
+        if (!first) first = [t, before];
+      }
+      return first;
+    };
+  }
+  // 성향 조건 잠금: req.traits = { "신중": 3 } 이면 그 성향이 모자랄 때 선택지를 잠그고 이유를 보여 준다
+  if (typeof lockReason === "function") {
+    const _lr = lockReason;
+    lockReason = function (c) {
+      if (c && c._reqTraits && p && !c._forceOpen) {
+        for (const [t, n] of Object.entries(c._reqTraits)) {
+          const v = (p.traits && p.traits[t]) || 0;
+          if (v < n) return `성향 '${t}' ${n} 이상 필요 (현재 ${v})`;
+        }
+      }
+      return _lr.apply(this, arguments);
+    };
   }
 
   // 처음 도착한 장소인지 판단하는 동안만 값이 들어 있다
   let arrivingFirst = null;
+  // 배로 도착하는 중에는 공통 사건을 섞지 않는다 (도착 사건은 그 섬의 사건이어야 하므로)
+  let arriving = false;
 
   // 1) 사는 동안·배로 들렀을 때: 기존 PLACE_EVENTS에 새 사건을 더한다
   if (typeof PLACE_EVENTS === "object") {
@@ -6293,7 +6445,7 @@
           base = [];
         }
         const extra = [];
-        for (const e of d.events || []) {
+        for (const e of [...(d.events || []), ...(arriving ? [] : GLOBAL.events)]) {
           if (!fits(e)) continue;
           const s = scene(e);
           extra.push(s);
@@ -6312,7 +6464,8 @@
       const r = _kpp.apply(this, arguments) || [];
       try {
         const d = p && p.place && DATA[p.place.name];
-        if (d && d.kid && p.age >= 6 && p.age <= 12) r.push(scene(d.kid, "kid"));
+        if (d && d.kid && fitsKid(d.kid)) r.push(scene(d.kid, "kid"));
+        for (const k of GLOBAL.kid) if (fitsKid(k)) r.push(scene(k, "kid"));
       } catch (e) {}
       return r;
     };
@@ -6362,14 +6515,17 @@
         }
       } catch (e) {}
       arrivingFirst = first ? dest.name : null;
+      arriving = true;
       try {
         return _arrive.apply(this, arguments);
       } finally {
         arrivingFirst = null;
+        arriving = false;
       }
     };
   }
 
   // 점검용: 개발자 도구 콘솔에서 확인할 수 있게 노출
   window.__PLACE_EVENTS_DATA = DATA;
+  window.__PLACE_EVENTS_GLOBAL = GLOBAL;
 })();
