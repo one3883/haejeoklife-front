@@ -2253,12 +2253,13 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 "스카이피안",
               ])
             : $("race").value;
-        // 스카이피안은 하늘섬에서 태어난다 (출생지를 직접 고른 경우는 하계로 내려온 가정으로 본다)
-        if (race === "스카이피안" && chosen === "random" && (sea === "random" || sea === "그랜드 라인 전반부")) {
-          const sky = places.find((x) => x.name === "엔젤 아일랜드");
-          if (sky) place = sky;
-          if (fam === "해군 가족" || fam === "천룡인 가문")
-            fam = rand(familyTypes.filter((f) => !["해군 가족", "천룡인 가문"].includes(f)));
+        const home = {"스카이피안":"스카이피아","어인":"어인섬","인어":"어인섬","밍크족":"조우"}[race];
+        if (home) {
+          if (place.country !== home && place.name !== home) {
+            place = places.find(x => birthAllowed(x) && (x.country === home || x.name === home));
+          }
+          if (fam === "천룡인 가문" || (["스카이피안","밍크족"].includes(race) && fam === "해군 가족"))
+            fam = rand(familyTypes.filter(f => !["해군 가족","천룡인 가문"].includes(f)));
         }
         let parentProfile = makeParentProfile(fam);
         let wealth = {
@@ -3278,6 +3279,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           천룡인: 6000000,
         };
         let b = (base[job] ?? 650000) * 1.07;
+        if (job === "의사 견습") b *= (p.job === job && dreamWasCompleted("doctor")) ? 5 : (level >= 4 || rank === "명성 있는 의사") ? 3 : 1;
         const ladder = careerLadders[job] || [];
         const multipliers = [1, 1.18, 1.42, 1.8, 2.3, 3, 4, 5.5, 7];
         const m =
@@ -9897,8 +9899,25 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = lifeImpactScene();
           if (s) scenes.push(s);
         }
-        const sh = strawHatScene();
-        if (sh) scenes.push(sh);
+        // 일반 밀짚모자 만남은 원작 개입으로 대체됨.
+        if (p.job === "의사 견습" && p.age >= 18 && p.rankLevel >= 1) {
+          const rare = p.rankLevel >= 3 && p.knowledge >= 75;
+          const key = rare && !p.flags.medicalCureSeen && Math.random() < .12 ? "medical_cure" :
+            p.knowledge >= 45 && !p.flags.medicalSurgerySeen && Math.random() < .18 ? "medical_surgery" : null;
+          if (key) {
+            const cure = key === "medical_cure";
+            const flag = cure ? "medicalCureSeen" : "medicalSurgerySeen";
+            const finish = () => { p.flags[flag] = true; };
+            scenes.push({key, minAge:18, major:true, title:cure?"불치병 치료":"기적적인 수술",
+              body:cure?"오랫동안 치료법을 찾지 못한 환자가 병원을 찾아왔습니다. 당신은 기존 연구를 다시 검토하며 새로운 치료법을 시험할지 고민합니다.":"중상을 입은 환자가 병원에 실려 왔습니다. 다른 의사들은 수술이 어렵다고 판단했지만, 당신에게는 시도할 방법이 있습니다.",
+              callbackValid:()=>p.job==="의사 견습"&&!p.flags[flag],
+              choices:[
+                {title:cure?"새 치료법을 시험한다":"고난도 수술을 집도한다",desc:"성공하면 명성을 얻지만 실패 위험이 있다",run:()=>{finish();p.health-=6;sk("의술",5);if(Math.random()<Math.min(.9,.35+p.knowledge*.005)){p.reputation+=10;gainStanding(7);p.money+=Math.round(annualSalary()*.25);p.flags[cure?"medicalCureSuccess":"medicalSurgerySuccess"]=true;log(cure?"난치병 치료에 성공함":"고난도 수술에 성공함");}else{p.happiness-=8;p.reputation-=4;log("치료에 실패함");}}},
+                {title:"전문 의료진과 협력한다",desc:"보수는 적지만 안전하게 경험을 쌓는다",run:()=>{finish();p.knowledge+=4;sk("의술",3);p.relationship+=3;log("전문 의료진과 협력함");}},
+                {title:"다른 병원에 의뢰한다",desc:"위험을 피하지만 기회를 놓친다",run:()=>{finish();p.happiness-=2;log("환자를 다른 병원에 의뢰함");}}
+              ]});
+          }
+        }
         if (Math.random() < 0.3) {
           const ps = placeScene();
           if (ps) scenes.push(ps);
