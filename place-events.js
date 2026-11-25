@@ -509,10 +509,8 @@
       title: "새 목재 냄새",
       body: "부두에 내리자 망치 소리와 갓 켠 나무 냄새가 마을을 가득 채우고 있습니다. 아직 잔해가 남은 빈터 옆에서 사람들은 낯선 이에게도 '일손이면 언제든 환영'이라며 웃습니다.",
       img: "잔해가 남은 빈터 옆으로 새로 지은 목조 집들과 망치질하는 주민들",
-      choices: [
-        { title: "망치를 빌려 잠시 거든다", desc: "마을 사람들과 금세 친해진다", effect: { relationship: 2, health: -1, log: "고사 마을 재건을 잠시 거들었다" } },
-        { title: "볼일부터 본다", desc: "조용히 지나간다", effect: { knowledge: 1, log: "다시 짓는 고사 마을을 지나쳤다" } }
-      ]
+      // 자동 사건: 두 선택지의 결과가 거의 같아 첫 도착 장면으로만 둠 (docs/boring-events.md)
+      effect: { relationship: 2, log: "다시 짓는 고사 마을에서 일손 환영을 받음" }
     }
   });
   
@@ -779,10 +777,8 @@
       title: "기합 소리의 아침",
       body: "항구에 내리자 어디선가 수십 명이 한꺼번에 지르는 기합 소리가 울려 퍼집니다. 붉은 지붕들 사이로 꽃향기와 향 냄새가 섞여 흘러옵니다.",
       img: "붉은 기와지붕이 겹겹이 이어진 항구 마을과 멀리 산 위의 도장, 거리에 핀 꽃나무",
-      choices: [
-        { title: "기합 소리를 따라가 본다", desc: "도장 구경", effect: { combat: 1, happiness: 1, log: "꽃의 나라에 닿아 도장 수련을 구경했다" } },
-        { title: "찻집에서 만두부터 먹는다", desc: "배가 먼저", effect: { happiness: 2, health: 1, log: "꽃의 나라 항구 찻집에서 만두를 먹었다" } }
-      ]
+      // 자동 사건: 두 선택지의 결과가 거의 같아 첫 도착 장면으로만 둠 (docs/boring-events.md)
+      effect: { happiness: 2, combat: 1, log: "꽃의 나라 항구에서 도장의 기합 소리를 들음" }
     }
   });
   
@@ -6352,7 +6348,7 @@
     const choices = Array.isArray(d.choices) && d.choices.length ? d.choices.map(makeChoice) : null;
     if (kind === "kid") return { ...base, choices, major: true, cooldown: 99, minAge: 6, kid: true };
     if (choices) return { ...base, choices, cooldown: 5 };
-    return { ...base, choices: null, effect: () => apply(d.effect), summary: (d.effect && d.effect.log) || "", cooldown: 5 };
+    return { ...base, choices: null, effect: () => apply({ ...d.effect, log: "" }), summary: (d.effect && d.effect.log) || "", cooldown: 5 };
   }
 
   // 그림 등록: 목록에 적힌 파일만 장면 그림으로 쓴다

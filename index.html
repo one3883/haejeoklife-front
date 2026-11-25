@@ -11217,29 +11217,23 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ),
         ],
         "웨스트 블루": () => [
-          PE(
+          // 자동 사건: 보호비(50~200베리)와 버티기의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md).
+          // 대신 동네가 어떻게 대응했는지를 반반으로 정해 두 이야기를 모두 살린다.
+          PA(
             "sea_wb_mafia",
             "패밀리의 영역 다툼",
-            "웨스트 블루 곳곳의 마피아 '패밀리'들이 항구를 두고 영역 다툼을 벌였습니다. 동네 상점마다 보호비를 내라는 협박장이 붙었습니다.",
-            [
-              {
-                title: "보호비를 낸다",
-                desc: "돈이 들지만 조용히 지낸다.",
-                run: () => {
-                  p.money -= ri(50, 200);
-                  log("패밀리에게 보호비를 냄");
-                },
-              },
-              {
-                title: "이웃들과 함께 버틴다",
-                desc: "용기가 필요하다.",
-                run: () => {
-                  p.relationship += 4;
-                  if (Math.random() < 0.3) p.health -= ri(2, 7);
-                  log("이웃과 함께 패밀리의 협박을 버팀");
-                },
-              },
-            ],
+            "웨스트 블루 곳곳의 마피아 '패밀리'들이 항구를 두고 영역 다툼을 벌였습니다. 동네 상점마다 보호비를 내라는 협박장이 붙었고, 이웃들은 밤마다 모여 대책을 의논했습니다.",
+            () => {
+              if (Math.random() < 0.5) {
+                p.money = Math.max(0, p.money - ri(50, 200));
+                log("동네가 패밀리에게 보호비를 내기로 함");
+              } else {
+                p.relationship += 4;
+                if (Math.random() < 0.3) p.health -= ri(2, 7);
+                log("이웃과 함께 패밀리의 협박을 버팀");
+              }
+            },
+            null, // 결과에 따라 효과 안에서 기록을 남김
           ),
         ],
         "노스 블루": () => [
@@ -21760,38 +21754,27 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ),
         );
         pool.push(
-          K(
+          // 자동 사건: 두 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md).
+          // 숲을 뒤질 때 6% 확률로 악마의 열매를 발견하는 희귀한 결과는 그대로 둔다.
+          KA(
             "c_fruitrumor",
             "악마의 열매 소문",
-            '시장 상인이 "먹으면 바다에 저주받는 대신 엄청난 힘을 얻는 열매"를 봤다고 떠들고 있습니다. 아이들은 숲에서 그 열매를 찾자고 합니다.',
-            [
-              {
-                title: "숲을 샅샅이 뒤진다",
-                desc: "정말로 있을지도?",
-                run: () => {
-                  if (!p.fruit && Math.random() < 0.06) {
-                    scenes.splice(sceneIndex + 1, 0, {
-                      ...devilFruitScene(),
-                      essential: true,
-                      key: "kid_fruit_" + Math.random(),
-                    });
-                    log("숲속에서 이상한 무늬의 열매를 발견함");
-                  } else {
-                    p.health += 1;
-                    sk("항해술", 1);
-                    log("열매는 못 찾았지만 숲길을 익힘");
-                  }
-                },
-              },
-              {
-                title: "그런 건 없다며 웃는다",
-                desc: "현실적인 아이.",
-                run: () => {
-                  p.knowledge += 1;
-                  log("악마의 열매 소문을 믿지 않음");
-                },
-              },
-            ],
+            '시장 상인이 "먹으면 바다에 저주받는 대신 엄청난 힘을 얻는 열매"를 봤다고 떠들고 있습니다. 동네 아이들이 숲으로 몰려가자, 당신도 반신반의하며 그 뒤를 따라갔습니다.',
+            () => {
+              if (!p.fruit && Math.random() < 0.06) {
+                scenes.splice(sceneIndex + 1, 0, {
+                  ...devilFruitScene(),
+                  essential: true,
+                  key: "kid_fruit_" + Math.random(),
+                });
+                log("숲속에서 이상한 무늬의 열매를 발견함");
+              } else {
+                p.health += 1;
+                sk("항해술", 1);
+                log("열매는 못 찾았지만 친구들과 숲길을 익힘");
+              }
+            },
+            null, // 결과에 따라 효과 안에서 기록을 남김
           ),
         );
         pool.push(
@@ -23125,29 +23108,16 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               },
             ],
           ),
-          "그랜드 라인 전반부": K(
+          // 자동 사건: 두 선택지의 결과(항해술·지식 소폭)가 거의 같아 선택을 없앰 (docs/boring-events.md)
+          "그랜드 라인 전반부": KA(
             "s_gl",
             "하루에 네 계절",
-            "아침엔 눈이 오고 오후엔 땡볕이 내리쬡니다. 그랜드 라인의 아이들은 하늘을 읽는 법부터 배웁니다.",
-            [
-              {
-                title: "구름과 바람을 관찰한다",
-                desc: "항해술이 는다.",
-                run: () => {
-                  sk("항해술", 5);
-                  log("그랜드 라인의 날씨를 읽는 법을 익힘");
-                },
-              },
-              {
-                title: "어른들의 로그 포스를 구경한다",
-                desc: "지식이 는다.",
-                run: () => {
-                  p.knowledge += 2;
-                  sk("항해술", 2);
-                  log("로그 포스의 원리를 배움");
-                },
-              },
-            ],
+            "아침엔 눈이 오고 오후엔 땡볕이 내리쬡니다. 그랜드 라인의 아이들은 하늘을 읽는 법부터 배웁니다. 당신도 어른들 곁에서 구름과 바람, 로그 포스의 바늘을 번갈아 들여다보았습니다.",
+            () => {
+              sk("항해술", 4);
+              p.knowledge += 1;
+            },
+            "그랜드 라인의 하늘과 로그 포스를 읽는 법을 익힘",
           ),
           신세계: K(
             "s_nw",
@@ -34274,7 +34244,7 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261125a" defer></script>
+  <script src="place-events.js?v=20261125b" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>
