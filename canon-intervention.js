@@ -29,7 +29,7 @@ const oldTitles=new Set(arcs.map(a=>a[3]));
 const state=()=>p.flags.canonIntervention||(p.flags.canonIntervention={done:{},ties:{}});
 const blocked=()=>!p||!p.flags||p.job==="노예"||p.job==="수감자"||p.flags.impelDown||p.fruit==="고무고무 열매"||p.status==="천룡인";
 const here=a=>p.place&&(p.place.name===a[2]||p.place.country===a[2]||(a[0]==="dress"&&p.place.name==="그린 비트"));
-const alive=name=>!(p.npcs||[]).some(n=>n.name===name&&!n.alive)&&!(name==="몽키 D. 루피"&&p.flags.luffyDead);
+const alive=name=>!!name&&!(p.npcs||[]).some(n=>n.name===name&&!n.alive)&&!(name==="몽키 D. 루피"&&p.flags.luffyDead);
 const wanted=()=>["해적","혁명군"].includes(p.status);
 const choice=(title,desc,run)=>({title,desc,run});
 function tie(name,delta,a){
@@ -76,7 +76,7 @@ function scene(a){
  return {key:"intervention_"+id,essential:true,title,body:body+" 당신은 이 사건에 직접 개입할 수 있습니다. 원작의 큰 결말은 바뀌지 않습니다.",choices:cs,callbackValid:()=>!blocked()&&canonYear()===year&&here(a)&&!state().done[id]};
 }
 const oldCanon=canonScenes;
-canonScenes=function(){return oldCanon.apply(this,arguments).filter(s=>!oldTitles.has(s.title));};
+canonScenes=function(){return oldCanon.apply(this,arguments).filter(s=>!oldTitles.has(s.title)||blocked());};
 const oldBuild=buildYearScenes;
 buildYearScenes=function(){
  const r=oldBuild.apply(this,arguments);if(blocked()||p.health<=0)return r;
@@ -86,7 +86,7 @@ buildYearScenes=function(){
  if(!matches.length&&realAge()>=16){
  const pair=Object.entries(st.ties).find(([name,t])=>!t.followed&&alive(name)&&p.age-t.age>=3&&(p.place.name===t.place||p.place.country===t.place)&&Math.abs(t.score)>=8);
  if(pair){const [name,t]=pair;const friendly=t.score>0;const done=()=>{t.followed=true;};
- scenes.unshift({key:"intervention_reunion_"+t.arc+"_"+name,essential:true,title:name+"와의 인연",body:friendly?"과거 사건에서 맺은 인연이 다시 이어집니다. 연락을 통해 도움을 주고받을 기회가 생겼습니다.":"과거의 적대 관계 때문에 경계와 갈등이 이어집니다.",choices:[choice(friendly?"협력 관계를 이어간다":"갈등을 피하고 화해를 시도한다","재산 감소 · 관계 개선",()=>{done();p.money-=Math.min(Math.max(0,p.money),100000);t.score+=10;gainStanding(1);}),choice("거리를 둔다","관계 유지 · 위험 회피",done)]});}
+ scenes.unshift({key:"intervention_reunion_"+t.arc+"_"+name,essential:true,title:name+"와의 인연",body:friendly?"과거 사건에서 맺은 인연이 다시 이어집니다. 연락을 통해 도움을 주고받을 기회가 생겼습니다.":"과거의 적대 관계 때문에 경계와 갈등이 이어집니다.",choices:[choice(friendly?"협력 관계를 이어간다":"갈등을 피하고 화해를 시도한다","재산 감소 · 관계 개선",()=>{done();p.money-=Math.min(Math.max(0,p.money),100000);t.score+=10;gainStanding(1);}),...(friendly?[choice("구호 물자를 지원한다","재산 감소 · 우호 관계 강화",()=>{done();p.money-=Math.min(Math.max(0,p.money),150000);t.score+=15;p.relationship+=3;log(name+" 측에 구호 물자를 보냄");})]:[]),choice("거리를 둔다","관계 유지 · 위험 회피",done)]});}
  }
  return r;
 };
