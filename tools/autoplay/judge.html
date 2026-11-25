@@ -132,7 +132,7 @@ if (Q.keys && !Q.only) Q.only = Q.keys;
     let excludedSeeds = 0;
     for (const [g, e] of Object.entries(EV)) {
       // 인연 씨앗은 선택 자체가 몇 년 뒤 회수 사건으로 돌아오는 구조라 이번 검사에서 뺀다
-      if (String(e.key || "").startsWith("callback_seed_")) { excludedSeeds++; continue; }
+      if (/^(callback_seed_|cb_)/.test(String(e.key || ""))) { excludedSeeds++; continue; }
       const A = e.evals.map(analyse).filter(Boolean);
       if (!A.length) continue;
       const frac = (f) => A.filter(f).length / A.length;
@@ -206,11 +206,11 @@ if (Q.keys && !Q.only) Q.only = Q.keys;
     const md = [];
     md.push("# 재미없는 선택 이벤트 목록");
     md.push("");
-    md.push(`CLAUDE.md 8~9절 기준으로 선택 이벤트 ${rows.length}종을 검사했다. 문제가 하나라도 있는 이벤트는 ${flagged.length}종이고, 그중 ‘문제 점수 × 등장 빈도’가 큰 순서로 정리했다. 아직 아무것도 고치지 않았다.`);
+    md.push(`CLAUDE.md 8~9절 기준으로 선택 이벤트 ${rows.length}종을 검사했다. 문제가 하나라도 있는 이벤트는 ${flagged.length}종이고, 그중 ‘문제 점수 × 등장 빈도’가 큰 순서로 정리했다.`);
     md.push("");
-    md.push(`8절의 ‘잃는 것’ 기준이 바뀌어 다시 검사했다: 다른 선택지의 이득을 포기하는 것도 잃는 것으로 치고, 선택지 중 최소 하나에 명시적인 대가나 risk가 있는지만 본다. 인연 씨앗(\`callback_seed_*\`, ${excludedSeeds}종)은 몇 년 뒤 회수 사건으로 돌아오는 구조라 검사에서 뺐다.`);
+    md.push("main에 병합된 수정(자동 사건 전환·승진 정리·어린 시절 다시 쓰기·항해 계획 등)을 반영해 다시 검사했다. 8절 기준대로 다른 선택지의 이득을 포기하는 것도 잃는 것으로 치고, 선택지 중 최소 하나에 명시적인 대가나 risk가 있는지 본다. 인연 씨앗(`callback_seed_*`)과 회수 사건(`cb_*`)은 몇 년 뒤 돌아오는 구조라 뺐다.");
     md.push("");
-    md.push(`- 기준 코드: main \`bd8f0b3\`(#46)`);
+    md.push("- 기준 코드: main `" + (Q.commit || "?").slice(0, 7) + "` (`tools/autoplay/report.sh`로 생성)");
     md.push(`- 자동 플레이: ${LIVES.toLocaleString()}판 (평균 사망 나이 ${avgAge}세, 선택 사건 ${choiceScenes.toLocaleString()}번 등장). 선택은 무작위로 골랐다.`);
     md.push(`- 효과 측정: 선택 사건이 처음 나왔을 때 최대 3번(서로 다른 인생), 그 순간의 게임 상태를 저장해 두고 선택지마다 6번씩 실제로 실행한 뒤 되돌렸다. 숫자는 게임이 보정(0~100 자르기, 지식·명성 감쇠)한 뒤의 실제 변화다. 기술은 종류별로 따로 비교했고, 선택 결과가 다음 장면(후속 사건)으로 이어지는 것도 선택의 결과로 셌다.`);
     md.push(`- 페이지 오류: ${errors.length ? errors.slice(0, 3).join(" / ") : "없음"}`);
@@ -255,7 +255,7 @@ if (Q.keys && !Q.only) Q.only = Q.keys;
     });
     md.push("");
     // 합치기 묶음: 선택지 제목이 똑같은 서로 다른 이벤트들
-    const groups = rows.filter((r) => r.twins).map((r) => ({ rs: r.twins, total: r.count, choices: r.sig.split("|") })).sort((a, b) => b.total - a.total);
+    const groups = rows.filter((r) => r.twins && r.score > 0) /* 문제가 있는 묶음만 */.map((r) => ({ rs: r.twins, total: r.count, choices: r.sig.split("|") })).sort((a, b) => b.total - a.total);
     md.push("## 합치기 묶음");
     md.push("");
     md.push(`선택지 제목이 똑같은 서로 다른 이벤트 묶음 ${groups.length}개다. 하나의 틀(제목·본문만 바뀌는 사건)로 합치거나, 묶음마다 선택지를 다르게 다시 쓴다. 등장 합계가 큰 순서다.`);

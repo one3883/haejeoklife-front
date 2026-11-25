@@ -340,6 +340,7 @@ P("홀케이크 아일랜드", {
 | `tools/autoplay/check.sh "kid_dream,kid_train" --final` | 커밋 전 최종 확인(1,000판) |
 | `tools/autoplay/baseline.sh` | origin/main 1,000판 결과를 커밋별로 `.git/autoplay-cache/`에 저장. 같은 커밋이면 다시 돌리지 않는다. `check.sh`가 알아서 부른다 |
 | `tools/autoplay/run.sh <폴더> <판수> [--keys …] [--procs N]` | 자동 플레이만 병렬로 돌린다(기본: 코어 수 − 4개, 최대 16개 프로세스) |
+| `tools/autoplay/report.sh` | `docs/boring-events.md`(재미없는 선택 이벤트 감사 문서)를 main 1,000판 결과로 다시 만든다. main 결과는 캐시를 쓴다 |
 
 - 사건은 key 앞부분(`kid_train`)이나 제목(`학교에 갈까?`)으로 준다. key가 없는 사건은 제목으로 준다.
 - 판정 기준: 결과 거의 같음 아님, 우위 선택지 없음, 대가·risk가 있는 선택지 하나 이상, 효과 없는 선택지 없음, 지속 효과(플래그·추억·인연·꿈 등)를 남기는 선택지 40% 이상. 성향은 게임이 거의 모든 선택지에 붙이므로 지속 효과로 세지 않는다.
