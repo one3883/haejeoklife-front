@@ -6309,6 +6309,11 @@
         if (p.bounty > 0) p.bountyIssued = true;
       }
     }
+    // 동료 사건: 그 장면의 동료와의 인연·소식 (cbRunNpc는 동료 사건 선택지를 실행하는 동안만 있음)
+    if (cbRunNpc) {
+      if (typeof ef.npcRel === "number") cbRunNpc.rel = Math.max(-100, Math.min(100, (cbRunNpc.rel || 0) + ef.npcRel));
+      if (ef.npcStory && typeof npcStory === "function") npcStory(cbRunNpc, ef.npcStory);
+    }
     if (ef.memory && typeof mem === "function") mem(ef.memory);
     if (ef.log && typeof log === "function") log(ef.log);
   }
@@ -6528,10 +6533,19 @@
      - 반드시 보여 주는 사건(essential)이고, 나오면 f_cbdone_<key>로 닫혀 다시 나오지 않는다(CLAUDE.md 5절).
        고른 선택지는 f_cbpick_<key>_<번호>(1부터)로 남는다 — 이어지는 회수 사건의 조건으로 쓴다.
      - by: { "해적|혁명군": {...}, "해군": {...}, "*": {...} } 로 신분마다 제목·본문·선택지를 바꾼다.
-     - 본문 토큰: {고향} {여기} {해적단} {단짝} {npc:칭호}, 기본값 {npc:칭호=그 아이}, 조사 {고향|로} (을·이·은·와·로) */
+     - 본문 토큰: {고향} {여기} {해적단} {단짝} {npc:칭호}, 기본값 {npc:칭호=그 아이}, 조사 {고향|로} (을·이·은·와·로)
+     - pool: 사건 묶음. 묶음마다 해마다 따로 뽑는다(아래 CB_POOLS). 기본은 "cb"(회수 사건), 동료 사건은 "companion".
+     - when.companion: true면 곁에 동료(window.pickCompanion())가 있을 때만, false면 없을 때만 나온다.
+       동료 사건에서는 {동료} 토큰이 그 동료 이름이 되고, effect.npcRel(숫자)·effect.npcStory(문장)가 그 동료에게 적용된다.
+     - when.injured: true면 다친 상태(p.flags.injuredUntil)일 때만. 다친 해에는 그 묶음을 더 잘 뽑는다. */
   const CALLBACKS = [];
   const CB_YEAR_CHANCE = 0.35;
   const CB_GAP = 2;
+  // 묶음별 해마다 뽑힐 확률과 최소 간격(년). injured: 다친 해의 확률
+  const CB_POOLS = { cb: { chance: CB_YEAR_CHANCE, gap: CB_GAP }, companion: { chance: 0.3, gap: 2, injured: 0.75 } };
+  let cbCompanion = null; // 지금 만드는 동료 사건의 동료 (토큰·효과에 씀)
+  let cbRunNpc = null; // 지금 실행 중인 동료 사건 선택지의 동료 (apply()가 npcRel·npcStory를 적용)
+  const isInjured = () => !!(p && p.flags && p.flags.injuredUntil >= p.age);
   window.CB = function (list) {
     for (const d of [].concat(list || [])) if (d && d.key && Array.isArray(d.choices)) CALLBACKS.push(d);
   };
@@ -6564,6 +6578,7 @@
         const f = typeof bestFriend === "function" ? bestFriend(false) : null;
         return (f && f.name) || def || "옛 친구";
       }
+      if (name === "동료") return (cbCompanion && cbCompanion.name) || def || "동료";
       if (name.startsWith("npc:")) {
         const t = name.slice(4), n = (p.npcs || []).find((x) => x.title === t);
         return (n && n.name) || def || "그 아이";
@@ -6590,11 +6605,28 @@
     if (w.maxAge !== undefined && p.age > w.maxAge) return false;
     if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) return false;
     if (Array.isArray(w.job) && !w.job.includes(p.job)) return false;
+    if (w.companion !== undefined) {
+      const has = typeof window.pickCompanion === "function" && !!window.pickCompanion();
+      if (has !== !!w.companion) return false;
+    }
+    if (w.injured !== undefined && isInjured() !== !!w.injured) return false;
+    if (w.minRel !== undefined && p.relationship < w.minRel) return false;
+    if (w.maxRel !== undefined && p.relationship > w.maxRel) return false;
     return flagsOk(w);
   }
   function cbScene(d0) {
+    // 동료 사건이면 이 장면의 동료를 정해 두고(토큰·효과에 같은 사람을 쓴다), 글을 다 채운 뒤 풀어 둔다
+    const n = d0.when && d0.when.companion && typeof window.pickCompanion === "function" ? window.pickCompanion() : null;
+    cbCompanion = n;
+    try {
+      return cbSceneInner(d0, n);
+    } finally {
+      cbCompanion = null;
+    }
+  }
+  function cbSceneInner(d0, n) {
     const d = cbVariant(d0), done = "f_cbdone_" + d0.key;
-    const fe = (ef) => (ef ? { ...ef, log: cbFill(ef.log), memory: ef.memory ? cbFill(ef.memory) : undefined } : ef);
+    const fe = (ef) => (ef ? { ...ef, log: cbFill(ef.log), memory: ef.memory ? cbFill(ef.memory) : undefined, npcStory: ef.npcStory ? cbFill(ef.npcStory) : undefined } : ef);
     // 고른 선택지도 f_cbpick_<key>_<번호>로 남겨, 다음 회수 사건이 무엇을 골랐는지 볼 수 있게 한다
     const choices = d.choices.map((c, i) =>
       makeChoice({
@@ -6605,6 +6637,31 @@
         risk: c.risk ? { ...c.risk, effect: fe(c.risk.effect) } : undefined,
       }),
     );
+    // 동료에게 미치는 효과: 선택지를 실행하는 동안 그 동료를 cbRunNpc에 두면, apply()가 effect와 risk의
+    // npcRel·npcStory를 그 동료에게 적용한다(risk가 터졌을 때도 함께)
+    if (n)
+      choices.forEach((ch) => {
+        const base = ch.run;
+        ch.run = () => {
+          cbRunNpc = n;
+          try {
+            base();
+          } finally {
+            cbRunNpc = null;
+          }
+          n.lastSeen = p.age;
+        };
+      });
+    // 동료가 없을 때의 사건: effect.newCompanion이면 그 자리에서 새 동료가 생긴다(window.makeCompanion)
+    choices.forEach((ch, i) => {
+      const c = d.choices[i];
+      if (!(c.effect && c.effect.newCompanion) || typeof window.makeCompanion !== "function") return;
+      const base = ch.run;
+      ch.run = () => {
+        base();
+        window.makeCompanion();
+      };
+    });
     return { key: d0.key, title: cbFill(d.title), body: cbFill(d.body), tags: [d0.key], choices, essential: true, callback: true };
   }
   // 플래그가 생긴 나이 기록: 해가 바뀌기 직전에, 아직 기록이 없는 f_ 플래그를 지금 나이로 적는다
@@ -6626,12 +6683,22 @@
     buildExtraScenes = function () {
       const r = _bes.apply(this, arguments);
       try {
-        if (CALLBACKS.length && p && p.age >= 16 && p.age - (p.cbLastAge ?? -99) >= CB_GAP && Math.random() < CB_YEAR_CHANCE) {
-          const ok = CALLBACKS.filter(cbFits);
-          if (ok.length) {
-            const d = ok[Math.floor(Math.random() * ok.length)];
-            scenes.push(cbScene(d));
-            p.cbLastAge = p.age;
+        if (CALLBACKS.length && p && p.age >= 16) {
+          const last = (p.cbLast = p.cbLast || { cb: p.cbLastAge ?? -99 });
+          const hurt = isInjured();
+          for (const [pool, cfg] of Object.entries(CB_POOLS)) {
+            if (p.age - (last[pool] ?? -99) < cfg.gap) continue;
+            if (Math.random() >= (hurt && cfg.injured ? cfg.injured : cfg.chance)) continue;
+            let ok = CALLBACKS.filter((d) => (d.pool || "cb") === pool && cbFits(d));
+            // 다친 해에는 다쳤을 때의 사건을 먼저 고른다
+            if (hurt) {
+              const inj = ok.filter((d) => d.when && d.when.injured);
+              if (inj.length) ok = inj;
+            }
+            if (!ok.length) continue;
+            scenes.push(cbScene(ok[Math.floor(Math.random() * ok.length)]));
+            last[pool] = p.age;
+            if (pool === "cb") p.cbLastAge = p.age;
           }
         }
       } catch (e) {
