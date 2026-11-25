@@ -2135,8 +2135,9 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const row = rand(profiles[fam] || profiles["평범한 가정"]);
         return { occupation: row[0], rank: row[1], wealth: row[2] };
       }
+      function birthAllowed(x) { return !!x && !["발라티에","스릴러 바크","아마존 릴리","펑크 해저드","에그헤드","임펠다운","임펠 다운"].includes(x.name); }
       function weightedPlace(sea) {
-        let list = places.filter((x) => !sea || x.sea === sea);
+        let list = places.filter((x) => birthAllowed(x) && (!sea || x.sea === sea));
         let sum = list.reduce((a, x) => a + x.w, 0),
           r = Math.random() * sum;
         for (let x of list) {
@@ -2147,7 +2148,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function updatePlaceOptions() {
         let sea = $("sea").value;
-        let list = places.filter((x) => sea === "random" || x.sea === sea);
+        let list = places.filter((x) => birthAllowed(x) && (sea === "random" || x.sea === sea));
         $("birthplace").innerHTML =
           '<option value="random">무작위 — 선택한 바다에서 추첨</option>' +
           list
@@ -2217,6 +2218,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           chosen === "random"
             ? weightedPlace(sea === "random" ? null : sea)
             : places[+chosen];
+        if (!birthAllowed(place)) place = weightedPlace(sea === "random" ? null : sea);
         let fam =
           $("family").value === "random"
             ? Math.random() < 0.03
