@@ -6035,65 +6035,95 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       function schoolEntry() {
         return {
           title: "학교에 갈까?",
-          body: "마을의 학교나 배움터에 다닐 나이가 되었습니다. 집안 형편과 지역 사정에 따라 선택할 수 있는 길이 다릅니다.",
+          body: "마을의 학교나 배움터에 다닐 나이가 되었습니다. 집안 형편과 지역 사정에 따라 선택할 수 있는 길이 다릅니다. 어느 길을 고르든, 또래와 보내는 시간과 배우는 것이 달라집니다.",
+          // 선택지마다 거는 가치가 다르다: 또래와 배움(학교) / 가족(가족 일) / 출세와 위험(명문) / 깊은 공부와 외로움(가정교사) / 손기술과 고됨(도제)
           choices: [
             {
               title: "학교에 다닌다",
-              desc: "읽기와 계산, 역사와 지리를 배운다. 입학금이 든다. 가난한 집에서는 보낼 수 없다.",
+              desc: "친구가 생기지만 입학금이 든다",
               req: { wealth: 1 },
+              _pe: { traits: ["선량"] },
               run: () => {
                 p.school = true;
                 p.job = "학생";
                 p.knowledge += 10;
+                p.relationship += 2;
                 p.money -= 80;
+                p.flags.f_school_village = true;
+                mem("처음 메 본 책가방");
                 log("학교에 입학함");
               },
             },
             {
               title: "가족의 일을 돕는다",
-              desc: "생업을 배우고 집안에 보탬이 된다.",
+              desc: "집안에 보탬이 되지만 또래와 멀어진다",
+              _pe: { traits: ["선량"] },
               run: () => {
                 p.school = false;
                 p.job = "가족 일을 돕는 아이";
                 p.knowledge += 3;
                 p.relationship += 5;
                 p.money += 60;
+                p.happiness -= 2;
+                p.flags.f_school_family_work = true;
                 log("가족의 일을 배우기 시작함");
               },
             },
             {
               title: "명문 학교 입학시험을 본다",
-              desc: "부모의 재산이 넉넉하고 기초 학력이 있어야 한다.",
+              desc: "붙으면 앞길이 열리지만 떨어질 수 있다",
               req: { wealth: 2, knowledge: 15, money: 0 },
+              _pe: { traits: ["야심"] },
               run: () => {
                 p.school = true;
                 p.job = "학생";
-                p.knowledge += 18;
+                if (Math.random() < 0.25) {
+                  // 떨어지면 마을 학교로 간다
+                  p.knowledge += 8;
+                  p.happiness -= 5;
+                  p.money -= 80;
+                  p.flags.f_school_elite_failed = true;
+                  mem("떨어진 명문 학교 시험");
+                  log("명문 학교 시험에 떨어져 마을 학교에 입학함");
+                  return;
+                }
+                p.knowledge += 10;
+                p.relationship -= 3;
+                p.happiness -= 2;
                 p.flags.eliteSchool = true;
+                mem("명문 학교의 높은 정문");
                 log("명문 학교에 입학함");
               },
             },
             {
               title: "가정교사를 두고 공부한다",
-              desc: "집안 형편이 넉넉해야 가능하다. 지식이 크게 오른다.",
+              desc: "깊이 배우지만 또래 친구가 없다",
               req: { wealth: 2, money: 0 },
+              _pe: { traits: ["신중"] },
               run: () => {
                 p.school = true;
                 p.job = "학생";
-                p.knowledge += 15;
+                p.knowledge += 9;
+                p.relationship -= 3;
+                p.flags.f_school_tutor = true;
                 log("가정교사에게 공부를 배움");
               },
             },
             {
               title: "마을의 도제 수업을 받는다",
-              desc: "장인이나 선원에게 기술을 배운다. 체력이 필요하다.",
+              desc: "손기술이 늘지만 몸이 고되다",
               req: { health: 45 },
+              _pe: { traits: ["용기"] },
               run: () => {
                 p.job = "견습생";
                 p.careerStartAge = null;
                 p.rankTitle = "";
-                p.knowledge += 6;
+                p.knowledge += 5;
                 p.combat += 1;
+                sk("제작", 3);
+                p.health -= 3;
+                p.flags.f_school_apprentice = true;
+                mem("작업장의 첫 망치질");
                 log("도제 수업을 시작함");
               },
             },
@@ -17592,13 +17622,39 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           body: retry
             ? "하나의 꿈을 내려놓은 지금, 남은 인생을 무엇을 위해 살지 다시 생각해 봅니다."
             : "바다를 바라보며 생각합니다. 나는 이 넓은 세상에서 무엇을 이루고 싶은 걸까?",
-          choices: ids.map((k) => ({
-            title: DREAMS[k].name,
-            desc: "인생의 목표로 삼는다. 이루면 특별한 결말을 맞는다.",
-            run: () => setDream(k),
-          })),
+          // 꿈마다 당장의 득실과 성향이 다르고, 고른 꿈은 f_goal_* 플래그로 남는다(새로운 꿈에서도 같음).
+          choices: ids.map((k) => {
+            const X = DREAM_GOAL_PICK[k] || DREAM_GOAL_PICK._other;
+            return {
+              title: DREAMS[k].name,
+              desc: X.desc,
+              _pe: { traits: [X.trait] },
+              run: () => {
+                setDream(k);
+                p.flags["f_goal_" + k] = true;
+                X.run();
+              },
+            };
+          }),
         };
       }
+      // 인생의 꿈별 당장의 득실. 돈은 15세 이하면 작은 액수, 어른이면 연봉의 2%.
+      const goalMoney = () => (p.age >= 16 ? Math.max(1000, Math.round(annualSalary() * 0.02)) : 30);
+      const DREAM_GOAL_PICK = {
+        pirate_king: { trait: "용기", desc: "가슴이 뛰지만 허황되다는 소리를 듣는다", run: () => { p.happiness += 3; p.reputation -= 2; } },
+        swordsman: { trait: "용기", desc: "검이 손에 붙지만 몸이 성할 날이 없다", run: () => { p.combat += 2; p.health -= 3; } },
+        doctor: { trait: "신중", desc: "배움이 깊어지지만 밤샘이 잦다", run: () => { p.knowledge += 2; p.happiness -= 2; } },
+        world_tour: { trait: "용기", desc: "설레지만 떠날 생각에 가족과 서먹하다", run: () => { p.happiness += 3; p.relationship -= 2; } },
+        rich: { trait: "야심", desc: "돈이 모이지만 인색하다는 말을 듣는다", run: () => { p.money += goalMoney(); p.relationship -= 2; } },
+        family: { trait: "선량", desc: "가족이 든든해하지만 내 욕심은 접는다", run: () => { p.relationship += 4; p.happiness -= 1; } },
+        revenge: { trait: "용기", desc: "독기를 품지만 마음이 편할 날이 없다", run: () => { p.combat += 2; p.happiness -= 4; } },
+        overthrow: { trait: "용기", desc: "세상을 보는 눈이 바뀌지만 위험하다", run: () => { p.knowledge += 2; p.reputation -= 2; } },
+        navy_hero: { trait: "선량", desc: "사람들이 믿어 주지만 규율이 무겁다", run: () => { gainStanding(2); p.happiness -= 2; } },
+        hometown: { trait: "선량", desc: "고향이 반기지만 주머니가 가벼워진다", run: () => { p.relationship += 3; p.money = Math.max(0, p.money - goalMoney()); } },
+        happy: { trait: "신중", desc: "마음이 편하지만 야망이 없다는 말을 듣는다", run: () => { p.happiness += 4; p.reputation -= 2; } },
+        // 나중에 덧붙은 꿈(모든 명검 모으기 등): 꿈을 좇는 데 돈이 든다
+        _other: { trait: "야심", desc: "설레지만 꿈을 좇는 데 돈이 든다", run: () => { p.happiness += 3; p.money = Math.max(0, p.money - goalMoney()); } },
+      };
       function dreamScene() {
         const d = p.dream;
         if (!d) {
@@ -20965,15 +21021,44 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                     });
                     f.best = true;
                     f.title = "단짝";
+                    p.happiness += 2;
                     mem(`첫 친구 ${nm}`);
                     log(`${nm}${wa(nm)} 첫 친구가 됨`);
+                  },
+                  _pe: { traits: ["선량"] },
+                },
+                {
+                  title: "내 성은 내가 쌓겠다고 한다",
+                  desc: "멋진 성이 남지만 아이는 돌아선다",
+                  _pe: { traits: ["야심"] },
+                  run: () => {
+                    // 친구 대신 혼자 해낸 기억을 남긴다. 그 아이는 서먹한 동네 아이로 남는다.
+                    const f = makeNpc({
+                      role: "친구",
+                      name: nm,
+                      gender: g,
+                      personality: pers,
+                      age: realAge() + ri(0, 1),
+                      rel: ri(30, 42),
+                    });
+                    f.title = "모래밭의 아이";
+                    sk("제작", 2);
+                    p.happiness += 2;
+                    p.relationship -= 2;
+                    p.flags.f_kid_sandcastle_alone = true;
+                    mem("혼자 끝까지 쌓은 모래성");
+                    log(`${nm}${eul(nm)} 돌려보내고 혼자 모래성을 완성함`);
                   },
                 },
                 {
                   title: "부끄러워 도망친다",
-                  desc: "아직 낯설다.",
+                  desc: "마음은 편하지만 후회가 남는다",
+                  _pe: { traits: ["신중"] },
                   run: () => {
-                    log("다가온 아이를 피해 도망침");
+                    p.happiness -= 2;
+                    p.flags.f_kid_shy_first_friend = true;
+                    mem(`말을 못 건넨 아이 ${nm}`);
+                    log(`다가온 아이 ${nm}${eul(nm)} 피해 도망침`);
                   },
                 },
               ],
@@ -21230,24 +21315,42 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           K(
             "m_fishshop",
             "생선 가게 아저씨의 부탁",
-            "생선 가게 아저씨가 일손이 모자란다며 도와 달라고 합니다.",
+            "아침 장이 서기 전, 생선 가게 아저씨가 일손이 모자란다며 도와 달라고 합니다. 오늘은 친구들과 부두에서 놀기로 한 날이기도 합니다. 비린내 나는 앞치마가 당신 쪽으로 내밀어집니다.",
             [
               {
                 title: "생선 손질을 배운다",
-                desc: "요리 기술이 는다.",
+                desc: "칼질이 늘지만 손을 벨 수 있다",
+                _pe: { traits: ["용기"] },
                 run: () => {
                   sk("요리", 5);
                   p.money += ri(11, 33);
-                  log("생선 손질을 배움");
+                  mem("비린내 나던 새벽 도마");
+                  log("생선 가게에서 생선 손질을 배움");
+                  if (Math.random() < 0.25) hurt(2, 4, "생선 칼에 손가락을 베임");
                 },
               },
               {
-                title: "손님을 끌어모은다",
-                desc: "장사 기술이 는다.",
+                title: "목청껏 손님을 끌어모은다",
+                desc: "품삯이 두둑하지만 약속을 깬다",
+                _pe: { traits: ["야심"] },
                 run: () => {
                   sk("장사", 5);
-                  p.money += ri(22, 44);
-                  log("생선 가게에서 손님을 끌어모음");
+                  p.money += ri(33, 66);
+                  p.relationship -= 2;
+                  p.flags.f_kid_fishshop_crier = true;
+                  log("놀기로 한 약속을 깨고 생선 가게에서 손님을 끌어모음");
+                },
+              },
+              {
+                title: "미안하다며 친구들에게 간다",
+                desc: "신나게 놀지만 아저씨가 섭섭해한다",
+                _pe: { traits: ["선량"] },
+                run: () => {
+                  p.happiness += 4;
+                  p.relationship += 2;
+                  lrep(-2);
+                  mem("부두에서 놀던 오후");
+                  log("생선 가게 부탁을 거절하고 친구들과 부두에서 놂");
                 },
               },
             ],
@@ -21355,22 +21458,46 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           K(
             "m_bird",
             "다친 갈매기",
-            "날개를 다친 갈매기가 바닷가에 쓰러져 있습니다.",
+            "날개를 다친 갈매기가 바닷가에 쓰러져 있습니다. 가까이 가자 갈매기는 겁에 질려 부리를 휘두릅니다. 해는 지고 있고, 집에서는 저녁 먹으라고 부를 시간입니다.",
             [
               {
-                title: "부목을 대고 돌본다",
-                desc: "의술이 는다.",
+                title: "집에 데려가 직접 돌본다",
+                desc: "손수 살리지만 붕대값이 들고 실패할 수 있다",
+                _pe: { traits: ["선량"] },
                 run: () => {
                   sk("의술", 6);
-                  if (Math.random() < 0.6) mem("다시 날아오른 갈매기");
-                  log("다친 갈매기를 돌봐 날려 보냄");
+                  p.money = Math.max(0, p.money - 15);
+                  if (Math.random() < 0.3) {
+                    p.happiness -= 4;
+                    mem("끝내 날지 못한 갈매기");
+                    log("밤새 돌봤지만 갈매기가 끝내 날지 못함");
+                  } else {
+                    p.flags.f_kid_saved_gull = true;
+                    mem("다시 날아오른 갈매기");
+                    log("다친 갈매기를 돌봐 날려 보냄");
+                  }
                 },
               },
               {
-                title: "그냥 둔다",
-                desc: "자연의 일이다.",
+                title: "마을 의원에게 안고 간다",
+                desc: "확실하지만 내 손으로 한 일은 없다",
+                _pe: { traits: ["신중"] },
                 run: () => {
-                  log("다친 갈매기를 지나침");
+                  sk("의술", 2);
+                  lrep(2);
+                  p.knowledge += 1;
+                  p.flags.f_kid_gull_to_doctor = true;
+                  log("다친 갈매기를 마을 의원에게 데려감");
+                },
+              },
+              {
+                title: "자연의 일이라며 지켜본다",
+                desc: "바다를 배우지만 마음이 무겁다",
+                run: () => {
+                  p.knowledge += 2;
+                  p.happiness -= 3;
+                  mem("바위 위에 남겨 둔 갈매기");
+                  log("다친 갈매기를 자연에 맡기고 지켜봄");
                 },
               },
             ],
@@ -21572,8 +21699,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             [
               {
                 title: "몰래 숨어들어 구경한다",
-                desc: "들키면 큰일 난다.",
+                desc: "바다의 꿈이 커지지만 들키면 큰일이다",
+                _pe: { traits: ["용기"] },
                 run: () => {
+                  p.flags.f_kid_stowaway = true;
                   if (Math.random() < 0.6) {
                     p.flags.seaDream = true;
                     sk("항해술", 3);
@@ -21587,24 +21716,31 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                       log(
                         `해적들에게 들켰지만 선장이 웃으며 놓아줌 (${p.flags.pirateContact})`,
                       );
-                    } else hurt(5, 12, "해적에게 들켜 바다에 던져짐");
+                    } else hurt(4, 8, "해적에게 들켜 바다에 던져짐");
                   }
                 },
               },
               {
                 title: "해군에 알린다",
-                desc: "동네의 칭찬을 받는다.",
+                desc: "어른들은 칭찬하지만 친구들은 등을 돌린다",
+                _pe: { traits: ["신중"] },
                 run: () => {
                   lrep(5);
+                  p.relationship -= 3;
                   p.flags.navyPraise = true;
+                  p.flags.f_kid_reported_ship = true;
                   log("해적선의 정박을 해군에 알림");
                 },
               },
               {
-                title: "멀리서 지켜만 본다",
-                desc: "아무 일도 없다.",
+                title: "망원경으로 멀리서 지켜본다",
+                desc: "배를 배우지만 두고두고 아쉽다",
                 run: () => {
-                  log("해적선을 멀리서 지켜봄");
+                  sk("항해술", 1);
+                  p.knowledge += 2;
+                  p.happiness -= 2;
+                  mem("망원경 속 해적 깃발");
+                  log("해적선을 망원경으로 멀리서 지켜봄");
                 },
               },
             ],
@@ -22037,92 +22173,140 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           key: "kid_dream",
           title: "나의 장래희망",
           body: "학교에서 '커서 무엇이 되고 싶은가'를 써 오라는 숙제가 나왔습니다. 지금까지의 경험이 머릿속을 스칩니다. 연필을 쥔 손에 힘이 들어갑니다.",
-          choices: [...ids].slice(0, 5).map((id) => ({
-            title: KID_DREAMS[id].name,
-            desc: KID_DREAMS[id].skill
-              ? `${KID_DREAMS[id].skill} 기술이 꿈을 뒷받침한다. 어른이 되면 이 길이 열린다.`
-              : "어른이 되면 이 길이 열린다.",
-            run: () => {
-              k.dream = id;
-              mem(`장래희망: ${KID_DREAMS[id].name}`);
-              if (KID_DREAMS[id].skill) sk(KID_DREAMS[id].skill, 3);
-              log(`장래희망을 '${KID_DREAMS[id].name}'(으)로 정함`);
-            },
-          })),
+          // 꿈마다 당장 얻는 것과 치르는 대가가 다르다. 고른 꿈은 f_dream_* 플래그로 남아
+          // 나중에 '꿈이 흔들리다'로 장래희망이 바뀌어도 어릴 적 그 꿈을 꾸었다는 기록은 지워지지 않는다.
+          choices: [...ids].slice(0, 5).map((id) => {
+            const D = KID_DREAMS[id],
+              X = KID_DREAM_PICK[id];
+            return {
+              title: D.name,
+              desc: X.desc,
+              _pe: { traits: [X.trait] },
+              run: () => {
+                k.dream = id;
+                p.flags[X.flag] = true;
+                mem(`장래희망: ${D.name}`);
+                if (D.skill) sk(D.skill, 3);
+                X.run();
+                log(`장래희망을 '${D.name}'${ro(D.name)} 정함`);
+              },
+            };
+          }),
         };
       }
+      // 장래희망별 당장의 득실 (어린 시절 '소' 등급)과 나중에 그 꿈의 사건을 열 플래그
+      const KID_DREAM_PICK = {
+        해군: { flag: "f_dream_navy", trait: "선량", desc: "어른들은 반기지만 규율이 따른다", run: () => { lrep(3); p.happiness -= 2; } },
+        해적: { flag: "f_dream_pirate", trait: "용기", desc: "가슴이 뛰지만 어른들은 혀를 찬다", run: () => { p.happiness += 4; lrep(-3); } },
+        검사: { flag: "f_dream_swordsman", trait: "용기", desc: "검이 늘지만 멍이 가실 날이 없다", run: () => { p.combat += 1; p.health -= 2; } },
+        항해사: { flag: "f_dream_navigator", trait: "신중", desc: "바다를 읽지만 친구들과 멀어진다", run: () => { p.knowledge += 1; p.relationship -= 2; } },
+        요리사: { flag: "f_dream_cook", trait: "선량", desc: "식구들이 기뻐하지만 재료값이 든다", run: () => { p.relationship += 2; p.money = Math.max(0, p.money - 20); } },
+        장인: { flag: "f_dream_shipwright", trait: "신중", desc: "손재주가 늘지만 연장값이 든다", run: () => { p.happiness += 1; p.money = Math.max(0, p.money - 20); } },
+        의사: { flag: "f_dream_doctor", trait: "선량", desc: "의술을 익히지만 공부가 고되다", run: () => { lrep(2); p.happiness -= 2; } },
+        학자: { flag: "f_dream_scholar", trait: "신중", desc: "책은 늘지만 친구들과 멀어진다", run: () => { p.knowledge += 3; p.relationship -= 2; } },
+        상인: { flag: "f_dream_merchant", trait: "야심", desc: "돈 감각이 늘지만 깍쟁이 소리를 듣는다", run: () => { p.money += 30; lrep(-2); } },
+        모험가: { flag: "f_dream_adventurer", trait: "용기", desc: "신나지만 자주 다친다", run: () => { p.happiness += 3; p.health -= 3; } },
+      };
 
       // ── 13~15세: 수련, 직업 탐색, 세력과의 접촉 ──
       function kidTrainScene() {
+        // 13~15세 해마다 나오는 수련(설계된 반복). 기술 상승폭은 그대로 두고,
+        // 수련마다 다른 대가(몸·돈·마음·관계)와 성향, 나중에 쓸 수련 플래그(f_train_*)를 남긴다.
         const opts = [
           {
             k: "검술",
             title: "검술 도장에 다닌다",
-            desc: "수강료가 든다. 검술이 크게 는다.",
+            desc: "수강료가 들고 몸이 성할 날이 없다",
             req: { money: 80 },
+            trait: "용기",
+            flag: "f_train_sword",
             run: () => {
               p.money -= 80;
               sk("검술", 11);
               p.combat += 2;
+              p.health -= 2;
             },
           },
           {
             k: "무투술",
             title: "무술 도장에서 맨손 무술을 배운다",
-            desc: "수강료가 든다. 무투술이 크게 는다.",
+            desc: "수강료가 들고 온몸이 멍투성이다",
             req: { money: 80 },
+            trait: "용기",
+            flag: "f_train_martial",
             run: () => {
               p.money -= 80;
               sk("무투술", 11);
               p.combat += 2;
+              p.health -= 2;
             },
           },
           {
             k: "항해술",
             title: "어선과 상선에서 견습을 한다",
-            desc: "항해술이 크게 는다.",
+            desc: "품삯을 받지만 바다는 위험하다",
             req: { health: 40 },
+            trait: "용기",
+            flag: "f_train_sea",
             run: () => {
               sk("항해술", 11);
               p.money += ri(22, 65);
+              if (Math.random() < 0.2) {
+                p.health -= ri(3, 6);
+                log("견습 중 거친 파도에 갑판에서 미끄러짐");
+              }
             },
           },
           {
             k: "요리",
             title: "항구 식당 주방에서 일한다",
-            desc: "요리가 크게 는다.",
+            desc: "손님과 친해지지만 주방은 고되다",
+            trait: "선량",
+            flag: "f_train_cook",
             run: () => {
               sk("요리", 11);
               p.money += ri(22, 54);
+              p.relationship += 2;
+              p.happiness -= 2;
             },
           },
           {
             k: "제작",
             title: "공방이나 조선소에서 일을 배운다",
-            desc: "제작이 크게 는다.",
+            desc: "손에 익지만 놀 시간이 없다",
             req: { health: 35 },
+            trait: "신중",
+            flag: "f_train_craft",
             run: () => {
               sk("제작", 11);
               p.money += ri(11, 44);
+              p.happiness -= 3;
             },
           },
           {
             k: "의술",
             title: "마을 의원의 조수가 된다",
-            desc: "지식이 필요하다. 의술이 크게 는다.",
+            desc: "이웃을 돕지만 아픈 사람을 마주한다",
             req: { knowledge: 20 },
+            trait: "선량",
+            flag: "f_train_medic",
             run: () => {
               sk("의술", 11);
               p.knowledge += 1;
+              lrep(2);
+              p.happiness -= 2;
             },
           },
           {
             k: "장사",
             title: "상점에서 장사를 배운다",
-            desc: "장사가 크게 는다.",
+            desc: "돈이 남지만 흥정에 친구를 잃는다",
+            trait: "야심",
+            flag: "f_train_trade",
             run: () => {
               sk("장사", 11);
               p.money += ri(33, 87);
+              p.relationship -= 2;
             },
           },
         ];
@@ -22140,9 +22324,11 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 ? " · 꿈과 이어진 길"
                 : ""),
             req: o.req,
+            _pe: { traits: [o.trait] },
             run: () => {
               o.run();
               K_().trainFocus = o.k;
+              p.flags[o.flag] = true;
               if (K_().dream && KID_DREAMS[K_().dream].skill === o.k)
                 sk(o.k, 2);
               log(`${o.k} 수련에 한 해를 쏟음`);
@@ -22191,12 +22377,15 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               '항구 술집 뒷골목에서 애꾸눈 해적이 말을 걸었습니다. "꼬마, 배 위에서 일해 볼 생각 없나? 우리 배는 늘 일손이 모자라거든."',
               [
                 {
-                  title: "이름을 기억해 둔다",
-                  desc: "어른이 되면 그 해적단에 들어갈 수 있다.",
+                  title: "해적단 이름을 기억해 둔다",
+                  desc: "바다로 갈 길이 생기지만 소문이 돈다",
+                  _pe: { traits: ["용기"] },
                   run: () => {
                     p.flags.pirateContact =
                       p.flags.pirateContact || rand(NPC_CREWS);
+                    p.flags.f_kid_pirate_scout_kept = true;
                     lrep(-3);
+                    p.happiness += 2;
                     mem(`${p.flags.pirateContact}의 애꾸눈 해적`);
                     log(
                       `${p.flags.pirateContact}의 해적에게 스카우트 제안을 받음`,
@@ -22205,18 +22394,27 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 },
                 {
                   title: "해군에 신고한다",
-                  desc: "동네의 칭찬을 받는다.",
+                  desc: "칭찬을 받지만 보복당할 수 있다",
+                  _pe: { traits: ["신중"] },
                   run: () => {
                     lrep(5);
                     p.flags.navyPraise = true;
+                    p.flags.f_kid_reported_pirate = true;
                     log("해적의 스카우트를 해군에 신고함");
+                    if (Math.random() < 0.25)
+                      hurt(3, 6, "신고한 해적 일당에게 골목에서 얻어맞음");
                   },
                 },
                 {
-                  title: "무시하고 지나간다",
-                  desc: "엮이지 않는다.",
+                  title: "해적선 짐만 날라 준다",
+                  desc: "돈은 생기지만 동네 눈총을 받는다",
+                  _pe: { traits: ["야심"] },
                   run: () => {
-                    log("해적의 제안을 무시함");
+                    p.money += ri(60, 120);
+                    sk("항해술", 2);
+                    lrep(-2);
+                    p.flags.f_kid_pirate_odd_job = true;
+                    log("해적선의 짐을 날라 주고 품삯을 받음");
                   },
                 },
               ],
@@ -30568,6 +30766,17 @@ new MutationObserver(recs=>{
     원예: { verb: "작은 텃밭을 가꾸는", skill: null, job: "농부" },
     독서: { verb: "책을 읽는", skill: null, job: "학자" },
   };
+  // '마음이 가는 일'에서 취미를 고를 때의 득실. 돈은 아이면 작은 액수, 어른이면 연봉의 1%.
+  const hobbyMoney = () => (p.age >= 16 ? Math.max(500, Math.round(annualSalary() * 0.01)) : 20);
+  const HOBBY_PICK = {
+    낚시: { flag: "f_hobby_fishing", trait: "신중", desc: "몸이 편해지지만 혼자인 시간이 는다", run: () => { p.happiness += 2; p.health += 2; p.relationship -= 1; } },
+    그림: { flag: "f_hobby_painting", trait: "신중", desc: "마음이 맑아지지만 물감값이 든다", run: () => { p.happiness += 4; p.money = Math.max(0, p.money - hobbyMoney()); } },
+    음악: { flag: "f_hobby_music", trait: "선량", desc: "사람들이 모이지만 악기값이 든다", run: () => { p.happiness += 2; p.relationship += 3; p.money = Math.max(0, p.money - hobbyMoney()); } },
+    요리: { flag: "f_hobby_cooking", trait: "선량", desc: "솜씨가 늘지만 재료값이 든다", run: () => { p.happiness += 2; sk("요리", 3); p.money = Math.max(0, p.money - hobbyMoney()); } },
+    목공: { flag: "f_hobby_woodwork", trait: "용기", desc: "손재주가 늘지만 손을 다치기 쉽다", run: () => { p.happiness += 2; sk("제작", 3); if (Math.random() < 0.25) { p.health -= ri(2, 4); log("나무를 깎다 손을 베임"); } } },
+    원예: { flag: "f_hobby_gardening", trait: "선량", desc: "이웃과 나누지만 허리가 고되다", run: () => { p.happiness += 2; p.relationship += 2; p.health -= 1; } },
+    독서: { flag: "f_hobby_reading", trait: "신중", desc: "아는 게 늘지만 밤잠을 설친다", run: () => { p.happiness += 1; p.knowledge += 3; p.health -= 2; } },
+  };
 
   function S() {
     if (!p) return null;
@@ -32447,11 +32656,17 @@ new MutationObserver(recs=>{
             .slice(0, 4)
             .map(([k, v]) => ({
               title: k,
-              desc: `${v.verb} 시간이 즐겁다.`,
+              desc: (HOBBY_PICK[k] || {}).desc || `${v.verb} 시간이 즐겁다`,
+              _pe: { traits: [(HOBBY_PICK[k] || {}).trait || "신중"] },
               run: () => {
                 s.hobby = k;
                 s.hobbyLv = Math.max(1, s.hobbyLv);
-                p.happiness += 3;
+                // 취미마다 당장의 득실이 다르다. 고른 취미는 f_hobby_* 플래그로도 남는다.
+                const X = HOBBY_PICK[k];
+                if (X) {
+                  p.flags[X.flag] = true;
+                  X.run();
+                } else p.happiness += 3;
                 chron(`취미로 ${k}${eul(k)} 시작함`, "일상", 1);
                 log(`취미로 ${k}${eul(k)} 시작함`);
                 followUp(auto("hobby_first", `첫 ${k}`, `${HB_FIRST[k] || "처음 해 본 일이 생각보다 즐거웠습니다"}.`, () => { p.happiness += 2; }, `처음으로 ${k}${eul(k)} 해 봄`));
