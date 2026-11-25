@@ -2433,6 +2433,11 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function normalize() {
         if (!p) return;
+        if (p.flags?.voidResearch && !["학자","과학자"].includes(p.job) && p.status !== "혁명군") {
+          p.flags.voidResearch = false;
+          if ((p.flags.voidProgress || 0) < 7) p.flags.voidProgress = 0;
+          log("직업 변경으로 공백의 100년 연구를 중단함");
+        }
         slowStats();
         ["health", "happiness", "knowledge", "relationship", "combat"].forEach(
           (k) => {
@@ -34752,7 +34757,7 @@ new MutationObserver(recs=>{
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261125b" defer></script>
-  <script src="companion-battle.js?v=20261125a" defer></script>
+  <script src="companion-battle.js?v=20261125b" defer></script>
   <script src="canon-intervention.js?v=20261125a" defer></script>
   <script src="impel-down.js?v=20261125a" defer></script>
   <script>
