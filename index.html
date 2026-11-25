@@ -30738,6 +30738,11 @@ document.addEventListener("keydown",e=>{
 #mobileStats .ms-stat.ms-low b{color:var(--red)}
 #mobileStats .ms-stat .bar{grid-column:1/-1;height:5px;margin-top:4px}
 #mobileStats .ms-more{display:block;width:100%;min-height:36px;margin-top:10px;padding:6px 10px}
+#mobileStats .ms-head{margin-top:12px;font-size:12px;font-weight:800;color:var(--gold)}
+#mobileStats .ms-head+.ms-grid{margin-top:6px}
+#mobileStats .ms-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+#mobileStats .ms-tag{font-size:12px;line-height:1.3;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+#mobileStats .ms-tag-more{color:var(--muted)}
 </style>`);
  const box=document.createElement("section");
  box.id="mobileStats";box.className="panel";box.setAttribute("aria-label","내 상태 요약");
@@ -30756,7 +30761,22 @@ document.addEventListener("keydown",e=>{
    `<div class="ms-sub">📍 ${esc(place)}</div>`+
    `<div class="ms-sub">💰 ${Math.floor(p.money).toLocaleString()} 베리${outlaw?` · 현상금 ${Math.floor(p.bounty||0).toLocaleString()} 베리`:""}</div>`+
    `<div class="ms-grid">${cell("건강",p.health,30)}${cell("행복",p.happiness,30)}${cell("지식",p.knowledge)}${cell("관계",p.relationship)}${cell("전투력",p.combat)}${cell("명성",p.reputation+50)}</div>`+
+   hakiHTML()+abilityHTML()+
    `<button type="button" class="btn secondary ms-more">전체 상태 보기 ▾</button>`;
+ }
+ // 패기 숙련도: 오른쪽 칸의 '패기 숙련도'와 같은 값(기록이 없으면 10)
+ function hakiHTML(){
+  const have=["견문색","무장색","패왕색"].filter(k=>Array.isArray(p.haki)&&p.haki.includes(k));
+  if(!have.length)return "";
+  const L=p.hakiLv||{};
+  return `<div class="ms-head">패기</div><div class="ms-grid">${have.map(k=>cell(k,Math.max(0,Math.min(100,Number(L[k])||10)))).join("")}</div>`;
+ }
+ // 사용 중인 능력: 많으면 8개까지 보이고 나머지는 개수만
+ function abilityHTML(){
+  const a=Array.isArray(p.abilities)?p.abilities:[];
+  if(!a.length)return "";
+  const MAX=8,more=a.length-MAX;
+  return `<div class="ms-head">사용 중인 능력</div><div class="ms-tags">${a.slice(0,MAX).map(x=>`<span class="ms-tag">${esc(x)}</span>`).join("")}${more>0?`<span class="ms-tag ms-tag-more">외 ${more}개</span>`:""}</div>`;
  }
  box.addEventListener("click",e=>{
   if(!e.target.closest(".ms-more"))return;
