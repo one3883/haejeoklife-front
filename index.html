@@ -30719,6 +30719,53 @@ document.addEventListener("keydown",e=>{
   },250);
  }).observe(t,{childList:true,characterData:true,subtree:true});
 })();
+// 휴대폰(가로 760px 이하)에서 게임 중에는 맨 위의 게임 소개 대신 간단한 스탯 창을 보여 준다.
+// 휴대폰에서는 두 칸이 위아래로 쌓여 오른쪽 칸(전체 스탯)이 사건 화면 맨 아래로 밀리기 때문이다.
+// 전체 스탯 창은 그대로 아래에 두고, 요약 창의 버튼으로 그곳까지 이동할 수 있다. PC 화면은 바뀌지 않는다.
+(()=>{
+ const game=document.getElementById("game"),hero=document.querySelector(".hero");if(!game||!hero)return;
+ document.head.insertAdjacentHTML("beforeend",`<style>
+#mobileStats{display:none}
+@media (max-width:760px){
+ body.in-game .hero{display:none}
+ body.in-game #mobileStats{display:block;padding:12px 14px;margin-bottom:12px}
+}
+#mobileStats .ms-top{font-weight:800;font-size:15px;color:var(--ink);line-height:1.35}
+#mobileStats .ms-sub{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4}
+#mobileStats .ms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;margin-top:10px}
+#mobileStats .ms-stat{display:grid;grid-template-columns:1fr auto;align-items:baseline;font-size:12px;color:var(--muted)}
+#mobileStats .ms-stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+#mobileStats .ms-stat.ms-low b{color:var(--red)}
+#mobileStats .ms-stat .bar{grid-column:1/-1;height:5px;margin-top:4px}
+#mobileStats .ms-more{display:block;width:100%;min-height:36px;margin-top:10px;padding:6px 10px}
+</style>`);
+ const box=document.createElement("section");
+ box.id="mobileStats";box.className="panel";box.setAttribute("aria-label","내 상태 요약");
+ hero.parentNode.insertBefore(box,hero.nextSibling);
+ // 게임 화면이 열려 있는 동안만 body에 in-game을 붙인다 (출생 설정 화면에서는 게임 소개가 그대로 보인다)
+ const sync=()=>document.body.classList.toggle("in-game",!game.classList.contains("hidden"));
+ new MutationObserver(sync).observe(game,{attributes:true,attributeFilter:["class"]});sync();
+ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ const cell=(n,v,low)=>{const x=Math.round(v);return `<div class="ms-stat${low&&x<=low?" ms-low":""}"><span>${n}</span><b>${x}</b><div class="bar"><div class="fill" style="width:${Math.max(0,Math.min(100,x))}%"></div></div></div>`};
+ function draw(){
+  if(typeof p==="undefined"||!p||!p.place)return;
+  const place=p.ship?`${p.ship} · ${p.place.name}`:p.place.name;
+  const outlaw=p.status==="해적"||p.status==="혁명군"||(p.flags&&p.flags.pirateKingAchieved);
+  box.innerHTML=
+   `<div class="ms-top">${p.name?esc(p.name)+" · ":""}${realAge()}세 · ${esc(jobTitle())}</div>`+
+   `<div class="ms-sub">📍 ${esc(place)}</div>`+
+   `<div class="ms-sub">💰 ${Math.floor(p.money).toLocaleString()} 베리${outlaw?` · 현상금 ${Math.floor(p.bounty||0).toLocaleString()} 베리`:""}</div>`+
+   `<div class="ms-grid">${cell("건강",p.health,30)}${cell("행복",p.happiness,30)}${cell("지식",p.knowledge)}${cell("관계",p.relationship)}${cell("전투력",p.combat)}${cell("명성",p.reputation+50)}</div>`+
+   `<button type="button" class="btn secondary ms-more">전체 상태 보기 ▾</button>`;
+ }
+ box.addEventListener("click",e=>{
+  if(!e.target.closest(".ms-more"))return;
+  const a=document.querySelector("#game aside");
+  const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(a)a.scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"});
+ });
+ const _rMs=render;render=function(){const r=_rMs.apply(this,arguments);try{draw()}catch(e){}return r};
+})();
 // 장면 제목이 바뀔 때마다 제목·본문·선택지를 짧게 페이드인한다 (게임 진행 코드는 건드리지 않고 화면 변화만 감지)
 (()=>{
  const t=document.getElementById("eventTitle");if(!t)return;
