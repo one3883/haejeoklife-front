@@ -6267,6 +6267,38 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           : isPirate
             ? `해적단에 합류한 지 ${p.age - p.careerStartAge}년이 지났습니다. 전투와 항해에서 쌓은 공적을 두고 선원들 사이에서 당신의 지위가 논의되고 있습니다. 현재 직책은 ${p.rankTitle || ladder[0]}이며, 다음 직책은 ${next}입니다.`
             : `${p.job} 일을 시작한 지 ${p.age - p.careerStartAge}년이 지났습니다. 그동안 쌓아 온 경력과 실적을 인정받아 더 큰 책임을 맡을 기회가 생겼습니다. 현재 지위는 ${p.rankTitle || ladder[0]}이며, 다음 단계는 ${next}입니다.`;
+        // 승진 장면은 신분이 달라도 한 틀이다: 정식 도전 / 신분별 편법 / 지금 자리를 지킨다.
+        // 승진에 성공했을 때의 결과(직급 +1, 돈·명성·행복)는 정식 도전과 편법이 같다.
+        p.flags = p.flags || {};
+        const shortcut = promotionShortcut(isNavy, isPirate);
+        body += "\n\n" + shortcut.temptation;
+        // flat이 있으면 실력과 상관없이 그 확률로 승진한다(편법). 없으면 기존 심사 점수로 판정한다.
+        const tryPromotion = (flat) => {
+          const score = isNavy
+            ? p.combat * 0.65 + p.knowledge * 0.15 + p.reputation * 0.15 + p.relationship * 0.05 + Math.random() * 35
+            : p.knowledge * 0.35 + p.combat * 0.35 + p.reputation * 0.2 + p.relationship * 0.1 + Math.random() * 35;
+          const threshold =
+            next.includes("대장") ||
+            next.includes("선장") ||
+            next.includes("대표")
+              ? 72
+              : 48;
+          p.lastPromotionOfferAge = p.age;
+          if (flat != null ? Math.random() >= flat : score < threshold) return false;
+          p.rankLevel = Math.min(p.rankLevel + 1, ladder.length - 1);
+          p.rankTitle = ladder[p.rankLevel];
+          if (p.careerTrack === "해군 후보생" && p.rankTitle === "정식 해군")
+            p.job = "해군";
+          p.money += Math.max(100, 150 * p.rankLevel);
+          p.reputation += 3 + Math.floor(p.rankLevel / 2);
+          p.happiness += 3;
+          if (isPirate && p.rankTitle === "선장") {
+            p.crew = p.crew || "독립 해적단";
+            p.crew = p.crew + " (지휘)";
+          }
+          log(`${p.job} 경력에서 ${p.rankTitle}(으)로 승진함`);
+          return true;
+        };
         return {
           promotion: true,
           title,
@@ -6278,61 +6310,149 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 : isPirate
                   ? "간부 자리를 놓고 공적을 세운다"
                   : "승진 또는 독립을 추진한다",
-              desc: "성공하면 다음 직급으로 올라가고 수입과 명성이 오른다. 실패하면 부담이 남는다.",
+              desc: "실력대로 겨룬다. 떨어지면 상처가 남는다",
+              promoTry: true,
+              _pe: { traits: ["용기"] },
               run: () => {
-                const score = isNavy
-                  ? p.combat * 0.65 + p.knowledge * 0.15 + p.reputation * 0.15 + p.relationship * 0.05 + Math.random() * 35
-                  : p.knowledge * 0.35 + p.combat * 0.35 + p.reputation * 0.2 + p.relationship * 0.1 + Math.random() * 35;
-                const threshold =
-                  next.includes("대장") ||
-                  next.includes("선장") ||
-                  next.includes("대표")
-                    ? 72
-                    : 48;
-                if (score >= threshold) {
-                  p.rankLevel = Math.min(p.rankLevel + 1, ladder.length - 1);
-                  p.rankTitle = ladder[p.rankLevel];
-                  if (
-                    p.careerTrack === "해군 후보생" &&
-                    p.rankTitle === "정식 해군"
-                  )
-                    p.job = "해군";
-                  p.money += Math.max(100, 150 * p.rankLevel);
-                  p.reputation += 3 + Math.floor(p.rankLevel / 2);
-                  p.happiness += 3;
-                  if (isPirate && p.rankTitle === "선장") {
-                    p.crew = p.crew || "독립 해적단";
-                    p.crew = p.crew + " (지휘)";
-                  }
-                  log(`${p.job} 경력에서 ${p.rankTitle}(으)로 승진함`);
+                if (tryPromotion()) {
+                  p.flags.f_promo_earned = true;
                 } else {
-                  p.happiness -= 3;
+                  p.happiness -= 4;
                   p.relationship -= 1;
-                  log("승진 심사에 실패해 다음 기회를 준비하기로 함");
+                  log("실력으로 겨뤘지만 이번 심사에서 떨어짐");
                 }
-                p.lastPromotionOfferAge = p.age;
               },
             },
             {
-              title: "실무 경험을 더 쌓는다",
-              desc: "당장 승진에 도전하지 않고 다음 기회를 준비한다.",
+              title: shortcut.title,
+              desc: shortcut.desc,
+              promoTry: true,
+              _pe: { traits: ["야심"] },
               run: () => {
-                p.knowledge += 4;
-                p.combat += 1;
-                p.lastPromotionOfferAge = p.age;
-                log("승진을 서두르지 않고 실무 경험을 쌓음");
+                p.flags.f_promo_shortcut = true;
+                p.flags[shortcut.flag] = true;
+                shortcut.cost();
+                // 편법은 실력과 상관없이 반반이다. 대신 뒷말이 돌아 다음 승진 기회가 3년 늦어진다.
+                if (tryPromotion(0.5)) log(shortcut.done);
+                else {
+                  p.happiness -= 3;
+                  log(shortcut.fail);
+                }
+                p.lastPromotionOfferAge = p.age + 3;
+                if (Math.random() < 0.3) shortcut.caught();
               },
             },
             {
-              title: "현재 지위를 유지한다",
-              desc: "책임을 늘리지 않고 지금의 생활에 집중한다.",
+              title: "지금 자리를 지킨다",
+              desc: "실력과 여유를 얻지만 기회는 늦다",
+              _pe: { traits: ["신중"] },
               run: () => {
                 p.happiness += 3;
+                p.knowledge += 3;
+                p.reputation -= 2;
+                p.flags.f_promo_stayed = true;
                 p.lastPromotionOfferAge = p.age;
-                log("현재 직급과 지위를 유지하기로 함");
+                log("자리를 지키며 다음 심사를 위해 실력을 다짐");
               },
             },
           ],
+        };
+      }
+      // 승진 장면의 신분별 '편법' 선택지. 실력과 상관없이 반반으로 승진하지만 늘 대가가 있고, 30%는 들통난다.
+      function promotionShortcut(isNavy, isPirate) {
+        const tr = p.careerTrack || p.job;
+        const lose = (rel) => () => { p.relationship -= rel; };
+        if (isNavy)
+          return {
+            title: "상관의 부정을 덮어 준다",
+            desc: "추천서를 얻지만 양심에 걸린다",
+            flag: "f_navy_covered_superior",
+            done: "상관의 부정을 덮고 추천서를 받음",
+            temptation: "심사를 앞두고, 직속 상관이 보급 장부를 고쳐 쓴 것을 알게 되었습니다. 상관은 눈감아 주면 추천서를 써 주겠다고 넌지시 말합니다.",
+            cost: () => { p.happiness -= 2; },
+            fail: "상관의 부정을 덮었지만 심사에서 떨어짐",
+            caught: () => { gainStanding(-6); p.reputation -= 5; log("덮어 준 상관의 부정이 드러나 함께 문책당함"); },
+          };
+        if (isPirate)
+          return {
+            title: "선배의 공을 가로챈다",
+            desc: "선장의 눈에 들지만 선배가 안다",
+            flag: "f_pirate_stole_credit",
+            done: "선배의 공을 가로채 선장에게 내세움",
+            temptation: "지난 습격에서 적 갑판장을 쓰러뜨린 것은 선배였지만, 그 장면을 똑똑히 본 사람은 당신뿐입니다. 선장은 누가 했느냐고 묻습니다.",
+            cost: lose(2),
+            fail: "선배의 공을 가로챘지만 선장은 넘어가지 않음",
+            caught: () => { p.health -= ri(6, 10); p.relationship -= 4; log("공을 빼앗긴 선배와 갑판 위에서 주먹다짐을 벌임"); },
+          };
+        if (p.status === "혁명군" || tr === "혁명군")
+          return {
+            title: "동료의 첩보를 가로챈다",
+            desc: "신뢰를 얻지만 동료를 속인다",
+            flag: "f_rev_stole_intel",
+            done: "동료의 첩보를 내 보고로 올림",
+            temptation: "이번 작전의 핵심 정보는 동료 공작원이 목숨을 걸고 빼 온 것입니다. 그 동료는 아직 본부에 보고서를 올리지 못했습니다.",
+            cost: lose(2),
+            fail: "동료의 첩보를 가로챘지만 본부는 움직이지 않음",
+            caught: () => { gainStanding(-6); p.relationship -= 4; log("첩보를 가로챈 일이 드러나 동료들의 신뢰를 잃음"); },
+          };
+        if (tr === "현상금 사냥꾼")
+          return {
+            title: "동료의 사냥감을 가로챈다",
+            desc: "실적이 오르지만 동료를 잃는다",
+            flag: "f_hunter_stole_catch",
+            done: "동료가 잡은 현상범을 내 이름으로 넘김",
+            temptation: "함께 쫓던 현상범을 실제로 붙잡은 것은 동료였지만, 해군 지부에 넘긴 서류에는 아직 이름 칸이 비어 있습니다.",
+            cost: lose(2),
+            fail: "동료의 사냥감을 가로챘지만 실적으로 인정받지 못함",
+            caught: () => { p.relationship -= 5; p.health -= ri(4, 8); log("실적을 빼앗긴 동료가 찾아와 칼을 겨눔"); },
+          };
+        if (tr === "학자" || tr === "의사 견습")
+          return {
+            title: "남의 연구에 이름을 올린다",
+            desc: "업적이 생기지만 들킬 수 있다",
+            flag: "f_civ_stole_research",
+            done: "남의 연구에 내 이름을 먼저 올림",
+            temptation:
+              tr === "학자"
+                ? "후배 연구원이 밤새 정리한 논문이 당신 책상 위에 놓여 있습니다. 저자 칸에 당신 이름을 먼저 적으면 심사에서 크게 유리해집니다."
+                : "후배 의사가 찾아낸 치료법이 학회 발표를 앞두고 있습니다. 지도한 사람이 당신이라고 하면 아무도 의심하지 않을 것입니다.",
+            cost: () => { p.happiness -= 2; },
+            fail: "남의 연구에 이름을 올렸지만 심사에서 떨어짐",
+            caught: () => { p.reputation -= 6; gainStanding(-5); log("남의 연구를 가로챈 일이 드러나 망신당함"); },
+          };
+        if (tr === "상인" || tr === "상점 점원") {
+          const bribe = Math.max(500, Math.round((p.age >= 16 ? annualSalary() : 0) * 0.2));
+          return {
+            title: "윗선에 뒷돈을 찔러 준다",
+            desc: "자리를 사지만 돈과 이름을 건다",
+            flag: "f_civ_bribed",
+            done: "인사 담당 간부에게 뒷돈을 건넴",
+            temptation: "인사를 맡은 간부가 '성의'를 보이는 사람부터 챙긴다는 소문이 돕니다. 경쟁자 몇은 벌써 봉투를 건넸다고 합니다.",
+            cost: () => { p.money = Math.max(0, p.money - bribe); },
+            fail: "뒷돈을 건넸지만 자리는 다른 사람에게 감",
+            caught: () => { p.reputation -= 5; gainStanding(-5); log("뒷돈을 건넨 일이 드러나 이름이 깎임"); },
+          };
+        }
+        if (p.status === "천룡인")
+          return {
+            title: "다른 가문의 약점을 흘린다",
+            desc: "자리를 얻지만 원한을 산다",
+            flag: "f_cd_leaked_rival",
+            done: "다른 가문의 빚 문서를 성지에 흘림",
+            temptation: "같은 자리를 노리는 다른 가문의 빚 문서가 당신 손에 들어왔습니다. 성지에 소문을 흘리면 그 가문은 한동안 고개를 들지 못할 것입니다.",
+            cost: () => { p.happiness -= 2; },
+            fail: "다른 가문의 약점을 흘렸지만 자리는 얻지 못함",
+            caught: () => { p.reputation -= 5; p.happiness -= 4; log("흘린 소문이 되돌아와 가문 사이에 원한이 생김"); },
+          };
+        return {
+          title: "경쟁자의 실수를 고자질한다",
+          desc: "자리를 얻지만 동료를 잃는다",
+          flag: "f_civ_betrayed_rival",
+          done: "경쟁자의 실수를 윗사람에게 흘림",
+          temptation: "같은 자리를 노리는 동료가 지난달 큰 실수를 저질렀지만, 윗사람은 아직 모릅니다. 한마디만 흘리면 경쟁자는 사라집니다.",
+          cost: lose(2),
+          fail: "경쟁자의 실수를 흘렸지만 자리는 얻지 못함",
+          caught: () => { p.relationship -= 5; p.happiness -= 4; log("고자질한 일이 알려져 동료들이 등을 돌림"); },
         };
       }
       function shouldOfferPromotion() {
@@ -30850,7 +30970,7 @@ new MutationObserver(recs=>{
         const st = S();
         const already = st._mark != null && st.chron.length > st._mark;
         st._mark = null;
-        if (x && x.promotion && c && !/승진|추진|도전|수락|받아/.test(c.title)) st.promoDeclined = (st.promoDeclined || 0) + 1;
+        if (x && x.promotion && c && !c.promoTry && !/승진|추진|도전|수락|받아/.test(c.title)) st.promoDeclined = (st.promoDeclined || 0) + 1;
         if (x && c && !already) {
           const k = String(sceneKey(x));
           if (x.essential || x.saga || x.promotion || /^\[과거의 선택\]/.test(x.title) || /^(dream_|fam_|npc_|promise_|spared_|revenge_)/.test(k))
