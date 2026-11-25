@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#d8f2fd" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1a2b" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -334,6 +334,30 @@
         display: block;
         color: var(--gold);
         font-size: 18px;
+      }
+      /* 확대를 허용한 대신, 아이폰이 입력칸을 누를 때 저절로 확대하지 않도록 휴대폰에서는 입력 글씨를 16px로 */
+      @media (max-width: 760px) {
+        .field select,
+        .field input,
+        #charName,
+        .ranking-formline input,
+        .lifeFbForm textarea,
+        #archiveOverlay select {
+          font-size: 16px;
+        }
+        /* 이름 칸은 HTML에 글꼴이 직접 적혀 있어 !important로 덮는다 */
+        #charName {
+          font-size: 16px !important;
+        }
+      }
+      /* '다음 장면'으로 제목까지 화면을 옮길 때 위쪽에 약간 여유를 둔다 */
+      .eventtitle {
+        scroll-margin-top: 12px;
+      }
+      /* 이름표(직업·현재 위치 등)와 값이 '직업학생'처럼 붙지 않게 이름표를 한 줄로 띄운다 */
+      .profile .meterlabel {
+        display: block;
+        margin-bottom: 2px;
       }
       .log {
         max-height: 260px;
@@ -1108,6 +1132,11 @@
         .tac-box .tac-act:hover:not(:disabled) {
           background: #2c4d62;
         }
+        /* 게임 화면 아래 버튼들: 낮 테마의 파스텔색을 밤바다에 맞는 어두운 색조로 */
+        .actions .btn.action-archive { background: #2f2540; color: #e2d2f5; border-color: #5b4778; }
+        .actions .btn.action-guide { background: #1f3a2c; color: #cdeedb; border-color: #3f6e52; }
+        .actions .btn.action-shop { background: #3d2f1c; color: #f5ddb4; border-color: #7a5c2e; }
+        .actions .btn.action-save { background: #23304a; color: #d5e0f5; border-color: #4a5f86; }
       }
       [hidden] { display:none !important; }
       @media(max-width:480px) { .ranking-row { gap:7px; } .ranking-place { flex-basis:35px; } .ranking-bounty { font-size:12px; } .ranking-bounty small { font-size:10px; } .ranking-formline { flex-wrap:wrap; } .ranking-formline button { flex:1; } }
@@ -27901,7 +27930,8 @@ function nationSagaScene(){
 
 /* ===================== v55: 이름 정하기 · 원작 해적단 스카우트 ===================== */
 // ── 출생 설정의 이름 ──
-function chosenName(){const el=document.getElementById("charName");const v=el?String(el.value||"").trim().slice(0,12):"";return v||null}
+// 이름은 여러 화면에 HTML로 들어가므로, 태그로 해석될 수 있는 글자(< > & " ' `)는 받지 않는다
+function chosenName(){const el=document.getElementById("charName");const v=el?String(el.value||"").replace(/[<>&"'`]/g,"").trim().slice(0,12):"";return v||null}
 // 출생 설정 경고창 (이름·악마의 열매 공용)
 function showSetupWarning(html){
  const ov=document.createElement("div");ov.className="setupWarnOv";ov.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px";
@@ -30242,6 +30272,26 @@ document.addEventListener("keydown",e=>{
  const ovs=document.querySelectorAll("#shopOverlay,#archiveOverlay,#guideOverlay,#bioOverlay,.setupWarnOv");
  if(ovs.length){ovs[ovs.length-1].remove();e.preventDefault()}
 });
+// '다음 장면'을 눌러 장면이 바뀌었을 때, 새 장면 제목이 화면 위로 벗어났거나 아래쪽으로 밀려 있으면 제목이 보이게 화면을 옮긴다.
+// 제목이 이미 화면 위쪽에 잘 보이면 움직이지 않는다. 자동 진행처럼 버튼을 누르지 않은 전환에서는 움직이지 않는다.
+(()=>{
+ const btn=document.getElementById("continueBtn"),t=document.getElementById("eventTitle");if(!btn||!t)return;
+ // 장면 전환 연출 때문에 제목이 조금 늦게 바뀔 수 있어, 버튼을 누른 뒤 2초 안에 제목이 바뀌는 순간을 기다린다
+ let waitUntil=0;
+ btn.addEventListener("click",()=>{waitUntil=Date.now()+2000});
+ new MutationObserver(()=>{
+  if(!waitUntil||Date.now()>waitUntil)return;
+  waitUntil=0;
+  // 제목이 바뀐 직후엔 본문·선택지·그림이 아직 자리를 잡는 중이라, 잠깐 기다렸다가 위치를 본다
+  setTimeout(()=>{
+   if(t.offsetParent===null)return; // 제목이 숨겨진 경우(수배서 화면 등)
+   const r=t.getBoundingClientRect();
+   if(r.top>=8&&r.top<=window.innerHeight*0.45)return;
+   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+   try{t.scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"})}catch(e){}
+  },250);
+ }).observe(t,{childList:true,characterData:true,subtree:true});
+})();
 // 장면 제목이 바뀔 때마다 제목·본문·선택지를 짧게 페이드인한다 (게임 진행 코드는 건드리지 않고 화면 변화만 감지)
 (()=>{
  const t=document.getElementById("eventTitle");if(!t)return;
