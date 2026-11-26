@@ -6672,6 +6672,7 @@
         base();
         try {
           (p.echoes = p.echoes || []).push({ a: realAge(), t: sc.title, pick: ch.title, o: o || null, n: n ? n.name : null, pool: d0.pool || "cb" });
+          if (n) (p.arcHint = p.arcHint || {})[d0.key] = n.id; // 줄기(ARC)가 이 사건의 동료를 이어받을 수 있게
         } catch (e) {}
       };
     });
@@ -6694,13 +6695,21 @@
   // 인생이 끝나면 '내 선택이 바꾼 것'을 보여 준다
   function echoHTML() {
     const E = (p && p.echoes) || [];
-    if (!E.length) return "";
+    // 인연 줄기: 줄기마다 고른 길을 한 줄 이야기로 (회수 사건 목록 위에 따로 보여 준다)
+    const A = Object.entries((p && p.arcs) || {}).filter(([id, st]) => st.path && st.path.length && ARCS[id]);
+    if (!E.length && !A.length) return "";
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const arcRows = A.map(([id, st]) => {
+      const steps = st.path.map((s) => `${s.a}세 「${esc(s.t)}」 '${esc(s.pick)}'`).join(" → ");
+      return `<li style="margin:8px 0"><b>${esc(ARCS[id].name)}</b>${st.done ? "" : ' <span style="color:var(--muted)">(이어지던 중)</span>'}<br>${steps}</li>`;
+    }).join("");
+    const arcHTML = arcRows ? `<div style="font-weight:800;margin-top:6px">📖 이어진 이야기</div><ul style="margin:4px 0 8px;padding-left:18px;line-height:1.5">${arcRows}</ul>` : "";
     const rows = E.map((e) => {
       const from = e.o && e.o.c ? `${e.o.a}세 ${e.o.s ? `「${esc(e.o.s)}」 ` : ""}'${esc(e.o.c)}'` : e.n ? `동료 ${esc(e.n)}` : e.pool === "companion" ? "혼자인 시간" : "오래전의 선택";
       return `<li style="margin:6px 0"><span style="color:var(--muted)">${from}</span><br>→ ${e.a}세 「${esc(e.t)}」에서 '${esc(e.pick)}'</li>`;
     }).join("");
-    return `<details id="echoBox" open style="margin:12px auto 0;max-width:640px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--panel2)"><summary style="cursor:pointer;font-weight:800">🔁 내 선택이 바꾼 것 (${E.length})</summary><ul style="margin:8px 0 2px;padding-left:18px;line-height:1.5">${rows}</ul></details>`;
+    const echoList = rows ? `<div style="font-weight:800;margin-top:6px">🔁 돌아온 선택</div><ul style="margin:4px 0 2px;padding-left:18px;line-height:1.5">${rows}</ul>` : "";
+    return `<details id="echoBox" open style="margin:12px auto 0;max-width:640px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--panel2)"><summary style="cursor:pointer;font-weight:800">🔁 내 선택이 바꾼 것 (${A.length + E.length})</summary>${arcHTML}${echoList}</details>`;
   }
   if (typeof afterDeath === "function") {
     const _ad = afterDeath;
@@ -6729,6 +6738,173 @@
       return _bg.apply(this, arguments);
     };
   }
+  /* ───────────── 인연 줄기 (ARC) ─────────────
+     한 번 돌아오고 끝나는 회수 사건과 달리, 고른 선택지가 다음 장면을 정하고 그 장면이 또 다음을 부르는 3~4단계 이야기.
+     데이터는 arc-events.js에서 ARC({...})로 넣는다.
+       id, name                     줄기 이름(화면의 '🔁 ○○ · n단계'와 인생 끝 요약에 나옴)
+       start: [{ flags, notFlags, when, node, after, npcFrom }, ...]
+                                    첫 번째로 맞는 규칙이 그 노드에서 줄기를 시작한다. after년 뒤(기본 0)에 첫 장면.
+                                    npcFrom: 동료 사건 key — 그 사건의 동료를 이 줄기의 인물로 쓴다
+       nodes: { 노드id: { stage, title, body, by, choices, end } }
+         choices[i]: { title, desc, effect, risk, req, next, delay:[최소,최대], score }
+           next: 다음 노드 id, 또는 { ">=2": "a", "else": "b" }처럼 쌓인 점수(score)로 가르는 표
+           effect 확장: npc:{role,aff,job,rel,title}(인물 만들기), npcRel, npcRole, npcAff, npcJob, npcJoin(내 동료로 합류),
+                        npcLeave(곁을 떠남), npcStory
+         end: true면 결말. 고르면 줄기가 닫히고 f_arc_<id>_<노드> 플래그가 남는다.
+     토큰: {인물} {인물|이} 등(줄기 인물 이름) + 회수 사건 토큰 전부.
+     상태: p.arcs[id] = { node, due, npc, score, path:[{a, node, t, pick}], done } */
+  const ARCS = {};
+  const ARC_SHOW_CHANCE = 0.7;
+  window.ARC = function (a) {
+    if (a && a.id && a.nodes) ARCS[a.id] = a;
+  };
+  let arcNpc = null; // 지금 글을 채우는 줄기의 인물
+  const arcNpcOf = (st) => (st && st.npc && typeof npcById === "function" ? npcById(st.npc) : null);
+  {
+    const _tok = cbToken;
+    cbToken = function (name, def) {
+      if (name === "인물") return (arcNpc && arcNpc.name) || def || "그 사람";
+      return _tok.apply(this, arguments);
+    };
+  }
+  function arcStates() {
+    return (p.arcs = p.arcs || {});
+  }
+  // 줄기 시작: 아직 시작하지 않은 줄기 중 시작 규칙이 맞는 것
+  function arcTryStart() {
+    const S = arcStates();
+    for (const a of Object.values(ARCS)) {
+      if (S[a.id]) continue;
+      for (const r of a.start || []) {
+        const f = p.flags || {}, w = r.when || {};
+        if ((r.flags || []).some((x) => !f[x])) continue;
+        if ((r.notFlags || []).some((x) => f[x])) continue;
+        if (w.minAge !== undefined && p.age < w.minAge) continue;
+        if (w.maxAge !== undefined && p.age > w.maxAge) continue;
+        if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) continue;
+        if (r.chance !== undefined && Math.random() >= r.chance) continue;
+        const npc = r.npcFrom && p.arcHint ? p.arcHint[r.npcFrom] : null;
+        S[a.id] = { node: r.node, due: p.age + (r.after || 0), npc: npc || null, score: 0, path: [] };
+        break;
+      }
+    }
+  }
+  function arcNext(next, st) {
+    if (!next || typeof next === "string") return next || null;
+    for (const [k, v] of Object.entries(next)) {
+      if (k === "else") continue;
+      const m = /^(>=|<=|>|<)(-?\d+)$/.exec(k);
+      if (!m) continue;
+      const n = +m[2], s = st.score || 0;
+      if ((m[1] === ">=" && s >= n) || (m[1] === "<=" && s <= n) || (m[1] === ">" && s > n) || (m[1] === "<" && s < n)) return v;
+    }
+    return next.else || null;
+  }
+  // 줄기 인물에게 미치는 효과 (apply()가 처리하지 않는 것)
+  function arcNpcEffect(ef, st) {
+    if (!ef) return;
+    if (ef.npc && !arcNpcOf(st) && typeof makeNpc === "function") {
+      const o = ef.npc;
+      const n = makeNpc({ role: o.role || "친구", rel: o.rel ?? ri(50, 65), aff: o.aff, job: o.job, title: o.title, age: realAge() + (o.d ?? ri(-8, -3)) });
+      if (o.near !== false) n.home = p.place && p.place.name;
+      st.npc = n.id;
+    }
+    const n = arcNpcOf(st);
+    if (!n) return;
+    if (typeof ef.npcRel === "number") n.rel = Math.max(-100, Math.min(100, (n.rel || 0) + ef.npcRel));
+    if (ef.npcRole) n.role = ef.npcRole;
+    if (ef.npcAff) n.aff = ef.npcAff;
+    if (ef.npcJob) n.job = ef.npcJob;
+    if (ef.npcJoin) {
+      n.role = "동료";
+      n.aff = ["해적", "해군", "혁명군"].includes(p.status) ? p.status : n.aff;
+      n.home = null;
+    }
+    if (ef.npcLeave) {
+      if (n.role === "동료") n.role = "친구";
+      n.home = ef.npcLeave === true ? "먼 바다" : ef.npcLeave;
+    }
+    if (ef.npcStory && typeof npcStory === "function") npcStory(n, cbFill(ef.npcStory));
+    n.lastSeen = p.age;
+  }
+  function arcScene(a, st) {
+    const node = a.nodes[st.node];
+    if (!node) return null;
+    arcNpc = arcNpcOf(st);
+    try {
+      const d = cbVariant({ ...node, choices: node.choices || [] });
+      const nodeId = st.node, stage = node.stage || st.path.length + 1;
+      const fe = (ef) => (ef ? { ...ef, log: cbFill(ef.log), memory: ef.memory ? cbFill(ef.memory) : undefined } : ef);
+      const choices = d.choices.map((c, i) => {
+        const ch = makeChoice({ ...c, title: cbFill(c.title), desc: cbFill(c.desc), effect: fe(c.effect || {}), risk: c.risk ? { ...c.risk, effect: fe(c.risk.effect) } : undefined });
+        const base = ch.run, title = ch.title;
+        ch.run = () => {
+          // 인물이 필요한 효과는 선택지를 실행하기 전에 인물을 먼저 만든다
+          arcNpcEffect({ npc: (c.effect || {}).npc }, st);
+          base();
+          arcNpcEffect({ ...(c.effect || {}), npc: undefined }, st);
+          st.score = (st.score || 0) + (c.score || 0);
+          st.path.push({ a: realAge(), node: nodeId, t: sc.title, pick: title });
+          p.flags[`f_arc_${a.id}_${nodeId}_${i + 1}`] = true;
+          const nx = node.end ? null : arcNext(c.next, st);
+          if (!nx || !a.nodes[nx]) {
+            st.done = true;
+            st.node = null;
+            p.flags[`f_arc_${a.id}_end`] = true;
+            p.flags[`f_arc_${a.id}_${nodeId}`] = true;
+          } else {
+            const dl = c.delay || node.delay || [2, 5];
+            st.node = nx;
+            st.due = p.age + ri(dl[0], dl[1]);
+          }
+        };
+        return ch;
+      });
+      const npc = arcNpcOf(st);
+      const sc = {
+        key: `arc_${a.id}_${nodeId}`,
+        title: cbFill(d.title),
+        body: `🔁 ${a.name} · ${stage}단계\n\n${cbFill(d.body)}`,
+        tags: [`arc_${a.id}_${nodeId}`, `arc_${a.id}`],
+        choices,
+        essential: true,
+        callback: true,
+        arc: a.id,
+      };
+      // 보여 주기 직전: 아직 같은 노드이고, 신분별 장면이면 신분이 그대로일 때만
+      const st0 = cbStatus();
+      sc.valid = () => arcStates()[a.id] === st && st.node === nodeId && (!node.by || cbStatus() === st0) && (!st.npc || (npc && npc.alive !== false));
+      return sc;
+    } finally {
+      arcNpc = null;
+    }
+  }
+  // 어른의 한 해: 줄기 시작을 확인하고, 때가 된 줄기 장면을 하나 끼운다
+  if (typeof buildExtraScenes === "function") {
+    const _bes2 = buildExtraScenes;
+    buildExtraScenes = function () {
+      const r = _bes2.apply(this, arguments);
+      try {
+        if (p && p.age >= 16 && !(p.flags && p.flags.impelDown) && Object.keys(ARCS).length) {
+          arcTryStart();
+          const S = arcStates();
+          const due = Object.entries(S).filter(([id, st]) => ARCS[id] && !st.done && st.node && st.due <= p.age);
+          if (due.length && Math.random() < ARC_SHOW_CHANCE) {
+            due.sort((x, y) => x[1].due - y[1].due);
+            const [id, st] = due[0];
+            const sc = arcScene(ARCS[id], st);
+            if (sc) scenes.push(sc);
+          }
+        }
+      } catch (e) {
+        console.error("story arcs", e);
+      }
+      return r;
+    };
+  }
+  window.__ARCS = ARCS;
+  window.__arcScene = arcScene; // 점검용
+
   window.__CALLBACKS = CALLBACKS;
   window.__cbScene = cbScene; // 점검용
   window.__cbFits = cbFits;
