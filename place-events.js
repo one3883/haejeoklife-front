@@ -6771,10 +6771,10 @@
     return (p.arcs = p.arcs || {});
   }
   // 줄기 시작: 아직 시작하지 않은 줄기 중 시작 규칙이 맞는 것
-  function arcTryStart() {
+  function arcTryStart(triggerId) {
     const S = arcStates();
     for (const a of Object.values(ARCS)) {
-      if (S[a.id]) continue;
+      if (S[a.id] || (triggerId && a.id !== triggerId)) continue;
       for (const r of a.start || []) {
         const f = p.flags || {}, w = r.when || {};
         if ((r.flags || []).some((x) => !f[x])) continue;
@@ -6782,6 +6782,7 @@
         if (w.minAge !== undefined && p.age < w.minAge) continue;
         if (w.maxAge !== undefined && p.age > w.maxAge) continue;
         if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) continue;
+        if (r.ready && !r.ready()) continue;
         if (r.chance !== undefined && Math.random() >= r.chance) continue;
         const npc = r.npcFrom && p.arcHint ? p.arcHint[r.npcFrom] : null;
         if (r.npcFrom && !npcById(npc)?.alive) continue;
@@ -6790,6 +6791,13 @@
       }
     }
   }
+  // 전투·첫 수배 직후에는 연말 추첨을 기다리지 않고 같은 해의 대기열에 붙인다.
+  window.queueTriggeredArc = function (id) {
+    if (!p || p.age < 16 || p.flags.impelDown || !ARCS[id] || arcStates()[id]) return;
+    arcTryStart(id);
+    const st = arcStates()[id];
+    if (st && st.due <= p.age) scenes.push(arcScene(ARCS[id], st));
+  };
   function arcNext(next, st) {
     if (!next || typeof next === "string") return next || null;
     for (const [k, v] of Object.entries(next)) {
@@ -6806,7 +6814,7 @@
     if (!ef) return;
     if (ef.npc && !arcNpcOf(st) && typeof makeNpc === "function") {
       const o = ef.npc;
-      const n = makeNpc({ role: o.role || "친구", rel: o.rel ?? ri(50, 65), aff: o.aff, job: o.job, title: o.title, age: realAge() + (o.d ?? ri(-8, -3)) });
+      const n = makeNpc({ role: o.role || "친구", rel: o.rel ?? ri(50, 65), aff: o.aff, job: o.job, title: o.title, age: o.age ?? (realAge() + (o.d ?? ri(-8, -3))) });
       if (o.near !== false) n.home = p.place && p.place.name;
       st.npc = n.id;
     }
@@ -6858,6 +6866,7 @@
             st.node = nx;
             st.due = p.age + ri(dl[0], dl[1]);
           }
+          if (c.afterPick) c.afterPick(st);
         };
         return ch;
       });
@@ -6874,7 +6883,7 @@
       };
       // 보여 주기 직전: 아직 같은 노드이고, 신분별 장면이면 신분이 그대로일 때만
       const st0 = cbStatus();
-      sc.valid = () => arcStates()[a.id] === st && st.node === nodeId && (!node.by || cbStatus() === st0) && (!st.npc || (npc && npc.alive !== false));
+      sc.valid = () => arcStates()[a.id] === st && st.node === nodeId && (!node.by || cbStatus() === st0) && (!node.ready || node.ready(st)) && (!st.npc || (npc && npc.alive !== false));
       return sc;
     } finally {
       arcNpc = null;
@@ -6891,10 +6900,12 @@
           const S = arcStates();
           const due = Object.entries(S).filter(([id, st]) =>
             ARCS[id] && !st.done && st.node && st.due <= p.age &&
-            (!st.npc || arcNpcOf(st)?.alive)
+            (!st.npc || arcNpcOf(st)?.alive) &&
+            (!ARCS[id].nodes[st.node]?.ready || ARCS[id].nodes[st.node].ready(st))
           );
-          if (due.length && Math.random() < ARC_SHOW_CHANCE) {
-            due.sort((x, y) => x[1].due - y[1].due);
+          const priority = ([id, st]) => Number(!!ARCS[id].nodes[st.node].priority);
+          if (due.length && (due.some(priority) || Math.random() < ARC_SHOW_CHANCE)) {
+            due.sort((x, y) => priority(y) - priority(x) || x[1].due - y[1].due);
             const [id, st] = due[0];
             const sc = arcScene(ARCS[id], st);
             if (sc) scenes.push(sc);

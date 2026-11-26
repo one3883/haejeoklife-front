@@ -43,6 +43,7 @@ function attempt(route,bonus){
  scenes.splice(sceneIndex+1,0,note("failed","탈옥 실패","간수에게 발각되어 다시 감방으로 끌려왔습니다."));
  log("임펠다운 탈옥 실패");
 }
+window.attemptSignalEscape=()=>{if(active())attempt("동료와의 암호 탈옥",.24);};
 const oldBattle=battle;
 battle=function(info){
  const eligible=p&&!active()&&["해적","혁명군"].includes(p.status)&&!worldFreed()&&!info.nonFatal;
@@ -99,6 +100,11 @@ buildYearScenes=function(){
  p.flags.impelTeachSeen=true;
  scenes.push(event("teach","검은수염의 방문","검은수염 해적단이 임펠다운에 나타났습니다. LEVEL 6의 죄수들 사이에서 소동이 일어납니다.",[
  choice("소동을 이용한다","탈옥 기회 · 부상 위험",()=>attempt("검은수염의 방문",.25)),choice("몸을 숨긴다","안전 · 행복 감소",()=>happy(-2))]));
+ }
+ const signal=p.arcs?.signal;
+ if(signal && !signal.done && signal.node==="song" && npcById(signal.npc)?.alive){
+   const knock=window.__arcScene(window.__ARCS.signal,signal);
+   knock.key="impel_arc_signal";scenes.push(knock);
  }
  const candidates=pool(s).filter(x=>x.key!==s.last);
  const e=candidates[Math.floor(Math.random()*candidates.length)];s.last=e.key;scenes.push(e);
