@@ -825,6 +825,34 @@
         background: var(--straw);
         border-color: transparent;
       }
+      /* '다음 장면' 고정 줄: 화면(뷰포트) 맨 아래에 고정해, 장면 길이·선택지 유무와 상관없이 늘 같은 자리에서 누른다.
+         선택지를 고르는 동안에도 숨기지 않고 꺼진 채로 둔다(숨겼다 보이면 자리가 흔들린다).
+         게임 화면(#game)이 숨겨지면 함께 숨는다. */
+      .nextDock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+        padding: 18px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, var(--bg) 60%, transparent);
+        pointer-events: none;
+      }
+      .nextDock #continueBtn {
+        display: block;
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        min-height: 52px;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 6px 18px #0004;
+        touch-action: manipulation;
+        pointer-events: auto;
+      }
+      .nextDock #continueBtn:disabled { opacity: 0.55; }
+      /* 고정 줄이 마지막 내용(지난 사건·버튼)을 가리지 않게 게임 화면 아래에 여백을 둔다 */
+      #game { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
       .clock .active {
         outline-color: var(--sea);
       }
@@ -1481,14 +1509,17 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 <p class="ranking-total">오늘의 도전자 집계 중…</p><div class="ranking-list" tabindex="0" role="region" aria-label="오늘의 랭킹 도전자 목록"><p class="small">랭킹을 불러오는 중입니다…</p></div>
               </section>
               <div class="choices" id="choices"></div>
-              <div class="actions">
+              <!-- '다음 장면'은 장면 길이와 상관없이 늘 같은 자리(화면 아래)에서 누를 수 있게 따로 떼어 고정한다 -->
+              <div class="nextDock">
                 <button
                   class="btn secondary action-next"
                   id="continueBtn"
                   onclick="continueLife()"
                 >
-                  ⏭️ 다음 장면</button
-                ><button class="btn secondary" onclick="showBio()">
+                  ⏭️ 다음 장면</button>
+              </div>
+              <div class="actions">
+                <button class="btn secondary" onclick="showBio()">
                   인생 정보</button
                 ><button class="btn secondary action-archive" onclick="openArchive()">
                   📜 사건 다시 보기</button
