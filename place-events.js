@@ -6707,6 +6707,107 @@
       return r;
     };
   }
+  /* ───────────── 돌아온 선택을 눈에 보이게 ─────────────
+     1) 선택지를 고를 때 새로 생긴 f_ 플래그마다 '몇 살에, 어느 사건에서, 무엇을 골랐는지'를 p.flagOrigin에 적는다.
+     2) 회수 사건 본문 맨 위에 그 선택을 한 줄로 보여 준다(동료 사건은 어느 동료의 이야기인지).
+     3) 회수·동료 사건에서 고른 것을 p.echoes에 쌓아, 인생이 끝나면 '내 선택이 바꾼 것'으로 보여 준다. */
+  const echoTitle = (t) => String(t || "").replace(/^[0-9]+세(\s*\([^)]*\))?\s*—\s*/, "");
+  if (typeof tacRunChoice === "function") {
+    const _trc = tacRunChoice;
+    tacRunChoice = function (c) {
+      let before = null, sc = null;
+      try {
+        before = new Set(Object.keys((p && p.flags) || {}).filter((k) => p.flags[k]));
+        sc = typeof scenes !== "undefined" && scenes ? scenes[sceneIndex] : null;
+      } catch (e) {}
+      const r = _trc.apply(this, arguments);
+      try {
+        if (before && p && p.flags) {
+          const fo = (p.flagOrigin = p.flagOrigin || {});
+          for (const [k, v] of Object.entries(p.flags))
+            if (v && /^f_/.test(k) && !/^f_cb(done|pick)_/.test(k) && !before.has(k) && !fo[k])
+              fo[k] = { a: realAge(), s: echoTitle(sc && sc.title), c: c && c.title };
+        }
+      } catch (e) {}
+      return r;
+    };
+  }
+  // 회수 사건 본문 위에 붙일 한 줄
+  function echoLine(d0, n) {
+    const w = d0.when || {};
+    if (w.companion === true && n) return `🤝 곁에 있는 동료 ${n.name}의 이야기입니다.`;
+    if (w.companion === false) return "🕯 곁에 기댈 동료가 없는 지금의 이야기입니다.";
+    const f = (d0.flags || [])[0], o = f && p.flagOrigin && p.flagOrigin[f];
+    if (o && o.c) return `🔁 ${o.a}세${o.s ? ` 「${o.s}」에서` : ""} 고른 '${o.c}'${typeof ga === "function" ? ga(o.c) : "이"} 돌아왔습니다.`;
+    return f ? "🔁 오래전에 고른 선택이 돌아왔습니다." : "";
+  }
+  function addEcho(sc, d0, n) {
+    const line = echoLine(d0, n);
+    if (line) sc.body = `${line}\n\n${sc.body}`;
+    const f = (d0.flags || [])[0], o = f && p.flagOrigin ? p.flagOrigin[f] : null;
+    sc.choices.forEach((ch) => {
+      const base = ch.run;
+      ch.run = () => {
+        base();
+        try {
+          (p.echoes = p.echoes || []).push({ a: realAge(), t: sc.title, pick: ch.title, o: o || null, n: n ? n.name : null, pool: d0.pool || "cb" });
+        } catch (e) {}
+      };
+    });
+    return sc;
+  }
+  {
+    const _cbs = cbScene;
+    cbScene = function (d0) {
+      const n = d0.when && d0.when.companion && typeof window.pickCompanion === "function" ? window.pickCompanion() : null;
+      // 동료 사건은 cbScene 안에서 동료를 다시 뽑으므로, 같은 동료를 쓰도록 잠시 고정한다
+      const pick = window.pickCompanion;
+      if (n) window.pickCompanion = () => n;
+      try {
+        return addEcho(_cbs(d0), d0, n);
+      } finally {
+        window.pickCompanion = pick;
+      }
+    };
+  }
+  // 인생이 끝나면 '내 선택이 바꾼 것'을 보여 준다
+  function echoHTML() {
+    const E = (p && p.echoes) || [];
+    if (!E.length) return "";
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const rows = E.map((e) => {
+      const from = e.o && e.o.c ? `${e.o.a}세 ${e.o.s ? `「${esc(e.o.s)}」 ` : ""}'${esc(e.o.c)}'` : e.n ? `동료 ${esc(e.n)}` : e.pool === "companion" ? "혼자인 시간" : "오래전의 선택";
+      return `<li style="margin:6px 0"><span style="color:var(--muted)">${from}</span><br>→ ${e.a}세 「${esc(e.t)}」에서 '${esc(e.pick)}'</li>`;
+    }).join("");
+    return `<details id="echoBox" open style="margin:12px auto 0;max-width:640px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--panel2)"><summary style="cursor:pointer;font-weight:800">🔁 내 선택이 바꾼 것 (${E.length})</summary><ul style="margin:8px 0 2px;padding-left:18px;line-height:1.5">${rows}</ul></details>`;
+  }
+  if (typeof afterDeath === "function") {
+    const _ad = afterDeath;
+    afterDeath = function () {
+      const r = _ad.apply(this, arguments);
+      try {
+        const old = document.getElementById("echoBox");
+        if (old) old.remove();
+        const html = echoHTML();
+        if (html) {
+          const host = document.getElementById("wantedBox");
+          if (host && host.lastElementChild) host.lastElementChild.insertAdjacentHTML("beforebegin", html);
+          else (document.getElementById("scene") || document.body).insertAdjacentHTML("afterend", html);
+        }
+      } catch (e) {
+        console.error("echo box", e);
+      }
+      return r;
+    };
+  }
+  if (typeof begin === "function") {
+    const _bg = begin;
+    begin = function () {
+      const old = document.getElementById("echoBox");
+      if (old) old.remove();
+      return _bg.apply(this, arguments);
+    };
+  }
   window.__CALLBACKS = CALLBACKS;
   window.__cbScene = cbScene; // 점검용
   window.__cbFits = cbFits;
