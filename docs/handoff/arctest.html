@@ -1,0 +1,91 @@
+<!doctype html><meta charset="utf-8"><body>
+<iframe id="a" src="../../index.html" style="width:390px;height:700px"></iframe>
+<pre id="o">waiting</pre>
+<script>
+// 인연 줄기 검사: 구조(막다른 길·못 가는 노드), 형식(토큰·길이·말투), 실행(오류), 정적 우위
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fr = document.getElementById("a");
+fr.addEventListener("load", async () => {
+  const out = [], iss = [];
+  try {
+    await sleep(500);
+    const w = fr.contentWindow, E = (s) => w.eval(s);
+    const errs = []; w.addEventListener("error", (e) => errs.push(e.message));
+    w.gtag = () => {}; w.confirm = () => true; w.alert = () => {};
+    try { w.localStorage.clear(); } catch (e) {}
+    w.begin(); await sleep(50);
+    const ARCS = w.__ARCS || {};
+    const ids = Object.keys(ARCS);
+    for (const id of ["baker", "old_boat", "oneeye", "secret", "bell", "quilt", "poster", "signal", "duelist", "receipt"])
+      if (!ARCS[id]) iss.push("누락된 줄기 " + id);
+    out.push(`줄기 ${ids.length}개: ${ids.map((id) => `${ARCS[id].name}(${Object.keys(ARCS[id].nodes).length}노드)`).join(", ")}`);
+    const SC = { health: 5, happiness: 5, knowledge: 3, relationship: 4, combat: 3, reputation: 5, standing: 4, money: 10000, npcRel: 4 };
+    const STATUSES = [["민간인", "어부"], ["해적", "해적"], ["해군", "해군"], ["혁명군", "혁명군"], ["민간인", "현상금 사냥꾼"]];
+    const variant = (d, st) => {
+      if (!d.by) return d; let v = null;
+      for (const [k, x] of Object.entries(d.by)) { if (k === "*") continue; if (k.split("|").map((s) => s.trim()).includes(st)) { v = x; break; } }
+      v = v || d.by["*"]; if (!v) return d;
+      const o = { ...d, ...v };
+      o.choices = Array.isArray(v.choices) ? (d.choices || []).map((c, i) => ({ ...c, ...(v.choices[i] || {}) })) : d.choices;
+      return o;
+    };
+    const vec = (c) => { const m = {}, add = (ef, k) => { if (!ef) return; for (const s of Object.keys(SC)) if (typeof ef[s] === "number") m[s] = (m[s] || 0) + ef[s] * k / SC[s]; for (const [s, v] of Object.entries(ef.skills || {})) m["sk_" + s] = (m["sk_" + s] || 0) + v * k / 4; if (ef.bounty) m.bounty = (m.bounty || 0) + k; };
+      add(c.effect, 1); if (c.risk) add(c.risk.effect, c.risk.chance || 0);
+      const e = c.effect || {}; const per = new Set([...(e.flags || []), e.memory ? "mem" : "", e.npcStory ? "story" : "", e.npcJoin ? "join" : "", e.npcLeave ? "leave" : "", e.npcRole ? "role:" + e.npcRole : "", "next:" + JSON.stringify(c.next || "")].filter(Boolean));
+      return { m, per }; };
+    for (const id of ids) {
+      const a = ARCS[id], N = a.nodes;
+      // 구조
+      const reach = new Set((a.start || []).map((r) => r.node));
+      for (const r of a.start || []) if (!N[r.node]) iss.push(`${id}: 시작 노드 없음 ${r.node}`);
+      let grew = true;
+      while (grew) { grew = false; for (const nid of [...reach]) { const n = N[nid]; if (!n || n.end) continue; for (const c of n.choices || []) { const t = typeof c.next === "string" ? [c.next] : Object.values(c.next || {}); for (const x of t) if (x && !reach.has(x)) { reach.add(x); grew = true; } } } }
+      for (const nid of Object.keys(N)) if (!reach.has(nid)) iss.push(`${id}: 갈 수 없는 노드 ${nid}`);
+      for (const [nid, n] of Object.entries(N)) {
+        if (!n.choices || n.choices.length < 2 || n.choices.length > 3) iss.push(`${id}/${nid}: 선택지 ${n.choices ? n.choices.length : 0}개`);
+        if (!n.end) for (const c of n.choices || []) {
+          if (!c.next) iss.push(`${id}/${nid}: '${c.title}' next 없음(결말 아님)`);
+          const t = typeof c.next === "string" ? [c.next] : Object.values(c.next || {});
+          for (const x of t) if (!N[x]) iss.push(`${id}/${nid}: next '${x}' 노드 없음`);
+          if (typeof c.next === "object" && c.next && !c.next.else) iss.push(`${id}/${nid}: 점수 next에 else 없음`);
+        }
+        if (!n.by || Object.keys(n.by).length < 2) iss.push(`${id}/${nid}: 신분 변형 by 2개 미만`);
+        // 형식·실행·우위: 신분마다
+        for (const [stName, job] of STATUSES) {
+          E(`p.status=${JSON.stringify(stName)}; p.job=${JSON.stringify(job)}; p.age=35; p.health=80; p.flags = p.flags || {};`);
+          const st = { node: nid, due: 0, npc: null, score: 0, path: [] };
+          E("p.arcs = p.arcs || {}"); w.p_arcs = null;
+          E(`p.arcs[${JSON.stringify(id)}] = null`);
+          let sc;
+          try { w.__tmpSt = st; E(`p.arcs[${JSON.stringify(id)}] = __tmpSt`); sc = w.__arcScene(a, st); } catch (e) { iss.push(`${id}/${nid}/${job}: 장면 오류 ${e.message}`); continue; }
+          if (!sc) { iss.push(`${id}/${nid}/${job}: 장면 없음`); continue; }
+          const body = sc.body.replace(/^🔁[^\n]*\n\n/, "");
+          const txt = [sc.title, body, ...sc.choices.flatMap((c) => [c.title, c.desc])].join(" ");
+          if (/[{}]/.test(txt)) iss.push(`${id}/${nid}/${job}: 토큰 남음 ${txt.match(/\{[^}]*\}/)}`);
+          if (sc.title.length < 4 || sc.title.length > 14 || /[.!?]/.test(sc.title)) iss.push(`${id}/${nid}/${job}: 제목 '${sc.title}'`);
+          if (body.length < 90 || body.length > 240) iss.push(`${id}/${nid}/${job}: 본문 ${body.length}자`);
+          for (const c of sc.choices) { if (!/다$/.test(c.title)) iss.push(`${id}/${nid}/${job}: 선택지 제목 '${c.title}'`); if ((c.desc || "").length > 25) iss.push(`${id}/${nid}/${job}: desc ${c.desc.length}자`); }
+          // 우위 (데이터 기준)
+          const v = variant(n, stName === "민간인" && job === "현상금 사냥꾼" ? "현상금 사냥꾼" : stName), V = (v.choices || []).map(vec), dims = [...new Set(V.flatMap((x) => Object.keys(x.m)))];
+          for (let i = 0; i < V.length; i++) for (let j = 0; j < V.length; j++) { if (i === j) continue; const A = V[i], B = V[j];
+            if (dims.every((k) => (A.m[k] || 0) >= (B.m[k] || 0) - 0.05) && dims.some((k) => (A.m[k] || 0) - (B.m[k] || 0) >= 0.5) && [...B.per].every((x) => A.per.has(x))) iss.push(`${id}/${nid}/${job}: 우위 '${v.choices[i].title}' > '${v.choices[j].title}'`); }
+          // 실행: 선택지마다 한 번
+          for (const c of sc.choices) { const st2 = { node: nid, due: 0, npc: null, score: 0, path: [] }; w.__tmpSt = st2; E(`p.arcs[${JSON.stringify(id)}] = __tmpSt`); const sc2 = w.__arcScene(a, st2); const c2 = sc2.choices.find((x) => x.title === c.title); try { c2.run(); } catch (e) { iss.push(`${id}/${nid}/${job}: '${c.title}' 실행 오류 ${e.message}`); } }
+        }
+        // 기록 말투
+        const allC = [n.choices || [], ...Object.values(n.by || {}).map((v) => v.choices || [])].flat().filter(Boolean);
+        for (const c of allC) for (const ef of [c.effect, c.risk && c.risk.effect].filter(Boolean)) {
+          const lc = String(ef.log || "").trim().slice(-1).charCodeAt(0) - 0xac00;
+          if (ef.log !== undefined && !(lc >= 0 && lc < 11172 && (lc % 28 === 16 || lc % 28 === 10))) iss.push(`${id}/${nid}: 기록 명사형 아님 '${ef.log}'`);
+          if (ef.traits) for (const t of Object.keys(ef.traits)) if (!["용기", "신중", "선량", "야심"].includes(t)) iss.push(`${id}/${nid}: 모르는 성향 ${t}`);
+        }
+      }
+      E(`delete p.arcs[${JSON.stringify(id)}]`);
+    }
+    out.push("페이지 오류: " + (errs.length ? [...new Set(errs)].join(" / ") : "없음"));
+    out.push("문제 " + [...new Set(iss)].length + "건");
+    out.push(...[...new Set(iss)]);
+  } catch (e) { out.push("ERR " + e.stack); }
+  document.getElementById("o").textContent = out.join("\n");
+});
+</script>

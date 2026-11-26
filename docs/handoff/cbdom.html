@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><body>
+<iframe id="a" src="file:///c:/haejeoklife/index.html" style="width:10px;height:10px"></iframe>
+<pre id="o">waiting</pre>
+<script>
+// 회수 사건 정적 우위 검사: 신분 변형마다 선택지의 기대 효과(효과 + risk 확률×효과)와 남기는 기록(플래그·추억)을 비교한다.
+// A가 B보다 모든 스탯에서 같거나 낫고 하나 이상 나으며, B가 남기는 기록이 A에도 다 있으면 'A 우위'.
+const fr = document.getElementById("a");
+fr.addEventListener("load", async () => {
+  const o = [];
+  await new Promise((r) => setTimeout(r, 500));
+  const w = fr.contentWindow, CBS = w.__CALLBACKS;
+  const SC = { health: 5, happiness: 5, knowledge: 3, relationship: 4, combat: 3, reputation: 5, standing: 4, money: 10000 };
+  const groups = ["민간인", "해적", "해군", "혁명군", "현상금 사냥꾼"];
+  const variant = (d, st) => {
+    if (!d.by) return d; let v = null;
+    for (const [k, x] of Object.entries(d.by)) { if (k === "*") continue; if (k.split("|").map((s) => s.trim()).includes(st)) { v = x; break; } }
+    v = v || d.by["*"]; if (!v) return d;
+    const out = { ...d, ...v };
+    out.choices = Array.isArray(v.choices) ? d.choices.map((c, i) => ({ ...c, ...(v.choices[i] || {}) })).concat(v.choices.slice(d.choices.length)) : d.choices;
+    return out;
+  };
+  const vec = (c) => {
+    const m = {}, add = (ef, k) => { if (!ef) return; for (const s of Object.keys(SC)) if (typeof ef[s] === "number") m[s] = (m[s] || 0) + ef[s] * k / SC[s];
+      for (const [s, v] of Object.entries(ef.skills || {})) m["sk_" + s] = (m["sk_" + s] || 0) + v * k / 4;
+      if (ef.bounty) m.bounty = (m.bounty || 0) + 1 * k; };
+    add(c.effect, 1); if (c.risk) add(c.risk.effect, c.risk.chance || 0);
+    const per = new Set([...((c.effect || {}).flags || []), ...((c.effect || {}).memory ? ["mem"] : [])]);
+    return { m, per, risky: !!c.risk };
+  };
+  let n = 0;
+  for (const d of CBS) for (const st of groups) {
+    const v = variant(d, st), V = v.choices.map(vec), dims = [...new Set(V.flatMap((x) => Object.keys(x.m)))];
+    for (let i = 0; i < V.length; i++) for (let j = 0; j < V.length; j++) {
+      if (i === j) continue; const A = V[i], B = V[j];
+      const ge = dims.every((k) => (A.m[k] || 0) >= (B.m[k] || 0) - 0.05), gt = dims.some((k) => (A.m[k] || 0) - (B.m[k] || 0) >= 0.5);
+      const perOk = [...B.per].every((x) => A.per.has(x));
+      if (ge && gt && perOk) { n++; o.push(`${d.key} [${st}] '${v.choices[i].title}' > '${v.choices[j].title}'`); }
+    }
+  }
+  o.unshift(`정적 우위 ${n}건 (사건 ${CBS.length}종 × 신분 ${groups.length})`);
+  document.getElementById("o").textContent = [...new Set(o)].join("\n");
+});
+</script>

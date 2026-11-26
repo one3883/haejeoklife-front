@@ -341,7 +341,6 @@
         .field input,
         #charName,
         .ranking-formline input,
-        .lifeFbForm textarea,
         #archiveOverlay select {
           font-size: 16px;
         }
@@ -826,6 +825,34 @@
         background: var(--straw);
         border-color: transparent;
       }
+      /* '다음 장면' 고정 줄: 화면(뷰포트) 맨 아래에 고정해, 장면 길이·선택지 유무와 상관없이 늘 같은 자리에서 누른다.
+         선택지를 고르는 동안에도 숨기지 않고 꺼진 채로 둔다(숨겼다 보이면 자리가 흔들린다).
+         게임 화면(#game)이 숨겨지면 함께 숨는다. */
+      .nextDock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+        padding: 18px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, var(--bg) 60%, transparent);
+        pointer-events: none;
+      }
+      .nextDock #continueBtn {
+        display: block;
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        min-height: 52px;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 6px 18px #0004;
+        touch-action: manipulation;
+        pointer-events: auto;
+      }
+      .nextDock #continueBtn:disabled { opacity: 0.55; }
+      /* 고정 줄이 마지막 내용(지난 사건·버튼)을 가리지 않게 게임 화면 아래에 여백을 둔다 */
+      #game { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
       .clock .active {
         outline-color: var(--sea);
       }
@@ -969,19 +996,24 @@
       .ranking-my-rank { padding:12px; margin:10px 0; font-weight:900; font-size:19px; color:var(--gold); border:1px solid var(--line); border-radius:10px; }
       .ranking-message { margin:8px 0; font-size:13px; }
       /* 결과 화면 원탭 반응: '더보기 — 상세 인생 기록' 버튼과 같은 너비·높이 */
-      .lifeFbWrap { width:100%; max-width:400px; margin:10px auto 0; }
-      .lifeFb { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:45px; padding:4px 4px 4px 15px; border-radius:11px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); text-align:left; }
-      .lifeFbOpts { display:flex; gap:2px; flex:0 0 auto; }
-      .lifeFbBtn { width:44px; height:36px; border:0; border-radius:7px; background:transparent; font-size:22px; line-height:1; cursor:pointer; transition-property:transform, background-color; transition-duration:150ms; transition-timing-function:ease-out; }
-      .lifeFbBtn:hover { background:var(--panel); }
-      .lifeFbBtn:active { transform:scale(0.96); }
-      .lifeFbNote { min-height:36px; border:0; border-radius:7px; background:transparent; color:var(--sea); font:inherit; font-weight:700; padding:0 10px; cursor:pointer; transition:background-color 150ms ease-out; }
-      .lifeFbNote:hover { background:var(--panel); }
-      .lifeFbForm { margin-top:8px; text-align:left; }
-      .lifeFbForm textarea { width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:11px; padding:10px 12px; font:inherit; font-size:16px; background:var(--panel); color:var(--ink); resize:vertical; }
-      .lifeFbFoot { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; }
-      .lifeFbFoot .btn { flex:0 0 auto; white-space:nowrap; }
-      @media (prefers-reduced-motion: reduce) { .lifeFbBtn:active { transform:none; } }
+      /* 결과 화면 '의견 보내기' 카드: 누르면 구글 폼이 새 탭으로 열린다 */
+      .voyageFb { width:100%; max-width:400px; box-sizing:border-box; margin:12px auto 0; padding:16px; border-radius:14px; background:linear-gradient(135deg, var(--panel2), var(--panel)); border:1px solid var(--line); color:var(--ink); text-align:left; display:flex; align-items:center; gap:14px; }
+      .voyageFbIcon { flex:0 0 auto; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; font-size:22px; background:var(--panel); border:1px solid var(--line); }
+      .voyageFbText { flex:1 1 auto; min-width:0; }
+      .voyageFbTitle { margin:0; font-size:16px; font-weight:800; line-height:1.35; text-wrap:balance; }
+      .voyageFbDesc { margin:4px 0 0; font-size:13px; line-height:1.5; color:var(--muted); text-wrap:pretty; }
+      .voyageFbBtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:0 16px; border-radius:10px; background:var(--sea); color:var(--bg); font:inherit; font-size:14px; font-weight:800; text-decoration:none; white-space:nowrap; cursor:pointer; transition-property:transform, filter; transition-duration:150ms; transition-timing-function:ease-out; }
+      .voyageFbBtn:hover { filter:brightness(1.08); }
+      .voyageFbBtn:active { transform:scale(0.97); }
+      .voyageFbBtn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+      /* 폰: 아이콘·글을 위에, 버튼을 아래 꽉 차게 */
+      @media (max-width: 480px) {
+        .voyageFb { flex-wrap:wrap; padding:14px; gap:12px; }
+        .voyageFbIcon { width:40px; height:40px; font-size:20px; }
+        .voyageFbText { flex-basis:calc(100% - 52px); }
+        .voyageFbBtn { width:100%; min-height:48px; font-size:15px; }
+      }
+      @media (prefers-reduced-motion: reduce) { .voyageFbBtn:active { transform:none; } }
 
       /* ================= 다크 모드: 한밤의 그랜드 라인 =================
          기기가 다크 모드면 같은 구조에 달빛 아래 밤바다 색을 쓴다. 글꼴·배치는 낮 테마와 같다.
@@ -1477,14 +1509,17 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 <p class="ranking-total">오늘의 도전자 집계 중…</p><div class="ranking-list" tabindex="0" role="region" aria-label="오늘의 랭킹 도전자 목록"><p class="small">랭킹을 불러오는 중입니다…</p></div>
               </section>
               <div class="choices" id="choices"></div>
-              <div class="actions">
+              <!-- '다음 장면'은 장면 길이와 상관없이 늘 같은 자리(화면 아래)에서 누를 수 있게 따로 떼어 고정한다 -->
+              <div class="nextDock">
                 <button
                   class="btn secondary action-next"
                   id="continueBtn"
                   onclick="continueLife()"
                 >
-                  ⏭️ 다음 장면</button
-                ><button class="btn secondary" onclick="showBio()">
+                  ⏭️ 다음 장면</button>
+              </div>
+              <div class="actions">
+                <button class="btn secondary" onclick="showBio()">
                   인생 정보</button
                 ><button class="btn secondary action-archive" onclick="openArchive()">
                   📜 사건 다시 보기</button
@@ -12243,6 +12278,20 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               p.age + 1,
             );
         }
+        if (p.age >= 16 && !p.flags.impelDown && p.health > 0) {
+          if (ok) {
+            p.flags.arcVictoryPort = p.place?.name;
+            window.queueTriggeredArc?.("duelist");
+          }
+          else if (!p.flags.arcLostWithCompanion) {
+            const companion = window.pickCompanion?.();
+            if (companion) {
+              p.flags.arcLostWithCompanion = true;
+              (p.arcHint ||= {}).signal = companion.id;
+              window.queueTriggeredArc?.("signal");
+            }
+          }
+        }
         scenes.splice(sceneIndex + 1, 0, {
           essential: true,
           tags: (scenes[sceneIndex] && scenes[sceneIndex].tags) || undefined,
@@ -17043,6 +17092,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         p.flags.voyages = (p.flags.voyages || 0) + 1;
         if (first && p.visitedSeas.length > 1) achieve(`${dest.sea} 첫 항해`);
         log(`${dest.name}에 도착함`);
+        if (p.arcs?.poster?.flagPort === dest.name)
+          log("생선 가게 앞에 당신이 맡긴 깃발이 펄럭임");
       }
 
       // ── 악마의 열매 · 패기 성장 ──
@@ -28736,36 +28787,21 @@ async function shareKakao(cv,d,btn){
 }
 const WANTED_HIDE=["sceneArt","eventTitle","scene","lastResult"];
 function clearWanted(){const b=document.getElementById("wantedBox");if(b)b.remove();WANTED_HIDE.forEach(id=>{const e=document.getElementById(id);if(e&&e.dataset.wantedHidden){e.style.display=e.dataset.wantedHidden==="-"?"":e.dataset.wantedHidden;delete e.dataset.wantedHidden}})}
-// ── 결과 화면 원탭 반응: 누르기만 하면 되는 😆 😐 😴, 누른 뒤엔 선택으로 '한마디 남기기' ──
-// 응답은 GA로 보낸다. life_rating(rating, age, race, difficulty) / life_feedback(+ text, 최대 100자)
-// GA는 매개변수 값을 100자까지만 저장하므로 입력칸도 100자로 막는다. GA에는 개인정보를 보내면 안 돼서 안내 문구를 둔다.
+// ── 결과 화면 '의견 보내기' 카드: 버튼을 누르면 구글 폼이 새 탭으로 열린다 ──
+// 누른 횟수만 GA(feedback_open)로 센다. 의견 내용은 구글 폼에 쌓인다.
+const FEEDBACK_FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLSexyBzQ_-jQnHGaQ1GMk19K_qUf-HM7AIwdZQvPcqbYfIWUQA/viewform?usp=header";
 function lifeFeedback(d){
- const wrap=document.createElement("div");wrap.className="lifeFbWrap";
- const bar=document.createElement("div");bar.className="lifeFb";
- const q=document.createElement("span");q.className="lifeFbQ";q.textContent="이번 인생 어땠어요?";
- const opts=document.createElement("div");opts.className="lifeFbOpts";
- const base={age:d.age,race:d.race||"",difficulty:(p&&p.difficulty)||"normal"};
- let rating="";
- const note=document.createElement("button");note.type="button";note.className="lifeFbNote";note.textContent="✏️ 한마디 남기기";
- [["😆","fun","재밌었어요"],["😐","okay","그저 그래요"],["😴","boring","지루했어요"]].forEach(([emo,val,lab])=>{
-  const b=document.createElement("button");b.type="button";b.className="lifeFbBtn";b.textContent=emo;b.title=lab;b.setAttribute("aria-label",lab);
-  b.onclick=()=>{if(rating)return;rating=val;gaEvent("life_rating",{...base,rating:val});
-   q.textContent=`${emo} 고마워요!`;opts.replaceChildren(note)};
-  opts.appendChild(b)});
- const form=document.createElement("div");form.className="lifeFbForm";form.hidden=true;
- const ta=document.createElement("textarea");ta.maxLength=100;ta.rows=3;ta.placeholder="좋았던 점이나 바라는 점을 적어 주세요…";ta.setAttribute("aria-label","한마디 남기기");
- const foot=document.createElement("div");foot.className="lifeFbFoot";
- const PRIV="이름·연락처 같은 개인정보는 적지 말아 주세요";
- const hint=document.createElement("span");hint.className="small";hint.textContent=`0/100 · ${PRIV}`;
- const send=document.createElement("button");send.type="button";send.className="btn";send.textContent="보내기";
- ta.oninput=()=>{hint.textContent=`${ta.value.length}/100 · ${PRIV}`};
- note.onclick=()=>{form.hidden=false;note.remove();ta.focus()};
- send.onclick=()=>{const t=ta.value.trim().slice(0,100);if(!t){ta.focus();return}
-  gaEvent("life_feedback",{...base,rating,text:t});
-  const done=document.createElement("div");done.className="small";done.setAttribute("role","status");done.textContent="보냈어요. 다음 업데이트에 참고할게요!";
-  form.replaceChildren(done)};
- foot.append(hint,send);form.append(ta,foot);bar.append(q,opts);wrap.append(bar,form);
- return wrap;
+ const card=document.createElement("section");card.className="voyageFb";card.setAttribute("aria-label","의견 보내기");
+ const icon=document.createElement("div");icon.className="voyageFbIcon";icon.setAttribute("aria-hidden","true");icon.textContent="🧭";
+ const text=document.createElement("div");text.className="voyageFbText";
+ const t=document.createElement("p");t.className="voyageFbTitle";t.textContent="이번 항해는 어떠셨나요?";
+ const s=document.createElement("p");s.className="voyageFbDesc";s.textContent="아쉬운 점이나 새로운 이벤트 아이디어를 보내주시면 업데이트에 반영합니다.";
+ text.append(t,s);
+ const btn=document.createElement("a");btn.className="voyageFbBtn";btn.href=FEEDBACK_FORM_URL;btn.target="_blank";btn.rel="noopener noreferrer";
+ btn.textContent="✉️ 의견 보내기";
+ btn.onclick=()=>{try{gaEvent("feedback_open",{age:d.age,race:d.race||"",difficulty:(p&&p.difficulty)||"normal"})}catch(e){}};
+ card.append(icon,text,btn);
+ return card;
 }
 function wantedPoster(cause){
  clearWanted();
@@ -34697,7 +34733,8 @@ new MutationObserver(recs=>{
     // 곁에 동료가 없어도, 배를 타거나 소속이 있으면 함께 지내는 동료 하나를 만든다
     if (!mate) {
       if (!(p.ship || p.crew || ["해적", "해군", "혁명군"].includes(p.status) || p.job === "현상금 사냥꾼")) return;
-      mate = peer({ role: "동료", d: ri(-4, 4), rel: ri(55, 70) });
+      // 같은 배·같은 부대의 동료는 주인공과 같은 소속으로 만든다(소속이 비면 민간인으로 남아 동료 사건에서 빠진다)
+      mate = peer({ role: "동료", d: ri(-4, 4), rel: ri(55, 70), ...(myAff() !== "민간인" ? { aff: myAff(), job: myAff() } : {}) });
       remember(mate, "같은 배에서 지내는 동료", "crew", 1);
     }
     out.push(
@@ -34822,6 +34859,11 @@ new MutationObserver(recs=>{
       const base = Math.max(ref, BOUNTY_SOFT_CAP);
       p.bounty = Math.round(base + (p.bounty - base) * BOUNTY_OVER_RATE);
     }
+    if (p.bounty > 0 && !(p._bountyRef > 0) && p.flags &&
+        ["해적", "혁명군"].includes(p.status) && p.flags.arcPosterYear == null) {
+      p.flags.arcPosterYear = p.age;
+      window.queueTriggeredArc?.("poster");
+    }
     p._bountyRef = p.bounty;
   }
   {
@@ -34875,17 +34917,19 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261126b" defer></script>
+  <script src="place-events.js?v=20261126e" defer></script>
   <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
-  <script src="callback-events.js?v=20261126a" defer></script>
+  <script src="callback-events.js?v=20261126b" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>
-  <script src="impel-down.js?v=20261125a" defer></script>
+  <script src="impel-down.js?v=20261126e" defer></script>
   <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
   <script src="companion-events.js?v=20261125a" defer></script>
   <!-- 건강과 행복: 두 스탯이 사망 위험·싸움·수입에 실제로 영향을 준다. companion-events.js 뒤에 불러온다 -->
   <script src="vitality.js?v=20261126a" defer></script>
+  <!-- 인연 줄기: 고른 선택이 다음 장면을 정하고 꼬리에 꼬리를 무는 3~4단계 이야기. place-events.js의 ARC()를 쓴다 -->
+  <script src="arc-events.js?v=20261126e" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
