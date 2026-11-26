@@ -6654,6 +6654,15 @@
     return f ? "🔁 오래전에 고른 선택이 돌아왔습니다." : "";
   }
   function addEcho(sc, d0, n) {
+    // 사건을 만든 뒤 보여 주기 전에 상황이 바뀌면(신분이 바뀜·다른 섬으로 감·동료가 떠남) 건너뛴다 (showScene → fitScene → valid)
+    const st0 = cbStatus(), w0 = d0.when || {};
+    if (w0.companion !== undefined || d0.by)
+      sc.valid = () => {
+        if (cbStatus() !== st0) return false;
+        if (w0.companion === true) return !!n && typeof window.isCompanionNow === "function" && window.isCompanionNow(n);
+        if (w0.companion === false) return !(typeof window.pickCompanion === "function" && window.pickCompanion());
+        return true;
+      };
     const line = echoLine(d0, n);
     if (line) sc.body = `${line}\n\n${sc.body}`;
     const f = (d0.flags || [])[0], o = f && p.flagOrigin ? p.flagOrigin[f] : null;
