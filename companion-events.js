@@ -25,11 +25,24 @@
   const inPrison = () => !!(p && p.flags && p.flags.impelDown);
 
   // 곁에 있는 동료 하나를 고른다. 인연이 깊을수록 잘 뽑힌다.
+  // 곁에 있다 = 인연 50 이상이고 최근 8년 안에 만났으며, 지금 실제로 곁에 있을 수 있는 사람.
+  //  - 동료·연인·배우자는 늘 함께 다닌다. 친구·제자·은인은 자기 집(n.home)이 지금 있는 곳과 같아야 한다
+  //  - 해적·해군·혁명군일 때는 같은 소속인 사람만(해군 작전에 상인 친구가 끼거나, 해적선에 민간인 연인이 오르지 않게)
+  const WITH_ME = ["배우자", "연인", "동료"];
+  const myAff = () => (["해적", "해군", "혁명군"].includes(p.status) ? p.status : null);
   function companions() {
     if (!p || !Array.isArray(p.npcs) || typeof npcsBy !== "function") return [];
-    // 곁에 있다 = 인연 50 이상이고 최근 8년 안에 만난 사람. 오래 챙기지 않은 동료는 곁을 떠난 것으로 본다
-    return npcsBy((n) => COMP_ROLES.includes(n.role) && (n.rel || 0) >= 50 && n.job !== "임펠 다운 수감자" && p.age - (n.lastSeen ?? n.metAge ?? p.age) <= 8);
+    const here = p.place && p.place.name, aff = myAff();
+    return npcsBy((n) => {
+      if (!COMP_ROLES.includes(n.role) || (n.rel || 0) < 50 || n.job === "임펠 다운 수감자") return false;
+      if (p.age - (n.lastSeen ?? n.metAge ?? p.age) > 8) return false;
+      const withMe = WITH_ME.includes(n.role) || (n.home || here) === here;
+      if (!withMe) return false;
+      if (aff) return n.aff === aff || (n.role === "동료" && !n.aff);
+      return true;
+    });
   }
+  window.isCompanionNow = (n) => companions().includes(n);
   window.pickCompanion = function () {
     const list = companions();
     if (!list.length) return null;
