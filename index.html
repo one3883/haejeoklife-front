@@ -826,6 +826,31 @@
         background: var(--straw);
         border-color: transparent;
       }
+      /* '다음 장면' 고정 줄: 사건 칸 안에서 화면 아래에 붙어 있어, 장면 길이가 달라도 같은 자리에서 누른다.
+         선택지를 고르는 중(버튼이 꺼진 동안)에는 선택지를 가리지 않게 숨긴다. */
+      .nextDock {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        margin: 14px -18px 0;
+        padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, var(--panel) 72%, transparent);
+      }
+      .nextDock:has(#continueBtn:disabled) { display: none; }
+      .nextDock #continueBtn {
+        display: block;
+        width: 100%;
+        min-height: 52px;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 6px 18px #0003;
+        touch-action: manipulation;
+      }
+      .nextDock + .actions { margin-top: 4px; }
+      /* 휴대폰에서는 사건 칸 안쪽 여백이 14px이라 고정 줄도 그만큼만 바깥으로 넓힌다 */
+      @media (max-width: 760px) {
+        .nextDock { margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
+      }
       .clock .active {
         outline-color: var(--sea);
       }
@@ -1477,14 +1502,17 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 <p class="ranking-total">오늘의 도전자 집계 중…</p><div class="ranking-list" tabindex="0" role="region" aria-label="오늘의 랭킹 도전자 목록"><p class="small">랭킹을 불러오는 중입니다…</p></div>
               </section>
               <div class="choices" id="choices"></div>
-              <div class="actions">
+              <!-- '다음 장면'은 장면 길이와 상관없이 늘 같은 자리(화면 아래)에서 누를 수 있게 따로 떼어 고정한다 -->
+              <div class="nextDock">
                 <button
                   class="btn secondary action-next"
                   id="continueBtn"
                   onclick="continueLife()"
                 >
-                  ⏭️ 다음 장면</button
-                ><button class="btn secondary" onclick="showBio()">
+                  ⏭️ 다음 장면</button>
+              </div>
+              <div class="actions">
+                <button class="btn secondary" onclick="showBio()">
                   인생 정보</button
                 ><button class="btn secondary action-archive" onclick="openArchive()">
                   📜 사건 다시 보기</button
