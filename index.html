@@ -1194,6 +1194,45 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
 </head>
   <body>
     <div class="wrap">
+      <!-- 업데이트 공지: 닫으면 이 기기에서는 같은 공지(data-id)가 다시 뜨지 않는다. 새 공지는 data-id와 내용을 바꾼다 -->
+      <aside id="updateNotice" class="update-notice" data-id="20261126" role="region" aria-label="업데이트 공지" hidden>
+        <div class="un-head">
+          <strong>🆕 새로워진 점 <span class="un-date">11월 26일</span></strong>
+          <button type="button" class="un-close" aria-label="공지 닫기">✕</button>
+        </div>
+        <ul>
+          <li><b>🔁 선택이 돌아와요</b> — 어린 시절의 선택이 몇 년 뒤 사건으로 돌아옵니다. 무엇 때문인지 사건 위에 표시되고, 인생이 끝나면 '내 선택이 바꾼 것'을 모아 보여 줍니다.</li>
+          <li><b>🤝 동료</b> — 위기에 빠지면 곁의 동료가 구해 줄 수 있어요. 동료가 있을 때와 없을 때 다른 사건이 일어나고, 관계를 챙겨야 유지됩니다.</li>
+          <li><b>⛓ 임펠다운</b> — 해적·혁명군이 정부에게 붙잡히면 수감되고, 탈옥을 노릴 수 있어요.</li>
+          <li><b>📱 휴대폰</b> — 게임 중 화면 맨 위에서 스탯·패기·능력을 바로 볼 수 있어요.</li>
+        </ul>
+      </aside>
+      <style>
+        .update-notice{margin:0 0 12px;padding:12px 14px 10px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);box-shadow:0 4px 18px rgba(10,46,74,.12)}
+        .update-notice .un-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .update-notice .un-head strong{font-size:15px}
+        .update-notice .un-date{font-size:12px;font-weight:400;color:var(--muted);margin-left:4px}
+        .update-notice .un-close{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:15px;cursor:pointer}
+        .update-notice ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;line-height:1.55}
+        .update-notice li{margin:4px 0}
+        .update-notice li b{color:var(--gold)}
+      </style>
+      <script>
+        // 업데이트 공지: 이 기기에서 이미 닫은 공지면 띄우지 않는다 (저장소를 못 쓰면 그냥 띄운다)
+        (() => {
+          const box = document.getElementById("updateNotice");
+          if (!box) return;
+          const id = box.dataset.id, KEY = "opl_notice_closed";
+          let closed = null;
+          try { closed = localStorage.getItem(KEY); } catch (e) {}
+          if (closed === id) return;
+          box.hidden = false;
+          box.querySelector(".un-close").addEventListener("click", () => {
+            box.hidden = true;
+            try { localStorage.setItem(KEY, id); } catch (e) {}
+          });
+        })();
+      </script>
       <header class="hero">
         <div class="kicker">A LIFE SIMULATOR IN THE WORLD OF ONE PIECE</div>
         <h1>ONE PIECE LIFE</h1>
