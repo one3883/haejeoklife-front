@@ -12243,6 +12243,20 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               p.age + 1,
             );
         }
+        if (p.age >= 16 && !p.flags.impelDown && p.health > 0) {
+          if (ok) {
+            p.flags.arcVictoryPort = p.place?.name;
+            window.queueTriggeredArc?.("duelist");
+          }
+          else if (!p.flags.arcLostWithCompanion) {
+            const companion = window.pickCompanion?.();
+            if (companion) {
+              p.flags.arcLostWithCompanion = true;
+              (p.arcHint ||= {}).signal = companion.id;
+              window.queueTriggeredArc?.("signal");
+            }
+          }
+        }
         scenes.splice(sceneIndex + 1, 0, {
           essential: true,
           tags: (scenes[sceneIndex] && scenes[sceneIndex].tags) || undefined,
@@ -17043,6 +17057,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         p.flags.voyages = (p.flags.voyages || 0) + 1;
         if (first && p.visitedSeas.length > 1) achieve(`${dest.sea} 첫 항해`);
         log(`${dest.name}에 도착함`);
+        if (p.arcs?.poster?.flagPort === dest.name)
+          log("생선 가게 앞에 당신이 맡긴 깃발이 펄럭임");
       }
 
       // ── 악마의 열매 · 패기 성장 ──
@@ -34823,6 +34839,11 @@ new MutationObserver(recs=>{
       const base = Math.max(ref, BOUNTY_SOFT_CAP);
       p.bounty = Math.round(base + (p.bounty - base) * BOUNTY_OVER_RATE);
     }
+    if (p.bounty > 0 && !(p._bountyRef > 0) && p.flags &&
+        ["해적", "혁명군"].includes(p.status) && p.flags.arcPosterYear == null) {
+      p.flags.arcPosterYear = p.age;
+      window.queueTriggeredArc?.("poster");
+    }
     p._bountyRef = p.bounty;
   }
   {
@@ -34876,17 +34897,17 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261126c" defer></script>
+  <script src="place-events.js?v=20261126e" defer></script>
   <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
-  <script src="callback-events.js?v=20261126a" defer></script>
+  <script src="callback-events.js?v=20261126b" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>
-  <script src="impel-down.js?v=20261125a" defer></script>
+  <script src="impel-down.js?v=20261126e" defer></script>
   <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
   <script src="companion-events.js?v=20261125a" defer></script>
   <!-- 인연 줄기: 고른 선택이 다음 장면을 정하고 꼬리에 꼬리를 무는 3~4단계 이야기. place-events.js의 ARC()를 쓴다 -->
-  <script src="arc-events.js?v=20261126a" defer></script>
+  <script src="arc-events.js?v=20261126e" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
