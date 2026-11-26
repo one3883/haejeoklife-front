@@ -2135,8 +2135,9 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const row = rand(profiles[fam] || profiles["평범한 가정"]);
         return { occupation: row[0], rank: row[1], wealth: row[2] };
       }
+      function birthAllowed(x) { return !!x && !["발라티에","스릴러 바크","아마존 릴리","펑크 해저드","에그헤드","임펠다운","임펠 다운"].includes(x.name); }
       function weightedPlace(sea) {
-        let list = places.filter((x) => !sea || x.sea === sea);
+        let list = places.filter((x) => birthAllowed(x) && (!sea || x.sea === sea));
         let sum = list.reduce((a, x) => a + x.w, 0),
           r = Math.random() * sum;
         for (let x of list) {
@@ -2147,7 +2148,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function updatePlaceOptions() {
         let sea = $("sea").value;
-        let list = places.filter((x) => sea === "random" || x.sea === sea);
+        let list = places.filter((x) => birthAllowed(x) && (sea === "random" || x.sea === sea));
         $("birthplace").innerHTML =
           '<option value="random">무작위 — 선택한 바다에서 추첨</option>' +
           list
@@ -2217,6 +2218,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           chosen === "random"
             ? weightedPlace(sea === "random" ? null : sea)
             : places[+chosen];
+        if (!birthAllowed(place)) place = weightedPlace(sea === "random" ? null : sea);
         let fam =
           $("family").value === "random"
             ? Math.random() < 0.03
@@ -2251,12 +2253,13 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                 "스카이피안",
               ])
             : $("race").value;
-        // 스카이피안은 하늘섬에서 태어난다 (출생지를 직접 고른 경우는 하계로 내려온 가정으로 본다)
-        if (race === "스카이피안" && chosen === "random" && (sea === "random" || sea === "그랜드 라인 전반부")) {
-          const sky = places.find((x) => x.name === "엔젤 아일랜드");
-          if (sky) place = sky;
-          if (fam === "해군 가족" || fam === "천룡인 가문")
-            fam = rand(familyTypes.filter((f) => !["해군 가족", "천룡인 가문"].includes(f)));
+        const home = {"스카이피안":"스카이피아","어인":"어인섬","인어":"어인섬","밍크족":"조우"}[race];
+        if (home) {
+          if (place.country !== home && place.name !== home) {
+            place = places.find(x => birthAllowed(x) && (x.country === home || x.name === home));
+          }
+          if (fam === "천룡인 가문" || (["스카이피안","밍크족"].includes(race) && fam === "해군 가족"))
+            fam = rand(familyTypes.filter(f => !["해군 가족","천룡인 가문"].includes(f)));
         }
         let parentProfile = makeParentProfile(fam);
         let wealth = {
@@ -2430,6 +2433,11 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function normalize() {
         if (!p) return;
+        if (p.flags?.voidResearch && !["학자","과학자"].includes(p.job) && p.status !== "혁명군") {
+          p.flags.voidResearch = false;
+          if ((p.flags.voidProgress || 0) < 7) p.flags.voidProgress = 0;
+          log("직업 변경으로 공백의 100년 연구를 중단함");
+        }
         slowStats();
         ["health", "happiness", "knowledge", "relationship", "combat"].forEach(
           (k) => {
@@ -3277,6 +3285,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           천룡인: 6000000,
         };
         let b = (base[job] ?? 650000) * 1.07;
+        if (job === "의사 견습") b *= (p.job === job && dreamWasCompleted("doctor")) ? 5 : (level >= 4 || rank === "명성 있는 의사") ? 3 : 1;
         const ladder = careerLadders[job] || [];
         const multipliers = [1, 1.18, 1.42, 1.8, 2.3, 3, 4, 5.5, 7];
         const m =
@@ -9896,8 +9905,25 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = lifeImpactScene();
           if (s) scenes.push(s);
         }
-        const sh = strawHatScene();
-        if (sh) scenes.push(sh);
+        // 일반 밀짚모자 만남은 원작 개입으로 대체됨.
+        if (p.job === "의사 견습" && p.age >= 18 && p.rankLevel >= 1) {
+          const rare = p.rankLevel >= 3 && p.knowledge >= 75;
+          const key = rare && !p.flags.medicalCureSeen && Math.random() < .12 ? "medical_cure" :
+            p.knowledge >= 45 && !p.flags.medicalSurgerySeen && Math.random() < .18 ? "medical_surgery" : null;
+          if (key) {
+            const cure = key === "medical_cure";
+            const flag = cure ? "medicalCureSeen" : "medicalSurgerySeen";
+            const finish = () => { p.flags[flag] = true; };
+            scenes.push({key, minAge:18, major:true, title:cure?"불치병 치료":"기적적인 수술",
+              body:cure?"오랫동안 치료법을 찾지 못한 환자가 병원을 찾아왔습니다. 당신은 기존 연구를 다시 검토하며 새로운 치료법을 시험할지 고민합니다.":"중상을 입은 환자가 병원에 실려 왔습니다. 다른 의사들은 수술이 어렵다고 판단했지만, 당신에게는 시도할 방법이 있습니다.",
+              callbackValid:()=>p.job==="의사 견습"&&!p.flags[flag],
+              choices:[
+                {title:cure?"새 치료법을 시험한다":"고난도 수술을 집도한다",desc:"성공하면 명성을 얻지만 실패 위험이 있다",run:()=>{finish();p.health-=6;sk("의술",5);if(Math.random()<Math.min(.9,.35+p.knowledge*.005)){p.reputation+=10;gainStanding(7);p.money+=Math.round(annualSalary()*.25);p.flags[cure?"medicalCureSuccess":"medicalSurgerySuccess"]=true;log(cure?"난치병 치료에 성공함":"고난도 수술에 성공함");}else{p.happiness-=8;p.reputation-=4;log("치료에 실패함");}}},
+                {title:"전문 의료진과 협력한다",desc:"보수는 적지만 안전하게 경험을 쌓는다",run:()=>{finish();p.knowledge+=4;sk("의술",3);p.relationship+=3;log("전문 의료진과 협력함");}},
+                {title:"다른 병원에 의뢰한다",desc:"위험을 피하지만 기회를 놓친다",run:()=>{finish();p.happiness-=2;log("환자를 다른 병원에 의뢰함");}}
+              ]});
+          }
+        }
         if (Math.random() < 0.3) {
           const ps = placeScene();
           if (ps) scenes.push(ps);
@@ -12196,6 +12222,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             p.combat = clamp(p.combat + 1);
             extra = "\n\n실전 경험이 쌓였습니다. (전투력 +1)";
           }
+        } else if (_tac && _tac.fled) {
+          p.health = Math.max(1,p.health-3);
+          p.reputation = Math.max(0,p.reputation-2);
+          extra = "\n\n전투에서 이탈했습니다. 건강 -3 · 명성 -2";
         } else if (nobleVsImu) {
           // 오로성·신의 기사단이 이무에게 지면 살아남을 수 없다
           p.health = 0;
@@ -12255,8 +12285,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           essential: true,
           tags: (scenes[sceneIndex] && scenes[sceneIndex].tags) || undefined,
           key: "battle_" + Math.random(),
-          title: ok ? `전투 승리 — ${foe}` : `전투 패배 — ${foe}`,
-          body: `${foe}${wa(foe)}의 전투가 벌어졌습니다.\n당신의 전투력 ${cb} · 특수 능력치 ${sp}${comboBonus() ? ` · 능력 조합 보정 +${Math.round(comboBonus() * 100)}%` : ""} → 승리 확률 ${pct}%${nonFatal && !ok ? "\n\n이번 결전에서 패배했지만 목숨은 건졌습니다. 부상을 치료하고 다시 도전할 수 있습니다." : ""}\n\n${ok ? "치열한 공방 끝에 상대를 쓰러뜨렸습니다!" : "상대의 힘에 밀려 쓰러지고 말았습니다."}${_tac && _tac.note ? "\n\n" + _tac.note : ""}${extra}`,
+          title: _tac?.fled ? `전투 도주 — ${foe}` : ok ? `전투 승리 — ${foe}` : `전투 패배 — ${foe}`,
+          body: `${foe}${wa(foe)}의 전투가 벌어졌습니다.\n당신의 전투력 ${cb} · 특수 능력치 ${sp}${comboBonus() ? ` · 능력 조합 보정 +${Math.round(comboBonus() * 100)}%` : ""} → 승리 확률 ${pct}%${nonFatal && !ok ? "\n\n이번 결전에서 패배했지만 목숨은 건졌습니다. 부상을 치료하고 다시 도전할 수 있습니다." : ""}\n\n${_tac?.fled ? "전투에서 벗어났습니다." : ok ? "치열한 공방 끝에 상대를 쓰러뜨렸습니다!" : "상대의 힘에 밀려 쓰러지고 말았습니다."}${_tac && _tac.note ? "\n\n" + _tac.note : ""}${extra}`,
           choices: null,
           effect: () => {},
           summary: null,
@@ -34796,7 +34826,10 @@ new MutationObserver(recs=>{
   <script src="callback-events.js?v=20261126a" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
-  <script src="pixel-avatar.js?v=20261124a" defer></script>
+  <script src="pixel-avatar.js?v=20261125c" defer></script>
+  <script src="companion-battle.js?v=20261125c" defer></script>
+  <script src="battle-visuals.js?v=20261125a" defer></script>
+  <script src="canon-intervention.js?v=20261125a" defer></script>
   <script src="impel-down.js?v=20261125a" defer></script>
   <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
   <script src="companion-events.js?v=20261125a" defer></script>
