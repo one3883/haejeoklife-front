@@ -826,31 +826,34 @@
         background: var(--straw);
         border-color: transparent;
       }
-      /* '다음 장면' 고정 줄: 사건 칸 안에서 화면 아래에 붙어 있어, 장면 길이가 달라도 같은 자리에서 누른다.
-         선택지를 고르는 중(버튼이 꺼진 동안)에는 선택지를 가리지 않게 숨긴다. */
+      /* '다음 장면' 고정 줄: 화면(뷰포트) 맨 아래에 고정해, 장면 길이·선택지 유무와 상관없이 늘 같은 자리에서 누른다.
+         선택지를 고르는 동안에도 숨기지 않고 꺼진 채로 둔다(숨겼다 보이면 자리가 흔들린다).
+         게임 화면(#game)이 숨겨지면 함께 숨는다. */
       .nextDock {
-        position: sticky;
+        position: fixed;
+        left: 0;
+        right: 0;
         bottom: 0;
-        z-index: 20;
-        margin: 14px -18px 0;
-        padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
-        background: linear-gradient(to top, var(--panel) 72%, transparent);
+        z-index: 50;
+        padding: 18px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, var(--bg) 60%, transparent);
+        pointer-events: none;
       }
-      .nextDock:has(#continueBtn:disabled) { display: none; }
       .nextDock #continueBtn {
         display: block;
         width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
         min-height: 52px;
         font-size: 16px;
         font-weight: 800;
-        box-shadow: 0 6px 18px #0003;
+        box-shadow: 0 6px 18px #0004;
         touch-action: manipulation;
+        pointer-events: auto;
       }
-      .nextDock + .actions { margin-top: 4px; }
-      /* 휴대폰에서는 사건 칸 안쪽 여백이 14px이라 고정 줄도 그만큼만 바깥으로 넓힌다 */
-      @media (max-width: 760px) {
-        .nextDock { margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
-      }
+      .nextDock #continueBtn:disabled { opacity: 0.55; }
+      /* 고정 줄이 마지막 내용(지난 사건·버튼)을 가리지 않게 게임 화면 아래에 여백을 둔다 */
+      #game { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
       .clock .active {
         outline-color: var(--sea);
       }
