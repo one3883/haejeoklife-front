@@ -10514,38 +10514,17 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ),
         ],
         로그타운: () => [
-          PE(
+          // 자동 사건: 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md)
+          PA(
             "pl_lt_platform",
             "처형대를 찾은 해적들",
-            "그랜드 라인을 앞둔 신인 해적들이 해적왕의 처형대를 보러 광장에 모였습니다. 몇몇은 처형대 앞에서 큰 소리로 꿈을 외칩니다.",
-            [
-              {
-                title: "그들의 이야기를 들어 본다",
-                desc: "바깥 바다에 대해 배운다.",
-                run: () => {
-                  p.knowledge += 2;
-                  p.happiness += 2;
-                  p.flags.seaDream = true;
-                  log("처형대 앞에서 신인 해적들의 꿈 이야기를 들음");
-                },
-              },
-              {
-                title: "해군 초소에 신고한다",
-                desc: "작은 사례금을 받는다.",
-                run: () => {
-                  p.money += 80;
-                  p.reputation += 2;
-                  log("해적들을 해군에 신고함");
-                },
-              },
-              {
-                title: "무시하고 갈 길을 간다",
-                desc: "흔한 풍경일 뿐이다.",
-                run: () => {
-                  log("처형대의 해적들을 무시함");
-                },
-              },
-            ],
+            "그랜드 라인을 앞둔 신인 해적들이 해적왕의 처형대를 보러 광장에 모였습니다. 몇몇은 처형대 앞에서 큰 소리로 꿈을 외칩니다. 당신은 광장 한쪽에 서서 그들이 늘어놓는 바깥 바다 이야기를 끝까지 들었습니다.",
+            () => {
+              p.knowledge += 1;
+              p.happiness += 2;
+              p.flags.seaDream = true;
+            },
+            "처형대 앞에서 신인 해적들의 꿈 이야기를 들음",
           ),
           PA(
             "pl_lt_supply",
@@ -11167,34 +11146,22 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ),
         ],
         "홀케이크 아일랜드": () => [
-          PE(
+          // 자동 사건: 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md)
+          PA(
             "pl_wci_tea",
             "빅맘의 다과회 초대장",
-            "빅맘의 다과회 초대장이 마을 유력자들에게 돌았고, 당신도 그 명단에 들었습니다. 거절한 사람이 무사했다는 이야기는 들어 본 적이 없습니다.",
-            [
-              {
-                title: "다과회에 참석한다",
-                desc: "화려하지만 언제 무슨 일이 생길지 모른다.",
-                run: () => {
-                  if (Math.random() < 0.25) {
-                    p.health -= ri(5, 12);
-                    log("다과회에서 빅맘의 분노에 휘말림");
-                  } else {
-                    p.happiness += 5;
-                    p.reputation += 2;
-                    log("빅맘의 다과회에 무사히 다녀옴");
-                  }
-                },
-              },
-              {
-                title: "정중한 사과 편지와 과자를 보낸다",
-                desc: "수명을 조금 떼어 줘야 할지도 모른다.",
-                run: () => {
-                  p.health -= ri(1, 4);
-                  log("다과회 대신 수명을 바쳐 사과함");
-                },
-              },
-            ],
+            "빅맘의 다과회 초대장이 마을 유력자들에게 돌았고, 당신도 그 명단에 들었습니다. 거절한 사람이 무사했다는 이야기는 들어 본 적이 없습니다. 당신은 가장 좋은 옷을 꺼내 입고 숨죽인 채 다과회 자리에 앉았습니다.",
+            () => {
+              if (Math.random() < 0.2) {
+                p.health -= ri(3, 8);
+                log("다과회에서 빅맘의 분노에 휘말림");
+              } else {
+                p.happiness += 3;
+                p.reputation += 2;
+                log("빅맘의 다과회에 무사히 다녀옴");
+              }
+            },
+            null, // 결과에 따라 효과 안에서 기록을 남김
           ),
           PA(
             "pl_wci_homies",
@@ -11463,30 +11430,16 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             },
             "그랜드 라인의 변덕스러운 날씨를 겪음",
           ),
-          PE(
+          // 자동 사건: 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md)
+          PA(
             "sea_gl_logpose",
             "로그 포스를 잃어버린 항해사",
-            "로그 포스를 잃어버린 항해사가 다음 섬으로 가는 방법을 묻고 다닙니다.",
-            [
-              {
-                title: "영구 지침을 빌려준다",
-                desc: "고마움을 받는다.",
-                run: () => {
-                  p.relationship += 4;
-                  p.money += ri(0, 87);
-                  log("길 잃은 항해사를 도와줌");
-                },
-              },
-              {
-                title: "비싸게 판다",
-                desc: "돈을 번다.",
-                run: () => {
-                  p.money += ri(87, 216);
-                  p.relationship -= 2;
-                  log("길 잃은 항해사에게 지침을 비싸게 팖");
-                },
-              },
-            ],
+            "변덕스러운 바다에서 로그 포스를 잃어버린 항해사가 다음 섬으로 가는 방법을 묻고 항구를 헤매고 다닙니다. 당신은 남는 영구 지침을 적당한 값에 넘겨주었고, 항해사는 연신 고개를 숙이며 떠났습니다.",
+            () => {
+              p.relationship += 2;
+              p.money += ri(40, 150);
+            },
+            "길 잃은 항해사에게 영구 지침을 넘겨줌",
           ),
         ],
         신세계: () => [
@@ -14192,11 +14145,16 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           // 세 선택지가 지금의 즐거움 / 내 일 / 앞으로의 인연이라는 다른 가치를 건다.
           // 세 번째 자리는 옛 친구의 사정에 따라 '함께 일하자는 제안' 또는 '돈을 빌려 달라는 부탁'이 된다.
           // 두 선택지는 플래그(f_drifted_<id>, f_partner_<id>)나 빌려준 돈의 회수로 몇 년 뒤 다시 이어진다.
+          // 과거의 선택이 지금 할 수 있는 일을 바꾼다:
+          //  - 지난번에 짧게 인사만 하고 헤어졌다면(f_drifted_<id>) '밤새 이야기'가 잠기고 '먼저 사과하기'가 열린다
+          //  - 동료를 배신한 적이 있으면(공 가로채기·고자질 등) '함께 할 일을 제안'이 잠긴다
+          //  - 선량이 10 이상 쌓였으면 '가진 것을 나눠 준다'가 열린다
           choices: [
             {
               title: "밤새 이야기를 나눈다",
               desc: "즐겁지만 다음 날이 고되다",
               _pe: { traits: ["선량"] },
+              _lock: () => (p.flags["f_drifted_" + n.id] ? "지난번에 짧게 인사만 하고 헤어져 어색하다" : null),
               run: () => {
                 n.lastSeen = p.age;
                 n.rel += 6;
@@ -14242,6 +14200,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                   title: "함께 할 일을 제안한다",
                   desc: "인연이 깊어지지만 손해 볼 수 있다",
                   _pe: { traits: ["용기"] },
+                  _lock: () =>
+                    ["f_civ_betrayed_rival", "f_pirate_stole_credit", "f_hunter_stole_catch", "f_rev_stole_intel", "f_civ_stole_research"].some((f) => p.flags[f])
+                      ? "동료를 배신했다는 소문 때문에 믿어 주지 않는다"
+                      : null,
                   run: () => {
                     n.lastSeen = p.age;
                     n.rel += 3;
@@ -14255,6 +14217,41 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
                       p.money = Math.max(0, p.money - loss);
                       log(`${n.name}${wa(n.name)} 벌인 일이 틀어져 손해를 봄`);
                     }
+                  },
+                },
+            // 지난번에 멀어졌다면: 먼저 사과해 어색함을 푼다
+            p.flags["f_drifted_" + n.id]
+              ? {
+                  title: "그때 일을 먼저 사과한다",
+                  desc: "어색함은 풀리지만 자존심이 상한다",
+                  _pe: { traits: ["선량"] },
+                  run: () => {
+                    n.lastSeen = p.age;
+                    delete p.flags["f_drifted_" + n.id];
+                    n.rel += 8;
+                    p.relationship += 3;
+                    p.happiness -= 2;
+                    mem("늦게 건넨 사과");
+                    npcStory(n, "지난번 일을 먼저 사과받음");
+                    log(`${n.name}에게 지난번 일을 먼저 사과함`);
+                  },
+                }
+              : // 선량이 쌓인 사람만: 가진 것을 나눠 준다
+                {
+                  title: "가진 것을 나눠 준다",
+                  desc: "돈은 나가지만 평생 잊지 못할 은혜다",
+                  _reqTraits: { 선량: 10 },
+                  _pe: { traits: ["선량"] },
+                  run: () => {
+                    n.lastSeen = p.age;
+                    const give = Math.max(20000, Math.round((p.age >= 16 ? annualSalary() : 0) * 0.05));
+                    p.money = Math.max(0, p.money - give);
+                    n.rel += 12;
+                    p.relationship += 3;
+                    p.happiness += 2;
+                    p.flags["f_shared_" + n.id] = true;
+                    npcStory(n, "어려울 때 가진 것을 나눠 받음");
+                    log(`${n.name}에게 가진 것을 나눠 줌`);
                   },
                 },
           ],
@@ -16621,11 +16618,59 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             },
             after: () => showScene(),
           });
+        // 과거의 선택·성향·동료에 따라 열리는 항로. 조건이 안 되면 잠긴 채 이유가 보인다(_lock, _reqTraits)
+        if (dests.length) {
+          const d0 = dests[0];
+          ch.push({
+            title: `숨은 항로로 ${d0.name}에 간다`,
+            desc: "느리지만 위험한 물길을 피한다",
+            _reqTraits: { 신중: 15 },
+            _pe: { traits: ["신중"] },
+            run: () => {
+              v.food = Math.max(0, v.food - 10);
+              log("해도에 없는 안전한 물길을 골라 출항함");
+              voyage(d0, { safer: true });
+            },
+          });
+          ch.push({
+            title: `동료와 뱃길을 나눠 ${d0.name}에 간다`,
+            desc: "곁의 동료가 망을 봐 준다",
+            _lock: () => (typeof window.pickCompanion === "function" && window.pickCompanion() ? null : "곁에 함께할 동료가 있어야 한다"),
+            _pe: { traits: ["선량"] },
+            run: () => {
+              const n = typeof window.pickCompanion === "function" ? window.pickCompanion() : null;
+              if (n) {
+                n.rel = Math.min(100, (n.rel || 0) + 3);
+                n.lastSeen = p.age;
+                if (typeof npcStory === "function") npcStory(n, "당신과 뱃길을 나눠 망을 봄");
+              }
+              p.money = Math.max(0, p.money - v.crew * 3000);
+              log(`동료${n ? ` ${n.name}` : ""}와 뱃길을 나눠 출항함`);
+              voyage(d0, { safer: true });
+            },
+          });
+          if (p.flags.f_cb_unknown_isle_map)
+            ch.push({
+              title: "지도에 없는 섬을 찾아간다",
+              desc: "오래 간직한 지도를 펼친다",
+              _pe: { traits: ["용기"] },
+              run: () => {
+                delete p.flags.f_cb_unknown_isle_map;
+                p.flags.f_found_unknown_isle = true;
+                log("오래 간직한 지도를 따라 이름 없는 섬을 찾아 나섬");
+                voyage(d0, { isle: true });
+              },
+            });
+        }
         ch.push({
-          title: "올해는 출항하지 않는다",
-          desc: "항구에 머문다.",
+          title: "항구에서 한 해 쉬어 간다",
+          desc: "몸은 쉬지만 선원 품삯이 나간다",
+          _pe: { traits: ["신중"] },
           run: () => {
-            log("항구에 머물기로 함");
+            p.health += 5;
+            p.happiness += 2;
+            p.money = Math.max(0, p.money - v.crew * 5000);
+            log("항구에 머물며 한 해 쉬어 감");
           },
         });
         return {
@@ -16643,13 +16688,14 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           choices: ch,
         };
       }
-      function voyage(dest) {
+      // opt.safer: 위험을 한 단계 낮춘 항해(숨은 항로·동료와 나눈 뱃길), opt.isle: 무인도에 반드시 들름(지도에 없는 섬)
+      function voyage(dest, opt = {}) {
         if (!p.vessel) {
           log("배가 없어 출항하지 못함");
           return;
         }
         const v = p.vessel,
-          dg = seaDanger(dest.sea) + (dest.sea !== p.sea ? 1 : 0);
+          dg = Math.max(0, seaDanger(dest.sea) + (dest.sea !== p.sea ? 1 : 0) - (opt.safer ? 1 : 0));
         v.food = Math.max(0, v.food - ri(25, 45) - Math.floor(v.crew / 10) * 5);
         const list = [];
         const n =
@@ -16659,7 +16705,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               : 1
             : 0;
         for (let i = 0; i < n; i++) list.push(hazardScene(dest, dg));
-        if (Math.random() < 0.18) list.push(desertIslandScene());
+        if (opt.isle || Math.random() < 0.18) list.push(desertIslandScene());
         list.push(arrivalScene(dest));
         scenes.splice(sceneIndex + 1, 0, ...list);
         if (v.food <= 0) {
@@ -28989,10 +29035,8 @@ const JOBX = {
     jxAuto("상점 점원", 3, "단골손님의 선물", "늘 같은 시간에 오던 노부인이 그동안 친절하게 대해 줘서 고맙다며 손수 짠 목도리를 건넸습니다.", () => { p.happiness += 5; p.relationship += 2; }, "단골손님에게 감사 선물을 받음"),
   ],
   "항구 노동자": () => [
-    jx("항구 노동자", 1, "수상한 화물", "선적하던 상자 하나에서 쇳소리와 함께 화약 냄새가 납니다. 서류에는 '건어물'이라고 적혀 있습니다.", [
-      ["해군 초소에 신고한다", "보상을 받을 수도 있다.", () => { if (noNavyHere()) { p.reputation += 2; log("수상한 화물을 항구 관리인에게 알림"); } else { p.money += ri(21600, 64801); p.reputation += 2; log("수상한 화물을 해군에 신고해 보상을 받음"); } }],
-      ["못 본 척 싣는다", "괜히 엮이고 싶지 않다.", () => { p.money += ri(10800, 32401); log("수상한 화물을 못 본 척 실어 줌"); }],
-    ]),
+    // 자동 사건: 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md)
+    jxAuto("항구 노동자", 1, "수상한 화물", "선적하던 상자 하나에서 쇳소리와 함께 화약 냄새가 납니다. 서류에는 '건어물'이라고 적혀 있습니다. 당신은 그 상자를 조용히 따로 빼 두고 항구 관리인에게 알린 뒤, 남은 짐을 마저 싣고 품삯을 받았습니다.", () => { p.reputation += 2; p.money += ri(10800, 32401); }, "수상한 화물을 항구 관리인에게 알림"),
     jx("항구 노동자", 2, "임금 체불", "항구 하역 회사가 석 달째 임금을 주지 않고 있습니다. 동료들이 파업을 하자고 합니다.", [
       ["파업에 앞장선다", "임금을 받아 낼 수도, 잘릴 수도 있다.", () => { if (Math.random() < 0.6) { p.money += ri(64801, 162000); p.reputation += 3; log("파업에 앞장서 밀린 임금을 받아 냄"); } else { p.money -= ri(20000, 50000); p.happiness -= 4; log("파업에 앞장섰다가 일감을 잃음"); } }],
       ["조용히 일을 계속한다", "언젠가는 주겠지.", () => { p.money += ri(21600, 43200); p.happiness -= 2; log("파업에 끼지 않고 일을 계속함"); }],
@@ -29168,10 +29212,8 @@ function kidFruitPool() {
       { title: "어른에게 도움을 청한다", desc: "안전하지만 놀림은 계속될지 모른다.", run: () => { p.relationship += 2; p.happiness -= 2; log("괴롭힘을 어른에게 알림"); } },
       { title: swim ? "스스로 바다에 뛰어든다" : "꾹 참고 버틴다", desc: swim ? "헤엄칠 수 있다는 건 아무도 모른다." : "마음에 상처가 남는다.", run: () => { if (swim) { p.happiness += 4; mem("바다에 뛰어들어 아이들을 놀라게 함"); log("바다에 뛰어들어 헤엄쳐 보이자 괴롭히던 아이들이 도망침"); } else { p.happiness -= 5; mem("괴물이라 불리던 날"); log("열매 능력자라는 이유로 괴롭힘을 당함"); } } },
     ]),
-    K("fruit_swimclass", "혼자 남은 모래사장", "여름이 되자 마을 아이들이 모두 바다로 뛰어들었습니다. 열매 능력자인 당신만 모래사장에 혼자 앉아 있습니다.", [
-      { title: "모래성을 쌓으며 논다", desc: "혼자서도 즐겁게.", run: () => { p.happiness += 1; sk("제작", 2); log("바다 대신 모래사장에서 모래성을 쌓음"); } },
-      { title: "얕은 물에 발만 담가 본다", desc: "조금 위험하다.", run: () => { if (swim || Math.random() < 0.7) { p.happiness += 3; log("얕은 물에서 친구들과 물장구를 침"); } else { p.health -= ri(3, 8); log("파도에 휩쓸려 가라앉을 뻔하다 구조됨"); } } },
-    ]),
+    // 자동 사건: 선택지의 결과가 거의 같아 선택을 없앰 (docs/boring-events.md)
+    KA("fruit_swimclass", "혼자 남은 모래사장", "여름이 되자 마을 아이들이 모두 바다로 뛰어들었습니다. 열매 능력자인 당신만 모래사장에 혼자 앉아 있습니다. 당신은 물가에 발만 살짝 담근 채 커다란 모래성을 쌓으며 친구들이 돌아오기를 기다렸습니다.", () => { p.happiness += 2; sk("제작", 2); }, "바다 대신 물가에서 모래성을 쌓으며 놂"),
     K("fruit_prank", "능력으로 친 장난", `${power} 힘으로 장난을 치다가 시장 좌판 하나를 통째로 엎어 버렸습니다. 상인이 얼굴이 시뻘게져서 달려옵니다.`, [
       { title: "솔직하게 사과한다", desc: "용돈으로 물어 준다.", run: () => { p.money -= ri(3000, 10000); p.relationship += 2; log("능력 장난으로 엎은 좌판을 사과하고 물어 줌"); } },
       { title: "능력을 써서 도망친다", desc: "들키면 더 크게 혼난다.", run: () => { p.fruitMastery = Math.min(40, (p.fruitMastery || 0) + 1); if (Math.random() < 0.5) log("능력을 써서 성난 상인에게서 도망침"); else { p.happiness -= 3; p.relationship -= 2; log("도망치다 붙잡혀 부모님께 크게 혼남"); } } },
@@ -34021,8 +34063,11 @@ new MutationObserver(recs=>{
           ? `「${c.title}」 그 일로 몸 곳곳에 붕대를 감게 되었습니다. ${ct.who}${ga(ct.who)} 며칠 밤을 곁에서 지키며 약을 갈아 주었습니다.`
           : `「${c.title}」 그 일로 몸 곳곳에 붕대를 감게 되었습니다. ${onShip() ? "흔들리는 선실" : "빈방"}에서 혼자 열에 시달리는 밤이 길었습니다.`,
         [
-          { title: "다 나을 때까지 푹 쉰다", desc: "건강↑ · 그동안 일을 쉰다.", run: () => { p.health += ri(6, 10); if (p.age >= 16 && !isMinorJob()) p.money -= Math.round(sal * 0.05); if (ct.n) { ct.n.rel = Math.min(100, ct.n.rel + 6); remember(ct.n, "다쳤을 때 곁에서 밤새 간호함", "nursed", 3); } log("다친 몸을 푹 쉬며 회복함"); } },
-          { title: "붕대를 감은 채 다시 나선다", desc: "회복이 더디다.", run: () => { p.health += 2; if (p.flags) p.flags.injuredUntil = Math.max(p.flags.injuredUntil || 0, p.age + 1); if (["pirate", "navy", "hunter", "revo"].includes(w)) gainStanding(1); if (ct.n) { ct.n.rel -= 3; remember(ct.n, "말려도 다친 몸으로 다시 나감", "worry", 1); } log("다친 몸으로 다시 일에 나섬"); } },
+          // 세 선택지: 몸(푹 쉼) / 일(다시 나섬) / 단련(용기가 쌓인 사람만). 셋 다 흔적(추억·플래그)을 남긴다
+          { title: "다 나을 때까지 푹 쉰다", desc: "몸은 낫지만 그동안 일을 쉰다", _pe: { traits: ["신중"] }, run: () => { p.health += ri(6, 10); if (p.age >= 16 && !isMinorJob()) p.money -= Math.round(sal * 0.05); if (ct.n) { ct.n.rel = Math.min(100, ct.n.rel + 6); remember(ct.n, "다쳤을 때 곁에서 밤새 간호함", "nursed", 3); } mem(ct.n ? `${ct.n.name}${ga(ct.n.name)} 갈아 준 붕대` : "혼자 갈아 감은 붕대"); log("다친 몸을 푹 쉬며 회복함"); } },
+          { title: "붕대를 감은 채 다시 나선다", desc: "일은 지키지만 회복이 더디다", _pe: { traits: ["야심"] }, run: () => { p.health += 2; if (p.flags) { p.flags.injuredUntil = Math.max(p.flags.injuredUntil || 0, p.age + 1); p.flags.f_worked_hurt = true; } if (["pirate", "navy", "hunter", "revo"].includes(w)) gainStanding(2); else if (p.age >= 16 && !isMinorJob()) p.money += Math.round(sal * 0.03); if (ct.n) { ct.n.rel -= 3; remember(ct.n, "말려도 다친 몸으로 다시 나감", "worry", 1); } log("다친 몸으로 다시 일에 나섬"); } },
+          // 용기가 쌓인 사람만: 상처를 다음 싸움의 밑천으로 삼는다
+          { title: "상처를 단련으로 바꾼다", desc: "더 단단해지지만 낫는 게 늦다", _reqTraits: { 용기: 6 }, _pe: { traits: ["용기"] }, run: () => { p.combat += 2; p.health += 1; if (p.flags) { p.flags.injuredUntil = Math.max(p.flags.injuredUntil || 0, p.age + 1); p.flags.f_scar_training = true; } mem("흉터를 쥔 주먹"); log("다친 몸으로 이를 악물고 단련함"); } },
         ],
       );
     }
@@ -34830,7 +34875,7 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261126a" defer></script>
+  <script src="place-events.js?v=20261126b" defer></script>
   <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
   <script src="callback-events.js?v=20261126a" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
