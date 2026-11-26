@@ -341,7 +341,6 @@
         .field input,
         #charName,
         .ranking-formline input,
-        .lifeFbForm textarea,
         #archiveOverlay select {
           font-size: 16px;
         }
@@ -969,19 +968,24 @@
       .ranking-my-rank { padding:12px; margin:10px 0; font-weight:900; font-size:19px; color:var(--gold); border:1px solid var(--line); border-radius:10px; }
       .ranking-message { margin:8px 0; font-size:13px; }
       /* 결과 화면 원탭 반응: '더보기 — 상세 인생 기록' 버튼과 같은 너비·높이 */
-      .lifeFbWrap { width:100%; max-width:400px; margin:10px auto 0; }
-      .lifeFb { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:45px; padding:4px 4px 4px 15px; border-radius:11px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); text-align:left; }
-      .lifeFbOpts { display:flex; gap:2px; flex:0 0 auto; }
-      .lifeFbBtn { width:44px; height:36px; border:0; border-radius:7px; background:transparent; font-size:22px; line-height:1; cursor:pointer; transition-property:transform, background-color; transition-duration:150ms; transition-timing-function:ease-out; }
-      .lifeFbBtn:hover { background:var(--panel); }
-      .lifeFbBtn:active { transform:scale(0.96); }
-      .lifeFbNote { min-height:36px; border:0; border-radius:7px; background:transparent; color:var(--sea); font:inherit; font-weight:700; padding:0 10px; cursor:pointer; transition:background-color 150ms ease-out; }
-      .lifeFbNote:hover { background:var(--panel); }
-      .lifeFbForm { margin-top:8px; text-align:left; }
-      .lifeFbForm textarea { width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:11px; padding:10px 12px; font:inherit; font-size:16px; background:var(--panel); color:var(--ink); resize:vertical; }
-      .lifeFbFoot { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; }
-      .lifeFbFoot .btn { flex:0 0 auto; white-space:nowrap; }
-      @media (prefers-reduced-motion: reduce) { .lifeFbBtn:active { transform:none; } }
+      /* 결과 화면 '의견 보내기' 카드: 누르면 구글 폼이 새 탭으로 열린다 */
+      .voyageFb { width:100%; max-width:400px; box-sizing:border-box; margin:12px auto 0; padding:16px; border-radius:14px; background:linear-gradient(135deg, var(--panel2), var(--panel)); border:1px solid var(--line); color:var(--ink); text-align:left; display:flex; align-items:center; gap:14px; }
+      .voyageFbIcon { flex:0 0 auto; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; font-size:22px; background:var(--panel); border:1px solid var(--line); }
+      .voyageFbText { flex:1 1 auto; min-width:0; }
+      .voyageFbTitle { margin:0; font-size:16px; font-weight:800; line-height:1.35; text-wrap:balance; }
+      .voyageFbDesc { margin:4px 0 0; font-size:13px; line-height:1.5; color:var(--muted); text-wrap:pretty; }
+      .voyageFbBtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:0 16px; border-radius:10px; background:var(--sea); color:var(--bg); font:inherit; font-size:14px; font-weight:800; text-decoration:none; white-space:nowrap; cursor:pointer; transition-property:transform, filter; transition-duration:150ms; transition-timing-function:ease-out; }
+      .voyageFbBtn:hover { filter:brightness(1.08); }
+      .voyageFbBtn:active { transform:scale(0.97); }
+      .voyageFbBtn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+      /* 폰: 아이콘·글을 위에, 버튼을 아래 꽉 차게 */
+      @media (max-width: 480px) {
+        .voyageFb { flex-wrap:wrap; padding:14px; gap:12px; }
+        .voyageFbIcon { width:40px; height:40px; font-size:20px; }
+        .voyageFbText { flex-basis:calc(100% - 52px); }
+        .voyageFbBtn { width:100%; min-height:48px; font-size:15px; }
+      }
+      @media (prefers-reduced-motion: reduce) { .voyageFbBtn:active { transform:none; } }
 
       /* ================= 다크 모드: 한밤의 그랜드 라인 =================
          기기가 다크 모드면 같은 구조에 달빛 아래 밤바다 색을 쓴다. 글꼴·배치는 낮 테마와 같다.
@@ -28752,36 +28756,21 @@ async function shareKakao(cv,d,btn){
 }
 const WANTED_HIDE=["sceneArt","eventTitle","scene","lastResult"];
 function clearWanted(){const b=document.getElementById("wantedBox");if(b)b.remove();WANTED_HIDE.forEach(id=>{const e=document.getElementById(id);if(e&&e.dataset.wantedHidden){e.style.display=e.dataset.wantedHidden==="-"?"":e.dataset.wantedHidden;delete e.dataset.wantedHidden}})}
-// ── 결과 화면 원탭 반응: 누르기만 하면 되는 😆 😐 😴, 누른 뒤엔 선택으로 '한마디 남기기' ──
-// 응답은 GA로 보낸다. life_rating(rating, age, race, difficulty) / life_feedback(+ text, 최대 100자)
-// GA는 매개변수 값을 100자까지만 저장하므로 입력칸도 100자로 막는다. GA에는 개인정보를 보내면 안 돼서 안내 문구를 둔다.
+// ── 결과 화면 '의견 보내기' 카드: 버튼을 누르면 구글 폼이 새 탭으로 열린다 ──
+// 누른 횟수만 GA(feedback_open)로 센다. 의견 내용은 구글 폼에 쌓인다.
+const FEEDBACK_FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLSexyBzQ_-jQnHGaQ1GMk19K_qUf-HM7AIwdZQvPcqbYfIWUQA/viewform?usp=header";
 function lifeFeedback(d){
- const wrap=document.createElement("div");wrap.className="lifeFbWrap";
- const bar=document.createElement("div");bar.className="lifeFb";
- const q=document.createElement("span");q.className="lifeFbQ";q.textContent="이번 인생 어땠어요?";
- const opts=document.createElement("div");opts.className="lifeFbOpts";
- const base={age:d.age,race:d.race||"",difficulty:(p&&p.difficulty)||"normal"};
- let rating="";
- const note=document.createElement("button");note.type="button";note.className="lifeFbNote";note.textContent="✏️ 한마디 남기기";
- [["😆","fun","재밌었어요"],["😐","okay","그저 그래요"],["😴","boring","지루했어요"]].forEach(([emo,val,lab])=>{
-  const b=document.createElement("button");b.type="button";b.className="lifeFbBtn";b.textContent=emo;b.title=lab;b.setAttribute("aria-label",lab);
-  b.onclick=()=>{if(rating)return;rating=val;gaEvent("life_rating",{...base,rating:val});
-   q.textContent=`${emo} 고마워요!`;opts.replaceChildren(note)};
-  opts.appendChild(b)});
- const form=document.createElement("div");form.className="lifeFbForm";form.hidden=true;
- const ta=document.createElement("textarea");ta.maxLength=100;ta.rows=3;ta.placeholder="좋았던 점이나 바라는 점을 적어 주세요…";ta.setAttribute("aria-label","한마디 남기기");
- const foot=document.createElement("div");foot.className="lifeFbFoot";
- const PRIV="이름·연락처 같은 개인정보는 적지 말아 주세요";
- const hint=document.createElement("span");hint.className="small";hint.textContent=`0/100 · ${PRIV}`;
- const send=document.createElement("button");send.type="button";send.className="btn";send.textContent="보내기";
- ta.oninput=()=>{hint.textContent=`${ta.value.length}/100 · ${PRIV}`};
- note.onclick=()=>{form.hidden=false;note.remove();ta.focus()};
- send.onclick=()=>{const t=ta.value.trim().slice(0,100);if(!t){ta.focus();return}
-  gaEvent("life_feedback",{...base,rating,text:t});
-  const done=document.createElement("div");done.className="small";done.setAttribute("role","status");done.textContent="보냈어요. 다음 업데이트에 참고할게요!";
-  form.replaceChildren(done)};
- foot.append(hint,send);form.append(ta,foot);bar.append(q,opts);wrap.append(bar,form);
- return wrap;
+ const card=document.createElement("section");card.className="voyageFb";card.setAttribute("aria-label","의견 보내기");
+ const icon=document.createElement("div");icon.className="voyageFbIcon";icon.setAttribute("aria-hidden","true");icon.textContent="🧭";
+ const text=document.createElement("div");text.className="voyageFbText";
+ const t=document.createElement("p");t.className="voyageFbTitle";t.textContent="이번 항해는 어떠셨나요?";
+ const s=document.createElement("p");s.className="voyageFbDesc";s.textContent="아쉬운 점이나 새로운 이벤트 아이디어를 보내주시면 업데이트에 반영합니다.";
+ text.append(t,s);
+ const btn=document.createElement("a");btn.className="voyageFbBtn";btn.href=FEEDBACK_FORM_URL;btn.target="_blank";btn.rel="noopener noreferrer";
+ btn.textContent="✉️ 의견 보내기";
+ btn.onclick=()=>{try{gaEvent("feedback_open",{age:d.age,race:d.race||"",difficulty:(p&&p.difficulty)||"normal"})}catch(e){}};
+ card.append(icon,text,btn);
+ return card;
 }
 function wantedPoster(cause){
  clearWanted();
