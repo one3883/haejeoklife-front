@@ -6784,6 +6784,7 @@
         if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) continue;
         if (r.chance !== undefined && Math.random() >= r.chance) continue;
         const npc = r.npcFrom && p.arcHint ? p.arcHint[r.npcFrom] : null;
+        if (r.npcFrom && !npcById(npc)?.alive) continue;
         S[a.id] = { node: r.node, due: p.age + (r.after || 0), npc: npc || null, score: 0, path: [] };
         break;
       }
@@ -6888,7 +6889,10 @@
         if (p && p.age >= 16 && !(p.flags && p.flags.impelDown) && Object.keys(ARCS).length) {
           arcTryStart();
           const S = arcStates();
-          const due = Object.entries(S).filter(([id, st]) => ARCS[id] && !st.done && st.node && st.due <= p.age);
+          const due = Object.entries(S).filter(([id, st]) =>
+            ARCS[id] && !st.done && st.node && st.due <= p.age &&
+            (!st.npc || arcNpcOf(st)?.alive)
+          );
           if (due.length && Math.random() < ARC_SHOW_CHANCE) {
             due.sort((x, y) => x[1].due - y[1].due);
             const [id, st] = due[0];

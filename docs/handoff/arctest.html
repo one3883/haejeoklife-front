@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><body>
-<iframe id="a" src="file:///c:/haejeoklife/index.html" style="width:390px;height:700px"></iframe>
+<iframe id="a" src="../../index.html" style="width:390px;height:700px"></iframe>
 <pre id="o">waiting</pre>
 <script>
 // 인연 줄기 검사: 구조(막다른 길·못 가는 노드), 형식(토큰·길이·말투), 실행(오류), 정적 우위
@@ -16,6 +16,8 @@ fr.addEventListener("load", async () => {
     w.begin(); await sleep(50);
     const ARCS = w.__ARCS || {};
     const ids = Object.keys(ARCS);
+    for (const id of ["baker", "old_boat", "oneeye", "secret", "bell", "quilt"])
+      if (!ARCS[id]) iss.push("누락된 줄기 " + id);
     out.push(`줄기 ${ids.length}개: ${ids.map((id) => `${ARCS[id].name}(${Object.keys(ARCS[id].nodes).length}노드)`).join(", ")}`);
     const SC = { health: 5, happiness: 5, knowledge: 3, relationship: 4, combat: 3, reputation: 5, standing: 4, money: 10000, npcRel: 4 };
     const STATUSES = [["민간인", "어부"], ["해적", "해적"], ["해군", "해군"], ["혁명군", "혁명군"], ["민간인", "현상금 사냥꾼"]];
