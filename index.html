@@ -3206,7 +3206,13 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           die();
           if (finished) return;
         }
-        buildYearScenes();
+        if (p.age < 16) {
+          scenes = childhoodSeedScenes();
+          sceneIndex = 0;
+        } else {
+          buildYearScenes();
+          scenes.unshift(...childhoodPayoffs());
+        }
         showScene();
       }
       function annualDrift() {
@@ -18763,6 +18769,10 @@ p.combat += 1;
           null,
           "불러오기",
         );
+        if (p.flags.childhoodSeeds) {
+          scenes = p.age < 16 ? childhoodSeedScenes() : childhoodPayoffs();
+          if (scenes.length) showScene();
+        }
       }
       function initSaveUI() {
         const b = $("continueSaveBtn"),
@@ -25194,7 +25204,7 @@ p.combat += 1;
           )
         )
           return null;
-        if (p.job === "노예") return SLAVE_OK.test(k) ? s : null;
+        if (p.job === "노예" && !k.startsWith("childhood_return_") && !k.startsWith("kid_seed_")) return SLAVE_OK.test(k) ? s : null;
         // 노예에서 벗어난 뒤에는 노예 생활 사건이 나오지 않는다
         if (s._slaveOnly || (/^slave_/.test(k) && k !== "slave_hunter"))
           return null;
@@ -34931,7 +34941,8 @@ new MutationObserver(recs=>{
   <!-- 건강과 행복: 두 스탯이 사망 위험·싸움·수입에 실제로 영향을 준다. companion-events.js 뒤에 불러온다 -->
   <script src="vitality.js?v=20261126a" defer></script>
   <!-- 인연 줄기: 고른 선택이 다음 장면을 정하고 꼬리에 꼬리를 무는 3~4단계 이야기. place-events.js의 ARC()를 쓴다 -->
-  <script src="arc-events.js?v=20261126e" defer></script>
+  <script src="childhood-seeds.js" defer></script>
+    <script src="arc-events.js?v=20261126e" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
