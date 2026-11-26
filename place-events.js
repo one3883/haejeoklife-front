@@ -6245,6 +6245,8 @@
   }
   function makeChoice(c) {
     const out = { title: c.title, desc: c.desc || "", run: runChoice(c), _pe: { traits: traitPlan(c) } };
+    // result: 고른 뒤 '지난 선택' 상자에 보여 줄 결과 문장 (기록 한 줄보다 긴 장면 설명)
+    if (c.result) out._result = c.result;
     if (c.req) {
       const { traits, ...rest } = c.req; // 스탯·기술 조건은 게임의 req 그대로, 성향 조건은 따로 잠근다
       if (Object.keys(rest).length) out.req = rest;
@@ -6292,6 +6294,15 @@
     const f = (p && p.flags) || {};
     if (Array.isArray(w.flags) && !w.flags.every((x) => f[x])) return false;
     if (Array.isArray(w.notFlags) && w.notFlags.some((x) => f[x])) return false;
+    return true;
+  }
+  // 원작 연도 조건: when.minYear / when.maxYear (해원력, canonYear())
+  function yearOk(w) {
+    if (w.minYear === undefined && w.maxYear === undefined) return true;
+    const y = typeof canonYear === "function" ? canonYear() : null;
+    if (y === null) return true;
+    if (w.minYear !== undefined && y < w.minYear) return false;
+    if (w.maxYear !== undefined && y > w.maxYear) return false;
     return true;
   }
   // 어린 시절 사건: 기본 6~12세, when으로 좁히거나 플래그 조건을 걸 수 있다
@@ -6454,7 +6465,10 @@
   const CB_YEAR_CHANCE = 0.35;
   const CB_GAP = 2;
   // 묶음별 해마다 뽑힐 확률과 최소 간격(년). injured: 다친 해의 확률
-  const CB_POOLS = { cb: { chance: CB_YEAR_CHANCE, gap: CB_GAP }, companion: { chance: 0.3, gap: 2, injured: 0.75 } };
+  // seed: 장소 씨앗 사건(SEED)의 회수. 나올 나이가 정해져 있어 다른 회수와 따로, 더 자주 뽑는다
+  const CB_POOLS = { cb: { chance: CB_YEAR_CHANCE, gap: CB_GAP }, companion: { chance: 0.3, gap: 2, injured: 0.75 }, seed: { chance: 0.7, gap: 1 } };
+  // 고향(home)에 있는지: 씨앗을 겪은 장소에 지금 살거나 머무는지
+  const cbAtHome = (d) => !!(p && p.place && p.place.name === d.home);
   let cbCompanion = null; // 지금 만드는 동료 사건의 동료 (토큰·효과에 씀)
   let cbRunNpc = null; // 지금 실행 중인 동료 사건 선택지의 동료 (apply()가 npcRel·npcStory를 적용)
   const isInjured = () => !!(p && p.flags && p.flags.injuredUntil >= p.age);
@@ -6464,6 +6478,9 @@
   // 현상금 사냥꾼은 신분이 민간인이라 직업으로 따로 가른다
   const cbStatus = () => (p.status === "민간인" && p.job === "현상금 사냥꾼" ? "현상금 사냥꾼" : p.status);
   function cbVariant(d) {
+    // 고향/타지: home(씨앗을 겪은 장소)이 있는 회수는, 지금 그곳에 없으면 away의 제목·본문·선택지로 통째로 바꾼다.
+    // 타지 장면은 현장 행동 대신 편지·소포·방문객처럼 지금 사는 곳에서 할 수 있는 일로 쓴다.
+    if (d.home && d.away && !cbAtHome(d)) d = { ...d, ...d.away, choices: d.away.choices || d.choices };
     if (!d.by) return d;
     const st = cbStatus();
     let v = null;
@@ -6522,6 +6539,9 @@
       if (has !== !!w.companion) return false;
     }
     if (w.injured !== undefined && isInjured() !== !!w.injured) return false;
+    // 씨앗 회수: 수감 중에는 나오지 않는다(그 나이 구간 안에서 미뤄지고, 구간이 지나면 나오지 않음)
+    if (d.pool === "seed" && p.flags.impelDown) return false;
+    if (!yearOk(w)) return false;
     if (w.minRel !== undefined && p.relationship < w.minRel) return false;
     if (w.maxRel !== undefined && p.relationship > w.maxRel) return false;
     return flagsOk(w);
@@ -6655,10 +6675,12 @@
   }
   function addEcho(sc, d0, n) {
     // 사건을 만든 뒤 보여 주기 전에 상황이 바뀌면(신분이 바뀜·다른 섬으로 감·동료가 떠남) 건너뛴다 (showScene → fitScene → valid)
-    const st0 = cbStatus(), w0 = d0.when || {};
-    if (w0.companion !== undefined || d0.by)
+    const st0 = cbStatus(), w0 = d0.when || {}, home0 = d0.home ? cbAtHome(d0) : null;
+    if (w0.companion !== undefined || d0.by || d0.home)
       sc.valid = () => {
         if (cbStatus() !== st0) return false;
+        // 고향/타지 장면은 만든 뒤 보여 주기 전에 고향을 떠나거나 돌아오면 건너뛴다
+        if (d0.home && cbAtHome(d0) !== home0) return false;
         if (w0.companion === true) return !!n && typeof window.isCompanionNow === "function" && window.isCompanionNow(n);
         if (w0.companion === false) return !(typeof window.pickCompanion === "function" && window.pickCompanion());
         return true;
@@ -6738,6 +6760,109 @@
       return _bg.apply(this, arguments);
     };
   }
+  /* ───────────── 장소 씨앗 사건 (SEED) ─────────────
+     그 장소에서 자라는 아이(2~15세)가 겪는 사건. 고른 선택지마다 어른이 된 뒤(21~26세 무렵) 회수가 돌아온다.
+     데이터는 seed-events.js에서 SEED("장소", [...])로 넣는다.
+       { key, age, title, body, when, choices: [ { title, desc, result, effect, risk, back }, … ] }
+         age      원고의 나이(턴 나이 p.age 기준). age-1 ~ age+1에 나온다(when.minAge/maxAge로 바꿀 수 있음)
+         result   고른 뒤 '지난 선택' 상자에 보여 줄 결과 문장
+         when     minYear/maxYear(해원력), flags/notFlags
+         back     이 선택의 회수: { age, title, body, choices: [2개], away: { title, body, choices }, when }
+                  플래그 f_<key>_<a|b|c>가 조건이고, 회수 key는 <key>_<a|b|c>다. back.age-1 ~ back.age+2에 나온다.
+                  away: 회수 때 씨앗 장소(고향)에 없으면 이 장면으로 바뀐다(편지·소포·방문객으로 지금 사는 곳에서 해결).
+     - 한 인생에 씨앗은 SEED_MAX_PER_LIFE개까지만 심는다(한 장소 6개를 다 보지 않게 해 판마다 다른 이야기가 나오게).
+     - 씨앗은 반드시 보여 주는 어린 시절 사건이고(essential), 보여 주기 전에 그 장소를 떠나면 건너뛴다. */
+  const SEEDS = {};
+  const SEED_MAX_PER_LIFE = 3;
+  const SEED_YEAR_CHANCE = 0.6;
+  const SEED_LETTERS = "abc";
+  const seedFlag = (s, i) => `f_${s.key}_${SEED_LETTERS[i]}`;
+  window.SEED = function (place, list) {
+    for (const s of [].concat(list || [])) {
+      if (!s || !s.key || !Array.isArray(s.choices)) continue;
+      (SEEDS[place] = SEEDS[place] || []).push(s);
+      s.choices.forEach((c, i) => {
+        const b = c.back;
+        if (!b || !Array.isArray(b.choices)) return;
+        const w = b.when || {};
+        CALLBACKS.push({
+          key: `${s.key}_${SEED_LETTERS[i]}`,
+          pool: "seed",
+          home: place,
+          flags: [seedFlag(s, i)],
+          after: 5,
+          when: { ...w, minAge: w.minAge ?? b.age - 1, maxAge: w.maxAge ?? b.age + 2 },
+          title: b.title,
+          body: b.body,
+          choices: b.choices,
+          away: b.away,
+        });
+      });
+    }
+  };
+  function seedFits(s) {
+    const w = s.when || {};
+    if ((p.seeds || {})[s.key] !== undefined) return false;
+    if (p.age < (w.minAge ?? s.age - 1) || p.age > (w.maxAge ?? s.age + 1)) return false;
+    return yearOk(w) && flagsOk(w);
+  }
+  function seedScene(place, s) {
+    const choices = s.choices.map((c, i) => {
+      const ef = c.effect || {};
+      const ch = makeChoice({ ...c, effect: { ...ef, flags: [...(ef.flags || []), seedFlag(s, i)] } });
+      const base = ch.run;
+      ch.run = () => {
+        (p.seeds = p.seeds || {})[s.key] = i;
+        base();
+      };
+      return ch;
+    });
+    return {
+      key: s.key, title: s.title, body: s.body, tags: [s.key], choices,
+      kid: true, major: true, essential: true, seed: true, cooldown: 99, minAge: 0,
+      valid: () => !!(p.place && p.place.name === place),
+    };
+  }
+  // 어린 시절 한 해 사건에 씨앗을 하나 끼운다 (2~15세, 그 장소에서 자랄 때)
+  if (typeof childhoodYear === "function") {
+    const _chy = childhoodYear;
+    childhoodYear = function () {
+      const r = _chy.apply(this, arguments) || [];
+      try {
+        const place = p && p.place && p.place.name, list = (place && SEEDS[place]) || [];
+        const planted = Object.keys(p.seeds || {}).length;
+        if (list.length && planted < SEED_MAX_PER_LIFE && Math.random() < SEED_YEAR_CHANCE) {
+          const ok = list.filter(seedFits);
+          if (ok.length) {
+            // 원고 나이에 가장 가까운 것부터 (같으면 무작위)
+            const d = (s) => Math.abs(p.age - s.age);
+            const best = Math.min(...ok.map(d));
+            const near = ok.filter((s) => d(s) === best);
+            r.push(seedScene(place, near[Math.floor(Math.random() * near.length)]));
+          }
+        }
+      } catch (e) {
+        console.error("seed events", e);
+      }
+      return r;
+    };
+  }
+  // 결과 문장: 선언형 선택지의 result를 '지난 선택' 상자에 덧붙인다
+  if (typeof showResult === "function") {
+    const _sr = showResult;
+    showResult = function (c) {
+      const r = _sr.apply(this, arguments);
+      try {
+        const el = document.getElementById("lastResult");
+        if (c && c._result && el) {
+          const esc = (s) => String(s).replace(/[&<>"]/g, (x) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
+          el.innerHTML = el.innerHTML.replace(/<\/b><br>/, `</b><br><span style="display:block;margin:4px 0">${esc(cbFill(c._result))}</span>`);
+        }
+      } catch (e) {}
+      return r;
+    };
+  }
+
   /* ───────────── 인연 줄기 (ARC) ─────────────
      한 번 돌아오고 끝나는 회수 사건과 달리, 고른 선택지가 다음 장면을 정하고 그 장면이 또 다음을 부르는 3~4단계 이야기.
      데이터는 arc-events.js에서 ARC({...})로 넣는다.

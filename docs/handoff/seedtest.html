@@ -1,0 +1,83 @@
+<!doctype html><meta charset="utf-8"><body>
+<iframe id="a" style="width:900px;height:700px"></iframe><pre id="o"></pre>
+<script>
+const Q = Object.fromEntries(location.hash.slice(1).split("&").map((x) => x.split("=")));
+const out = []; const say = (s) => out.push(s);
+const fr = document.getElementById("a"); fr.src = decodeURIComponent(Q.game);
+fr.addEventListener("load", () => setTimeout(run, 500));
+function run() {
+  const w = fr.contentWindow, E = (s) => w.eval(s);
+  const errs = []; w.addEventListener("error", (e) => errs.push(String(e.message)));
+  w.gtag = () => {}; w.confirm = () => true; w.alert = () => {};
+  try {
+    w.localStorage.clear(); w.begin();
+    try { w.setAutoPlay(false); } catch (e) {}
+    say("SEED 함수: " + typeof w.SEED);
+    const PL = { "후샤 마을": "01", "그레이 터미널": "02", "콜보산": "03", "고아 왕국 중심가": "04", "시모츠키 마을": "05", "오렌지 마을": "06", "시롭 마을": "07", "코코야시 마을": "08" };
+    const setPlace = (n) => { w.__n = n; E("p.place = places.find((x) => x.name === __n)"); };
+    // 1) 씨앗: 나이별로 어떤 씨앗이 나오나
+    for (const [pl, num] of Object.entries(PL)) {
+      setPlace(pl); E("p.birthYear = " + (num === "08" ? 1506 : 1500));
+      const seen = {};
+      for (let age = 1; age <= 16; age++) {
+        for (let t = 0; t < 60; t++) {
+          E("p.age = " + age + "; p.seeds = {};");
+          const r = E("childhoodYear(" + age + ")") || [];
+          for (const s of r) if (s && s.seed) (seen[s.key] = seen[s.key] || new Set()).add(age);
+        }
+      }
+      say(`[씨앗] ${pl}: ` + Object.entries(seen).map(([k, v]) => `${k}@${[...v].join("/")}`).join("  "));
+    }
+    // 씨앗 선택 실행: 플래그·기록이 남는가
+    setPlace("후샤 마을"); E("p.age = 8; p.seeds = {};");
+    let sc = null; for (let t = 0; t < 200 && !sc; t++) sc = (E("childhoodYear(8)") || []).find((s) => s.seed && s.key === "sd0101");
+    if (sc) {
+      const b = E("snapLife()"); sc.choices[0].run(); w.showResult(sc.choices[0], b, null);
+      say("[씨앗 실행] flag f_sd0101_a=" + E("p.flags.f_sd0101_a") + " seeds=" + JSON.stringify(E("p.seeds")) + " valid=" + sc.valid());
+      say("[결과 상자] " + (w.document.getElementById("lastResult") || {}).innerHTML);
+    } else say("[씨앗 실행] sd0101 못 찾음");
+    // 2) 회수: 고향/타지 장면이 모두 만들어지고 선택지가 오류 없이 도는가
+    const backAge = {};
+    let made = 0, fail = [];
+    for (const [pl, num] of Object.entries(PL)) {
+      for (let i = 1; i <= 6; i++) for (const L of ["a", "b", "c"]) {
+        const key = `sd${num}0${i}_${L}`;
+        for (const home of [true, false]) {
+          E("p.flags = {}; p.flagAge = {}; p.cbLast = {}; p.cbLastAge = -99; p.status = '민간인'; p.job = '어부'; p.health = 80;");
+          setPlace(home ? pl : "로그타운");
+          w.__k = `f_sd${num}0${i}_${L}`; E("p.flags[__k] = true; p.flagAge[__k] = 8;");
+          let got = null;
+          for (let age = 20; age <= 29 && !got; age++) {
+            for (let t = 0; t < 40 && !got; t++) {
+              E("p.age = " + age + "; p.cbLast = {}; scenes = [];");
+              E("buildExtraScenes()");
+              got = (E("scenes") || []).find((s) => s && s.key === key);
+              if (got) backAge[key] = age;
+            }
+          }
+          if (!got) { fail.push(key + (home ? "(고향)" : "(타지)") + " 안 나옴"); continue; }
+          made++;
+          if (/\{|undefined/.test(got.title + got.body)) fail.push(key + " 토큰 남음");
+          if (got.choices.length !== 2) fail.push(key + " 선택지 " + got.choices.length);
+          if (home && i === 1 && L === "a") say("[고향] " + got.title + " | " + got.body.slice(0, 120));
+          if (!home && i === 1 && L === "a") say("[타지] " + got.title + " | " + got.body.slice(0, 120));
+          if (!got.valid()) fail.push(key + " valid false");
+          for (const c of got.choices) { try { c.run(); } catch (e) { fail.push(key + " 실행 오류 " + e.message); } }
+          if (!E("p.flags['f_cbdone_" + key + "']")) fail.push(key + " cbdone 없음");
+        }
+      }
+    }
+    say(`[회수] 만든 장면 ${made}/288, 문제 ${fail.length}: ` + fail.slice(0, 20).join(" / "));
+    // 3) 타지 장면을 만든 뒤 고향으로 돌아오면 건너뛰는가
+    E("p.flags = {}; p.flagAge = {}; p.flags.f_sd0102_a = true; p.flagAge.f_sd0102_a = 10;"); setPlace("로그타운");
+    let g2 = null; for (let t = 0; t < 200 && !g2; t++) { E("p.age = 24; p.cbLast = {}; scenes = [];"); E("buildExtraScenes()"); g2 = E("scenes").find((s) => s.key === "sd0102_a"); }
+    if (g2) { const v1 = g2.valid(); setPlace("후샤 마을"); say("[장소 바뀜] 만들 때 valid=" + v1 + ", 고향으로 옮긴 뒤 valid=" + g2.valid()); }
+    // 4) 대화재 이후(1512~)에는 02-01·02-04가 안 나오는가
+    setPlace("그레이 터미널"); E("p.birthYear = 1506");
+    let late = 0; for (let t = 0; t < 200; t++) { E("p.age = 7; p.seeds = {};"); late += (E("childhoodYear(7)") || []).filter((s) => s.seed && (s.key === "sd0201" || s.key === "sd0204")).length; }
+    say("[연도] 1513년 그레이 터미널 7세에 sd0201·sd0204 등장 횟수: " + late);
+  } catch (e) { say("테스트 오류: " + e.stack); }
+  say("게임 오류: " + (errs.length ? errs.slice(0, 5).join(" / ") : "없음"));
+  document.getElementById("o").textContent = out.join("\n");
+}
+</script>

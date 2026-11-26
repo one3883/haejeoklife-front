@@ -13,6 +13,7 @@ ONE PIECE LIFE 작업을 다른 도구로 이어 가기 위한 문서다. 먼저
 
 | 브랜치 | 상태 | 할 일 |
 | --- | --- | --- |
+| `feature/seed-events` | 푸시 완료, PR 없음 | 장소 씨앗 사건(SEED) 엔진 + 고향/타지 회수, 01~08 장소 48편. 이어서 할 일과 원고 변환 규칙은 `docs/handoff/SPEC_seed.md` |
 | `feat/feedback-form` | 푸시 완료, PR 없음 | 결과 화면의 건의함(이모지 평가·한마디)을 구글 폼 "의견 보내기" 카드로 교체. 미리보기 확인 후 PR |
 | `feat/sticky-next` | 푸시 완료, PR 없음 | '다음 장면' 버튼을 사건 칸 아래에 sticky로 고정(선택지 있는 동안 숨김). 폰·컴퓨터 미리보기 확인 후 PR |
 | `feat/vitality` (로컬 `feat/vitality-wip`) | 푸시 완료(`a7cbc4a`), PR 없음 | 건강·행복이 사망 위험·싸움·수입에 영향(`vitality.js`). main보다 뒤처져 있어 main을 합친 뒤 200판(`check.sh`) → 1,000판 확인 후 PR |
