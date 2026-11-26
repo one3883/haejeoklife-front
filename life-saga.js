@@ -818,6 +818,8 @@
   D.saga_wedding = (d) => {
     const n = npcById(d.id);
     if (!alive(n) || !n.spouse) return null;
+    // 20세(턴 나이) 전에는 결혼식·청첩장 사건을 보여 주지 않는다
+    if (p.age < 20) return null;
     const own = n.role === "자녀";
     const crush = hasMem(n, "crush") && !spouse();
     return mk(
