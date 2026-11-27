@@ -47,9 +47,9 @@ function supportUI(st){
  const row=document.createElement("div");row.className="ts-row";
  if(window.drawCompanionSD){try{row.append(window.drawCompanionSD(n));}catch(e){}}
  const label=document.createElement("span");label.textContent=n.name+" · "+(n.job||n.title||"동료")+" · 전투력 "+power(n);row.append(label);
- {const b=button(selected?"참여 해제":"참여",()=>{if(st!==tacCur||st.busy||st.over||st.acted)return;q.ids=selected?q.ids.filter(x=>x!==n.id):[...q.ids,n.id];tacRender(st);},st.busy||st.acted||(!selected&&q.ids.length>=3));row.append(b);}
+ {const b=button(selected?"참여 해제":"참여",()=>{if(st!==tacCur||st.busy||st.over||st.acted)return;q.ids=q.ids.includes(n.id)?q.ids.filter(x=>x!==n.id):[...q.ids,n.id];tacRender(st);},st.busy||st.acted||(!selected&&q.ids.length>=3));row.append(b);}
  d.append(row);
- if(selected){for(const opt of options(n)){const r=document.createElement("div");r.className="ts-row";const l=document.createElement("span");l.textContent=opt[0];r.append(l,button(q.used[n.id]?"사용 완료":"지원 사용",()=>use(st,n,opt),st.busy||st.acted||q.used[n.id]||q.last===st.turn||q.total>=2));d.append(r);}}
+ if(selected){for(const opt of options(n)){const r=document.createElement("div");r.className="ts-row";const l=document.createElement("span");l.textContent=opt[0];r.append(l,button(q.used[n.id]?"사용 완료":"지원 사용",()=>use(st,n,opt),st.busy||st.acted||st.over||q.used[n.id]||q.last===st.turn||q.total>=2));d.append(r);}}
  }
  acts.after(d);
 }
