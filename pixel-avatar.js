@@ -297,7 +297,7 @@
     const skin = look.skin;
     const elder = a.stage === "elder";
     const hairCol = elder ? (a.ageReal >= 80 ? "#e4e4e4" : "#bdbdbd") : look.hair;
-    const mermaidTail = race === "인어" && a.stageAge < 30;
+    const mermaidTail = race === "인어";
 
     // ── 뒤쪽: 날개·꼬리 ──
     if (race === "스카이피안") {
