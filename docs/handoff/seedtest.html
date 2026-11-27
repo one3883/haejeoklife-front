@@ -1,9 +1,11 @@
 <!doctype html><meta charset="utf-8"><body>
+<script>const catalog = new Map(); window.SEED = (place, entries) => catalog.set(place, entries);</script>
+<script src="../../seed-events.js"></script>
 <iframe id="a" style="width:900px;height:700px"></iframe><pre id="o"></pre>
 <script>
 const Q = Object.fromEntries(location.hash.slice(1).split("&").map((x) => x.split("=")));
 const out = []; const say = (s) => out.push(s);
-const fr = document.getElementById("a"); fr.src = decodeURIComponent(Q.game);
+const fr = document.getElementById("a"); fr.src = decodeURIComponent(Q.game || "../../index.html");
 fr.addEventListener("load", () => setTimeout(run, 500));
 function run() {
   const w = fr.contentWindow, E = (s) => w.eval(s);
@@ -13,21 +15,58 @@ function run() {
     w.localStorage.clear(); w.begin();
     try { w.setAutoPlay(false); } catch (e) {}
     say("SEED 함수: " + typeof w.SEED);
-    const PL = { "후샤 마을": "01", "그레이 터미널": "02", "콜보산": "03", "고아 왕국 중심가": "04", "시모츠키 마을": "05", "오렌지 마을": "06", "시롭 마을": "07", "코코야시 마을": "08" };
-    const setPlace = (n) => { w.__n = n; E("p.place = places.find((x) => x.name === __n)"); };
-    // 1) 씨앗: 나이별로 어떤 씨앗이 나오나
-    for (const [pl, num] of Object.entries(PL)) {
-      setPlace(pl); E("p.birthYear = " + (num === "08" ? 1506 : 1500));
-      const seen = {};
-      for (let age = 1; age <= 16; age++) {
-        for (let t = 0; t < 60; t++) {
-          E("p.age = " + age + "; p.seeds = {};");
-          const r = E("childhoodYear(" + age + ")") || [];
-          for (const s of r) if (s && s.seed) (seen[s.key] = seen[s.key] || new Set()).add(age);
+    const fail = [], disabled = [];
+    const setPlace = (name) => {
+      w.__n = name;
+      E("p.place = __n === '성지 마리조아' ? MARIJOA : places.find(x => x.name === __n)");
+      if (!E("p.place")) throw Error("장소 누락 " + name);
+    };
+    const original = E("JSON.stringify(p)");
+    const reset = () => { w.__baseline = original; E("p = JSON.parse(__baseline); p.race = '인간'; p.family = '평범한 가정'; p.job = '어부'; p.status = '민간인'; p.flags = {}; p.flagAge = {}; p.seeds = {}; p.health = 80"); };
+    const expected = [...catalog.values()].flat();
+    if (catalog.size !== 67 || expected.length !== 402 || new Set(expected.map(s => s.key)).size !== 402)
+      fail.push("장소/씨앗/고유 키 수 불일치");
+    for (const [place, entries] of catalog) {
+      if (entries.length !== 6) fail.push(place + " 씨앗 수 " + entries.length);
+      const seen = [];
+      for (const seed of entries) {
+        reset(); setPlace(place);
+        const when = seed.when || {};
+        w.__age = seed.age;
+        // 도달 불가능한 역사적 연도도 별도 고정 시계에서 등록·차단을 검증한다.
+        w.__year = Math.min(when.maxYear ?? Infinity, Math.max(when.minYear ?? 0, 1503 + seed.age));
+        E("p.age = __age; p.birthYear = __year - p.age");
+        if (when.birthFamily) {
+          w.__family = when.birthFamily;
+          E("p.family = __family; p.birthPlace = MARIJOA; p.status = __family === '천룡인 가문' ? '천룡인' : '천룡인 소유 노예'; p.job = p.status === '천룡인' ? '천룡인' : '노예'");
+        }
+        const attempt = () => when.birthFamily ? E("scenes = []; appendNobleHouseSeed(scenes); scenes") : E("childhoodYear(p.age)");
+        let found = null;
+        for (let t = 0; t < 160 && !found; t++) found = (attempt() || []).find(x => x.key === seed.key);
+        if (seed.disabled) {
+          disabled.push(seed.key);
+          if (found) fail.push(seed.key + " 비활성 씨앗 노출");
+          continue;
+        }
+        if (!found || found.choices.length !== 3 || !found.valid()) { fail.push(seed.key + " 씨앗 누락"); continue; }
+        seen.push(seed.key + "@" + seed.age);
+        const before = E("JSON.stringify(p)");
+        for (const [i, c] of found.choices.entries()) {
+          w.__saved = before; E("p = JSON.parse(__saved)");
+          c.run();
+          w.__key = seed.key; w.__picked = "f_" + seed.key + "_" + "abc"[i];
+          if (E("p.seeds[__key]") !== i || !E("p.flags[__picked]")) fail.push(seed.key + " 선택 기록 " + i);
+        }
+        w.__saved = before; E("p = JSON.parse(__saved)");
+        if (when.birthFamily) {
+          E("p.family = '다른 가정'");
+          if (found.valid()) fail.push(seed.key + " 출생 가정 제한 누락");
         }
       }
-      say(`[씨앗] ${pl}: ` + Object.entries(seen).map(([k, v]) => `${k}@${[...v].join("/")}`).join("  "));
+      say("[씨앗] " + place + ": " + seen.join("  "));
     }
+    say("[비활성] " + disabled.join(", "));
+    reset();
     // 씨앗 선택 실행: 플래그·기록이 남는가
     setPlace("후샤 마을"); E("p.age = 8; p.seeds = {};");
     let sc = null; for (let t = 0; t < 200 && !sc; t++) sc = (E("childhoodYear(8)") || []).find((s) => s.seed && s.key === "sd0101");
@@ -37,37 +76,41 @@ function run() {
       say("[결과 상자] " + (w.document.getElementById("lastResult") || {}).innerHTML);
     } else say("[씨앗 실행] sd0101 못 찾음");
     // 2) 회수: 고향/타지 장면이 모두 만들어지고 선택지가 오류 없이 도는가
-    const backAge = {};
-    let made = 0, fail = [];
-    for (const [pl, num] of Object.entries(PL)) {
-      for (let i = 1; i <= 6; i++) for (const L of ["a", "b", "c"]) {
-        const key = `sd${num}0${i}_${L}`;
-        for (const home of [true, false]) {
-          E("p.flags = {}; p.flagAge = {}; p.cbLast = {}; p.cbLastAge = -99; p.status = '민간인'; p.job = '어부'; p.health = 80;");
-          setPlace(home ? pl : "로그타운");
-          w.__k = `f_sd${num}0${i}_${L}`; E("p.flags[__k] = true; p.flagAge[__k] = 8;");
-          let got = null;
-          for (let age = 20; age <= 29 && !got; age++) {
-            for (let t = 0; t < 40 && !got; t++) {
-              E("p.age = " + age + "; p.cbLast = {}; scenes = [];");
-              E("buildExtraScenes()");
-              got = (E("scenes") || []).find((s) => s && s.key === key);
-              if (got) backAge[key] = age;
-            }
-          }
-          if (!got) { fail.push(key + (home ? "(고향)" : "(타지)") + " 안 나옴"); continue; }
-          made++;
-          if (/\{|undefined/.test(got.title + got.body)) fail.push(key + " 토큰 남음");
-          if (got.choices.length !== 2) fail.push(key + " 선택지 " + got.choices.length);
-          if (home && i === 1 && L === "a") say("[고향] " + got.title + " | " + got.body.slice(0, 120));
-          if (!home && i === 1 && L === "a") say("[타지] " + got.title + " | " + got.body.slice(0, 120));
-          if (!got.valid()) fail.push(key + " valid false");
-          for (const c of got.choices) { try { c.run(); } catch (e) { fail.push(key + " 실행 오류 " + e.message); } }
-          if (!E("p.flags['f_cbdone_" + key + "']")) fail.push(key + " cbdone 없음");
+    let made = 0, blocked = 0;
+    for (const [place, entries] of catalog) for (const seed of entries) {
+      for (const [i, choice] of seed.choices.entries()) for (const home of [true, false]) {
+        const key = seed.key + "_" + "abc"[i], def = choice.back;
+        reset(); setPlace(home ? place : place === "로그타운" ? "후샤 마을" : "로그타운");
+        w.__flag = "f_" + key; w.__age = def.age; w.__seedAge = seed.age;
+        E("p.age = __age; p.flags[__flag] = true; p.flagAge[__flag] = __seedAge");
+        w.__year = Math.min(def.when?.maxYear ?? Infinity, Math.max(def.when?.minYear ?? 0, 1503 + def.age));
+        E("p.birthYear = __year - p.age");
+        if (place === "성지 마리조아" && home) {
+          w.__family = seed.when.birthFamily;
+          E("p.family = __family; p.birthPlace = MARIJOA; p.status = __family === '천룡인 가문' ? '천룡인' : '천룡인 소유 노예'; p.job = p.status === '천룡인' ? '천룡인' : '노예'");
+        }
+        let got = null;
+        for (let t = 0; t < 32 && !got; t++) {
+          E("p.cbLast = {}; p.cbLastAge = -99; scenes = []; if (p.job === '노예') appendNobleHouseSeed(scenes); else buildExtraScenes()");
+          got = E("scenes").find(s => s?.key === key);
+        }
+        if (seed.disabled) { if (got) fail.push(key + " 비활성 회수 노출"); else blocked++; continue; }
+        if (!got) { fail.push(key + (home ? "(고향)" : "(타지)") + " 안 나옴"); continue; }
+        made++;
+        const variant = home ? def : def.away;
+        if (!got.body.endsWith(variant.body) || !got.valid() || got.choices.length !== 2 ||
+            !got.choices.every((c, j) => c.title === variant.choices[j].title)) fail.push(key + " 분기 불일치");
+        const before = E("JSON.stringify(p)");
+        for (const [j, c] of got.choices.entries()) {
+          w.__saved = before; E("p = JSON.parse(__saved)");
+          try { c.run(); } catch (e) { fail.push(key + " 실행 오류 " + e.message); }
+          w.__done = "f_cbdone_" + key; w.__pick = "f_cbpick_" + key + "_" + (j + 1);
+          if (!E("p.flags[__done] && p.flags[__pick]")) fail.push(key + " 회수 기록 없음 " + j);
         }
       }
     }
-    say(`[회수] 만든 장면 ${made}/288, 문제 ${fail.length}: ` + fail.slice(0, 20).join(" / "));
+    say(`[회수] 만든 장면 ${made}/${expected.filter(s => !s.disabled).length * 6}, 비활성 차단 ${blocked}, 문제 ${fail.length}: ` + fail.slice(0, 30).join(" / "));
+    reset();
     // 3) 타지 장면을 만든 뒤 고향으로 돌아오면 건너뛰는가
     E("p.flags = {}; p.flagAge = {}; p.flags.f_sd0102_a = true; p.flagAge.f_sd0102_a = 10;"); setPlace("로그타운");
     let g2 = null; for (let t = 0; t < 200 && !g2; t++) { E("p.age = 24; p.cbLast = {}; scenes = [];"); E("buildExtraScenes()"); g2 = E("scenes").find((s) => s.key === "sd0102_a"); }

@@ -6529,7 +6529,7 @@
     const need = d.flags || [];
     if (!need.every((x) => f[x] && fa[x] !== undefined && p.age - fa[x] >= Math.max(5, d.after ?? 5))) return false;
     // 노예·천룡인에게는 따로 status로 열지 않는 한 나오지 않는다
-    if (!w.status && (p.job === "노예" || /노예/.test(p.status || "") || p.status === "천룡인")) return false;
+    if (!w.status && !(d.pool === "seed" && d.home === "성지 마리조아") && (p.job === "노예" || /노예/.test(p.status || "") || p.status === "천룡인")) return false;
     if (p.age < Math.max(16, w.minAge ?? 18)) return false;
     if (w.maxAge !== undefined && p.age > w.maxAge) return false;
     if (Array.isArray(w.status) && !w.status.includes(cbStatus()) && !w.status.includes(p.status)) return false;
@@ -6779,7 +6779,7 @@
   const seedFlag = (s, i) => `f_${s.key}_${SEED_LETTERS[i]}`;
   window.SEED = function (place, list) {
     for (const s of [].concat(list || [])) {
-      if (!s || !s.key || !Array.isArray(s.choices)) continue;
+      if (!s || s.disabled || !s.key || !Array.isArray(s.choices)) continue;
       (SEEDS[place] = SEEDS[place] || []).push(s);
       s.choices.forEach((c, i) => {
         const b = c.back;
@@ -6802,6 +6802,8 @@
   };
   function seedFits(s) {
     const w = s.when || {};
+    if (w.birthFamily && (p.birthPlace?.name !== "성지 마리조아" || p.family !== w.birthFamily ||
+        (w.birthFamily === "천룡인 가문" ? p.status !== "천룡인" : p.job !== "노예"))) return false;
     if ((p.seeds || {})[s.key] !== undefined) return false;
     if (p.age < (w.minAge ?? s.age - 1) || p.age > (w.maxAge ?? s.age + 1)) return false;
     return yearOk(w) && flagsOk(w);
@@ -6820,33 +6822,43 @@
     return {
       key: s.key, title: s.title, body: s.body, tags: [s.key], choices,
       kid: true, major: true, essential: true, seed: true, cooldown: 99, minAge: 0,
-      valid: () => !!(p.place && p.place.name === place),
+      valid: () => !!(p.place && p.place.name === place && seedFits(s)),
     };
   }
   // 어린 시절 한 해 사건에 씨앗을 하나 끼운다 (2~15세, 그 장소에서 자랄 때)
+  function appendChildSeed(into) {
+    if (!p || p.age < 2 || p.age > 15) return;
+    const place = p.place?.name, list = SEEDS[place];
+    if (!list || Object.keys(p.seeds || {}).length >= SEED_MAX_PER_LIFE || Math.random() >= SEED_YEAR_CHANCE) return;
+    const ok = list.filter(seedFits);
+    if (!ok.length) return;
+    const distance = (s) => Math.abs(p.age - s.age);
+    const best = Math.min(...ok.map(distance));
+    const near = ok.filter((s) => distance(s) === best);
+    into.push(seedScene(place, near[Math.floor(Math.random() * near.length)]));
+  }
   if (typeof childhoodYear === "function") {
-    const _chy = childhoodYear;
+    const previous = childhoodYear;
     childhoodYear = function () {
-      const r = _chy.apply(this, arguments) || [];
-      try {
-        const place = p && p.place && p.place.name, list = (place && SEEDS[place]) || [];
-        const planted = Object.keys(p.seeds || {}).length;
-        if (list.length && planted < SEED_MAX_PER_LIFE && Math.random() < SEED_YEAR_CHANCE) {
-          const ok = list.filter(seedFits);
-          if (ok.length) {
-            // 원고 나이에 가장 가까운 것부터 (같으면 무작위)
-            const d = (s) => Math.abs(p.age - s.age);
-            const best = Math.min(...ok.map(d));
-            const near = ok.filter((s) => d(s) === best);
-            r.push(seedScene(place, near[Math.floor(Math.random() * near.length)]));
-          }
-        }
-      } catch (e) {
-        console.error("seed events", e);
-      }
-      return r;
+      const result = previous.apply(this, arguments) || [];
+      appendChildSeed(result);
+      return result;
     };
   }
+  // 전용 신분의 연간 진행은 일반 childhoodYear/buildExtraScenes를 지나지 않을 수 있다.
+  window.appendNobleHouseSeed = function (into) {
+    if (p.age < 16) {
+      if (p.place?.name === "성지 마리조아") appendChildSeed(into);
+    } else if (p.job === "노예" && !p.flags.impelDown) {
+      const last = (p.cbLast ||= {});
+      if (last.seed === p.age || Math.random() >= CB_POOLS.seed.chance) return;
+      const eligible = CALLBACKS.filter((d) => d.pool === "seed" && d.home === "성지 마리조아" && cbFits(d));
+      if (eligible.length) {
+        into.push(cbScene(eligible[Math.floor(Math.random() * eligible.length)]));
+        last.seed = p.age;
+      }
+    }
+  };
   // 결과 문장: 선언형 선택지의 result를 '지난 선택' 상자에 덧붙인다
   if (typeof showResult === "function") {
     const _sr = showResult;
