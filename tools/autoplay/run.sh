@@ -29,6 +29,7 @@ if [ -z "$PROCS" ]; then
 fi
 [ $(( LIVES / PROCS )) -lt 10 ] && PROCS=$(( LIVES / 10 > 0 ? LIVES / 10 : 1 ))
 PER=$(( (LIVES + PROCS - 1) / PROCS ))
+declare -a EXPECTED_LIVES
 
 mkdir -p "$OUT"; rm -f "$OUT"/part*.json "$OUT/meta.json"
 PROFILES="$(mktemp -d)"
@@ -38,6 +39,7 @@ echo "자동 플레이: ${LIVES}판 = ${PROCS}개 프로세스 × ${PER}판 · �
 t0=$(date +%s)
 for i in $(seq 1 "$PROCS"); do
   n=$PER; [ $(( i * PER )) -gt "$LIVES" ] && n=$(( LIVES - (i - 1) * PER )); [ "$n" -le 0 ] && continue
+  EXPECTED_LIVES[$i]="$n"
   # 가상 시간 한도는 판당 넉넉히(4,000초) 준다. 모자라면 결과 없이 끝난다.
   dump_pre "$PLAY_URL#lives=$n&maxEval=$MAXEVAL&samples=6&game=$(urlenc "$GAME_URL")${KEYS:+&keys=$KEYS_ENC}&r=$i" o \
     "$PROFILES/p$i" $(( n * 4000000 )) > "$OUT/part$i.json" &
@@ -52,8 +54,23 @@ for f in "$OUT"/part*.json; do
   parts=$((parts + 1))
   got=$(grep -o '"lives":[0-9]*' "$f" | head -1 | cut -d: -f2)
   [ -z "$got" ] && { echo "실패: $(basename "$f") 결과가 비었습니다" >&2; ok=0; continue; }
-  e=$(grep -o '"errors":\[[^]]*\]' "$f" | head -1); [ "$e" != '"errors":[]' ] && errs="$errs $e"
+  part="${f##*/}"; part="${part#part}"; part="${part%.json}"
+  expected="${EXPECTED_LIVES[$part]:-}"
+  if [ -z "$expected" ] || [ "$got" -ne "$expected" ]; then
+    echo "실패: $(basename "$f") 실행 판 수 $got, 기대 판 수 ${expected:-알 수 없음}" >&2
+    ok=0
+  fi
+  e=$(grep -o '"errors":\[[^]]*\]' "$f" | head -1 || true)
+  if [ -z "$e" ] || [ "$e" != '"errors":[]' ]; then
+    echo "실패: $(basename "$f") 페이지 오류 ${e:-결과 파싱 실패}" >&2
+    errs="$errs ${e:-파싱 실패}"
+    ok=0
+  fi
 done
+if [ "$parts" -ne "${#EXPECTED_LIVES[@]}" ]; then
+  echo "실패: 결과 파일 $parts개, 기대 프로세스 ${#EXPECTED_LIVES[@]}개" >&2
+  ok=0
+fi
 [ "$ok" = 1 ] || exit 1
 COMMIT=$(git -C "$(dirname "$GAME")" rev-parse HEAD 2>/dev/null || echo "?")
 DIRTY=$(git -C "$(dirname "$GAME")" status --porcelain 2>/dev/null | grep -q . && echo true || echo false)
