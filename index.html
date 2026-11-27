@@ -4820,6 +4820,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         if (p.job === "노예") {
           scenes.push(...canonScenes());
           slaveYear();
+          window.appendNobleHouseSeed?.(scenes);
           // 노예 생활 사건에 표시를 해 두고, 탈출하면 남은 것은 건너뛴다
           scenes.forEach((x) => {
             if (
@@ -4859,6 +4860,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           scenes.push(
             age === 15 ? celestialComingScene() : celestialChildScene(),
           );
+          window.appendNobleHouseSeed?.(scenes);
         } else if (age < 16) {
           if (age === 6) scenes.push(schoolEntry());
           scenes.push(...childhoodYear(age));
@@ -34948,10 +34950,10 @@ new MutationObserver(recs=>{
 })();
 
   </script>
-  <script src="place-events.js?v=20261127a" defer></script>
+  <script src="place-events.js?v=20261127c" defer></script>
   <!-- 회수 사건: 어린 시절 선택이 남긴 플래그(f_*)가 몇 년 뒤 돌아온다. place-events.js의 CB()를 쓰므로 그 뒤에 불러온다 -->
   <script src="callback-events.js?v=20261126b" defer></script>
-  <script src="seed-events.js?v=20261127b" defer></script>
+  <script src="seed-events.js?v=20261127c" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
   <script src="pixel-avatar.js?v=20261124a" defer></script>
