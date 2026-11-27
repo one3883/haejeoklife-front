@@ -3127,7 +3127,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               render();
               if (p.health <= 0) {
                 die();
-                if (finished) return;
+                if (finished || p.flags.pendingDeath) return;
               }
               if (c.after) c.after();
               else finishScene();
@@ -3149,6 +3149,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function continueLife() {
         if (finished || awaiting) return;
+        if (p.flags.pendingDeath) { die(); return; }
         if (autoAdvanceTimer) {
           clearInterval(autoAdvanceTimer);
           autoAdvanceTimer = null;
@@ -3214,6 +3215,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function newYear() {
         if (finished) return;
+        if (p.flags.pendingDeath) { die(); return; }
         {
           const r0 = realAge();
           p.age++;
@@ -3231,7 +3233,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         annualDrift();
         if (p.health <= 0 || Math.random() < deathRisk()) {
           die();
-          if (finished) return;
+          if (finished || p.flags.pendingDeath) return;
         }
         p.flags.yearEventShown = false;
         buildYearScenes();
@@ -25244,6 +25246,9 @@ p.combat += 1;
         if (!s) return s;
         const k = String(sceneKey(s));
         if (!statusFits(s)) return null;
+        const contextText = [s.title,s.body,...(s.choices||[]).map(c=>[c.title,c.desc,String(c.run)].join(" "))].join(" ");
+        if (isAdmiral() && /상관의|상관에게|상관이|상관은|상관과|상관을|상관으로|직속 상관/.test(contextText)) return null;
+        if (p.combat >= 75 && /부랑자|불량배|깡패|건달|노상강도|길거리 강도/.test(contextText) && /습격|기습|부상|다침|맞붙|폭행|건강 감소|health\s*[-:]|health\s*-=/.test(contextText)) return null;
         if (s.callbackValid && !s.callbackValid()) return null;
         if (k.startsWith("npc_reunion_") && k.slice(12) === p.spouseId) return null;
         if (k === "rokushiki_special_training" && (p.abilities.includes("육식") || p.flags.retired || p.job === "노예")) return null;
@@ -27964,6 +27969,7 @@ p.combat += 1;
         if (p.ship)
           body += `\n\n현재 당신은 ${p.crew || "선원들과 함께"} ${p.ship}을 타고 항해 중입니다. 고향이 아니라 현재 기항한 ${p.place.name}에서 생활하고 있습니다.`;
         p.flags.yearEventShown = true;
+        if (/^impel_/.test(String(x.key)) && !x._historyLogged) { x._historyLogged = true; log(x.title); }
         setEvent(`${ageLabel()} — ${x.title}`, body, x.choices, "올해의 사건");
         showArtFor(x);
         const ac = $("autoChips");
@@ -27980,10 +27986,11 @@ p.combat += 1;
         }
       }
       function finishScene() {
+        if (p.flags.pendingDeath) { die(); return; }
         ensurePirateKingEnding();
         if (p.health <= 0 && !finished) {
           die();
-          if (finished) return;
+          if (finished || p.flags.pendingDeath) return;
         }
         sceneIndex++;
         if (sceneIndex < scenes.length) {
@@ -28005,7 +28012,7 @@ p.combat += 1;
         render();
         if ((p.age >= 100 && !isHighNoble()) || p.health <= 0) {
           die();
-          if (finished) return;
+          if (finished || p.flags.pendingDeath) return;
         }
         saveGame(false);
         paused = userPaused || !autoPlay;
@@ -28365,6 +28372,20 @@ ${p.partner ? "배우자: " + p.partner : ""} / 자녀: ${p.children}명${extraB
           p.flags.deathCause = null;
           return;
         }
+        const pending = p.flags.pendingDeath;
+        const cause = pending || finishCause(deathDetails());
+        if (!pending && cause && !VIOLENT.test(cause.type) && !/살해|총격|독살|전투|교전|처형|공격|습격|총을 들/.test(cause.detail || "")) {
+          const type = cause.type;
+          const body = /노환/.test(type) ? "오랜 세월을 견딘 몸이 급격히 쇠약해집니다. 이제 남은 시간이 얼마 없다는 것을 느낍니다."
+            : /병|합병증/.test(type) ? "병세가 급격히 악화됩니다. 치료에도 몸은 회복되지 않고, 생명이 위태로운 상태입니다."
+            : /노동|기아|굶주림/.test(type) ? "몸이 더 이상 가혹한 환경을 견디지 못합니다. 기력이 다해 의식이 흐려집니다."
+            : "예기치 못한 위기가 닥쳤습니다. 상태가 급격히 악화되어 목숨이 위태롭습니다.";
+          p.flags.pendingDeath = cause;
+          stopClock();
+          setEvent(ageLabel()+" — "+(/노환/.test(type)?"마지막 시간이 다가오다":/병|합병증/.test(type)?"위독해진 병세":"생사의 갈림길"),body+"\n\n위기의 원인: "+type,null,"마지막 순간");
+          return;
+        }
+        delete p.flags.pendingDeath;
         finished = true;
         paused = true;
         stopClock();
@@ -28373,7 +28394,6 @@ ${p.partner ? "배우자: " + p.partner : ""} / 자녀: ${p.children}명${extraB
           autoAdvanceTimer = null;
         }
         render();
-        let cause = finishCause(deathDetails());
         let details = `${p.name}${eun(p.name)} ${realAge()}세에 사망했습니다.\n\n사인 분류: ${cause.type}\n구체적인 사망 원인: ${cause.detail}\n\n출생지: ${(p.birthPlace || p.place).country} · ${(p.birthPlace || p.place).name}\n종족: ${p.race}\n최종 직업: ${jobTitle()}\n최종 신분: ${p.status}\n${p.status === "해적" || p.status === "혁명군" ? "최종 현상금: " + Math.floor(p.bounty || 0).toLocaleString() + " 베리\n" : ""}재산: ${Math.floor(p.money).toLocaleString()} 베리\n${p.crew ? "소속 해적단: " + p.crew : ""}\n${p.ship ? "마지막 탑승 선박: " + p.ship : ""}\n\n당신은 ${realAge()}년의 세월을 살았습니다.`;
         setEvent(
           "한 사람의 인생이 끝나다",
