@@ -61,7 +61,7 @@ function fight(a,foe,ally,withCrew,hostile){
  const members=withCrew?npcsBy(n=>n.role==="동료"&&n.aff===myAff()).slice(0,3):[];
  const strong=foe===a[6];const base=strong?-.25:.18;
  const won=battle({foe,base,extra:Math.min(.12,members.reduce((s,n)=>s+n.power*.0007,0)),loseHp:strong?[22,45]:[10,25],win:()=>reward(strong?ri(300000,900000):ri(80000,300000),true)});
- crewResult(members,won,a);if(!hostile)befriendLuffy();tie(foe,-12,a);tie(ally,won?20:8,a);
+ crewResult(members,won,a);if(won&&!hostile)befriendLuffy();tie(foe,-12,a);tie(ally,won?20:8,a);
  if(won)log(a[3]+"에서 "+foe+"와의 국지전 승리 — 원작 결말은 유지됨");
 }
 function scene(a){
