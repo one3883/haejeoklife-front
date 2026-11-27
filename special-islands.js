@@ -10,10 +10,20 @@ const data={
 };
 const current=()=>p&&p.place&&data[p.place.name];
 const oldFit=fitScene;
+function allowedSpecialScene(s,d){
+ const k=String(sceneKey(s));
+ if(s.specialPlace)return s.specialPlace===p.place.name;
+ if(k.startsWith("special_"))return k.startsWith("special_"+d[0]+"_");
+ if(k.startsWith("intervention_"))return k==="intervention_"+d[0];
+ if(/^(battle_|impel_)/.test(k))return true;
+ // 세계적 사건은 어느 지역에서든 전달된다. 일반 섬 사건은 계속 차단한다.
+ if((s.tags||[]).includes("world-news") || (s.tags||[]).includes("world") || /^세계의 소식/.test(String(s.title||"")))return true;
+ return false;
+}
 fitScene=function(s){
  if(!s)return null;
  const d=current(),k=String(sceneKey(s));
- if(d && !(k==="intervention_"+d[0] || k.startsWith("special_"+d[0]+"_") || k.startsWith("battle_") || k.startsWith("impel_")))return null;
+ if(d&&!allowedSpecialScene(s,d))return null;
  if(p&&p.place&&!birthAllowed(p.place)&&!d&&!p.flags.impelDown&&!/^(impel_|battle_)/.test(k))return null;
  if(s.specialPlace&&p.place.name!==s.specialPlace)return null;
  return oldFit.apply(this,arguments);

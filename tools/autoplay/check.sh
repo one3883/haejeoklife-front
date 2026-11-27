@@ -57,6 +57,20 @@ judge() { dump_pre "$(file_url "$HERE/judge.html")#dir=$(urlenc "$(file_url "$1"
 rm -rf "$PROF" 2>/dev/null || true
 echo
 echo "보고서: $OUT/report.md"
-# 결과를 못 읽었으면 2, 작업본 판정에 실패가 있으면 1로 끝낸다
-if grep -q '판 수 0,\|^ERR ' "$OUT/report.md"; then echo "결과 파일을 읽지 못했습니다. 위 보고서를 확인하세요." >&2; exit 2; fi
-sed -n '/## 작업본 판정/,/## main 기준 판정/p' "$OUT/report.md" | grep -q '^실패' && exit 1 || exit 0
+# 판정 요약은 작업본 구역에서만 추출한다. '실패 10'은 행 첫머리
+# '실패'가 아니므로 기존 grep은 실제 실패를 놓치고 정상 종료했다.
+WORK_RESULT="$(sed -n '/^## 작업본 판정$/,/^## main 기준 판정/p' "$OUT/report.md")"
+SUMMARY="$(printf '%s\n' "$WORK_RESULT" | grep -m1 '^판정:' || true)"
+if [ -z "$SUMMARY" ] || printf '%s\n' "$WORK_RESULT" | grep -Eq '읽기 실패|^<!--|^ERR |^Error:'; then
+  echo "작업본 판정 결과를 읽지 못했습니다." >&2
+  exit 2
+fi
+if ! printf '%s\n' "$SUMMARY" | grep -Eq '판 수 [1-9][0-9]*, 오류 없음\)'; then
+  echo "작업본 자동 플레이 판 수 누락 또는 페이지 오류가 발견되었습니다." >&2
+  exit 2
+fi
+if printf '%s\n' "$SUMMARY" | grep -Eq '실패 [1-9][0-9]*' || printf '%s\n' "$WORK_RESULT" | grep -q '^실패[[:space:]]'; then
+  echo "작업본에서 실패한 사건이 발견되었습니다." >&2
+  exit 1
+fi
+exit 0
