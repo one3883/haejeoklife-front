@@ -17,7 +17,9 @@ jobs:
           python3 - <<'PY'
           import re, pathlib, subprocess
           html=pathlib.Path("index.html").read_text()
-          for i, script in enumerate(re.findall(r"<script\b[^>]*>(.*?)</script>", html, re.S)):
+          for i, (attrs, script) in enumerate(re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.S | re.I)):
+              if "application/ld+json" in attrs.lower() or "application/json" in attrs.lower():
+                  continue
               if script.strip():
                   p=pathlib.Path("/tmp") / f"inline-{i}.js"
                   p.write_text(script)
