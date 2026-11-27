@@ -28,6 +28,42 @@ fitScene=function(s){
  if(s.specialPlace&&p.place.name!==s.specialPlace)return null;
  return oldFit.apply(this,arguments);
 };
+
+const extraEvents={
+ baratie:[
+ ["바다 위의 밀린 주문","폭풍을 피해 몰려온 손님들 때문에 주방이 마비될 지경입니다.","설거지와 배식을 돕는다","조용히 식사를 마친다","money",15000,"health",-2],
+ ["굶주린 표류자","식당 앞에 굶주린 표류자가 나타났습니다. 식사값을 낼 형편이 아닙니다.","자기 돈으로 식사를 사 준다","요리사에게 사정을 전한다","happiness",5,"money",-10000],
+ ["요리사의 손놀림","요리사가 남은 재료로 훌륭한 음식을 만들어 냅니다.","조리법을 배운다","맛을 음미한다","knowledge",4,"health",2]],
+ thriller:[
+ ["그림자 없는 발자국","안개 속에서 발자국만 남고 그림자는 보이지 않습니다.","흔적을 조사한다","등불을 들고 돌아간다","knowledge",4,"health",-3],
+ ["저택의 움직이는 갑옷","낡은 갑옷이 복도를 가로막고 움직이기 시작합니다.","빈틈을 찾아 지나간다","다른 통로로 돌아간다","combat",3,"health",-4],
+ ["안개 속 조난선","안개에 갇힌 배에서 구조 신호가 들려옵니다.","밧줄을 던져 돕는다","안전한 항로를 표시한다","reputation",4,"health",-2]],
+ amazon:[
+ ["쿠자의 활쏘기","멀리서 쿠자 전사들이 활쏘기를 연습합니다. 외부인은 허가 없이 접근할 수 없습니다.","허락을 받아 관찰한다","경계를 존중해 물러난다","knowledge",3,"happiness",-1],
+ ["해안의 맹수","해안 가까이에서 거대한 짐승이 모습을 드러냅니다.","멀리서 움직임을 살핀다","즉시 배로 돌아간다","combat",3,"health",-3],
+ ["뱀과 함께하는 항해","해안에서 쿠자 전사들이 뱀을 다루는 모습을 봅니다.","안전한 거리에서 기술을 관찰한다","해안의 물길을 조사한다","knowledge",4,"health",-1]],
+ punk:[
+ ["얼어붙은 통로","얼음으로 막힌 연구시설 통로에서 오래된 장비가 보입니다.","안전 장비를 갖추고 회수한다","위험을 피해 돌아간다","knowledge",4,"health",-4],
+ ["불타는 대지","뜨거운 지면을 피해 이동할 수 있는 길을 찾아야 합니다.","우회로를 개척한다","기온이 내려갈 때까지 기다린다","combat",3,"health",-3],
+ ["폐쇄된 연구실","깨진 관측창 너머로 낡은 연구 기록이 보입니다.","외부에서 기록을 살핀다","시설을 건드리지 않는다","knowledge",5,"health",-2]],
+ egg:[
+ ["미래의 음식","자동 조리 장치가 눈앞에서 음식을 만들어 냅니다.","사용법을 익힌다","완성된 음식을 맛본다","knowledge",4,"health",2],
+ ["홀로그램 거리","실물처럼 보이는 영상이 길을 가로막습니다.","영상과 실물을 구별해 본다","안내 표지판을 따라간다","knowledge",4,"happiness",2],
+ ["연구시설의 운반 작업","허가된 구역에서 장비 운반을 도울 사람을 찾습니다.","운반 작업을 돕는다","시설 안내를 읽는다","money",20000,"health",-2]]
+};
+function extraScene(d,name,valid){
+ const rows=extraEvents[d[0]]||[];
+ if(!rows.length)return null;
+ const seen=p.flags.specialEventSeen||(p.flags.specialEventSeen={});
+ const pool=rows.map((r,i)=>({r,i})).filter(x=>!seen[d[0]+"_"+x.i]);
+ if(!pool.length)return null;
+ const {r,i}=rand(pool), id=d[0]+"_"+i;
+ return {key:"special_"+id,specialPlace:name,essential:true,title:r[0],body:r[1],callbackValid:valid,choices:[
+ {title:r[2],desc:"직접 경험한다",run:()=>{seen[id]=true;p[r[4]]=(p[r[4]]||0)+r[5];p[r[6]]=(p[r[6]]||0)+r[7];if(r[6]==="money")p.money=Math.max(0,p.money);log(r[0]+" — "+r[2]);}},
+ {title:r[3],desc:"위험을 줄이고 주변을 살핀다",run:()=>{seen[id]=true;p.happiness+=1;log(r[0]+" — "+r[3]);}}
+ ]};
+}
+
 function dedicated(){
  const d=current();if(!d)return [];
  const name=p.place.name, key="special_"+d[0]+"_", valid=()=>p.place.name===name&&!p.flags.impelDown;
@@ -42,7 +78,7 @@ function dedicated(){
  ...(dest?[{title:dest.name+"으로 떠난다",desc:"다른 장소로 이동",run:()=>arrive(dest)}]:[]),
  {title:"이곳에 더 머문다",desc:"현재 장소 유지",run:()=>log(name+"에 머무름")}
  ]};
- return [visit,leave];
+ return [visit,extraScene(d,name,valid),leave].filter(Boolean);
 }
 const oldBuild=buildYearScenes;
 buildYearScenes=function(){
