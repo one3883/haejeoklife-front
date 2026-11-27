@@ -3233,6 +3233,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           die();
           if (finished) return;
         }
+        p.flags.yearEventShown = false;
         buildYearScenes();
         showScene();
       }
@@ -9996,9 +9997,12 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function buildExtraScenes() {
         const age = p.age;
-        if (age >= 16 && p.job !== "노예" && p.status !== "천룡인" && !/수감/.test(p.job) && age - (p.flags.islandOfferAge ?? -99) >= 2 && Math.random() < 0.38) {
-          const dest = rand(travelPlaces().filter(x => x.name !== p.place.name && x.sea === p.sea && !/임펠|마리조아|펑크 해저드/.test(x.name)));
-          if (dest) scenes.push({key:"island_move_offer", major:true, essential:true, minAge:16, title:"다른 섬으로 떠날 기회", body:`항구에서 ${dest.name}으로 향하는 배를 발견했습니다. 새로운 곳에서 생활할 기회입니다.`, callbackValid:()=>p.job!=="노예" && p.status!=="천룡인" && !/수감/.test(p.job) && p.place.name!==dest.name && p.sea===dest.sea, choices:[{title:`${dest.name}으로 떠난다`,desc:"이동 비용 5만 베리 · 새로운 경험",run:()=>{p.flags.islandOfferAge=p.age;if(p.money<50000){log("여비가 부족해 이동하지 못함");return;}p.money-=50000;p.place=dest;p.sea=dest.sea;p.knowledge+=2;log(`${dest.name}으로 이동함`);}},{title:"현재 섬에 남는다",desc:"현재 생활을 유지한다.",run:()=>{p.flags.islandOfferAge=p.age;p.happiness+=1;}}]});
+        if (age >= 16 && p.job !== "노예" && p.status !== "천룡인" && !/수감/.test(p.job) && age - (p.flags.islandOfferAge ?? -99) >= 2 && Math.random() < 0.19) {
+          const candidates = travelPlaces().filter(x => x.name !== p.place.name && x.sea === p.sea && !/임펠|마리조아/.test(x.name));
+          const special = candidates.filter(x => !birthAllowed(x));
+          const normal = candidates.filter(x => birthAllowed(x));
+          const dest = rand(special.length && (!normal.length || Math.random() < 0.75) ? special : normal);
+          if (dest) scenes.push({key:"island_move_offer", major:true, essential:true, minAge:16, title:"다른 섬으로 떠날 기회", body:`항구에서 ${dest.name}으로 향하는 배를 발견했습니다. 새로운 곳에서 생활할 기회입니다.`, callbackValid:()=>p.job!=="노예" && p.status!=="천룡인" && !/수감/.test(p.job) && p.place.name!==dest.name && p.sea===dest.sea, choices:[{title:`${dest.name}으로 떠난다`,desc:"이동 비용 5만 베리 · 새로운 경험",run:()=>{p.flags.islandOfferAge=p.age;if(p.money<50000){log("여비가 부족해 이동하지 못함");return;}p.money-=50000;arrive(dest);p.knowledge+=2;log(`${dest.name}으로 이동함`);}},{title:"현재 섬에 남는다",desc:"현재 생활을 유지한다.",run:()=>{p.flags.islandOfferAge=p.age;p.happiness+=1;}}]});
         }
         { const cb = callbackScene(); if (cb) scenes.push(cb); }
         if (age >= 16 && Math.random() < 0.24) {
@@ -16683,8 +16687,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             kingRoute && missing.length
               ? 0.94
               : p.status === "해적"
-                ? 0.3
-                : 0.2;
+                ? 0.45
+                : 0.30;
         if (
           p.age - (p.flags.lastVoyagePlan ?? -99) < cooldown ||
           Math.random() >= rate
@@ -16788,7 +16792,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           // 한 해 사건이 많아도 되도록 남김. 더 자주 나오게 하면 항해 위험 때문에 평균 수명이 크게 줄어든다(2년·무제한일 때 평균 수명 -8년, 4번일 때 약 -3년).
           cooldown: kingRoute ? 1 : 3,
           minCooldown: kingRoute ? 1 : 3,
-          maxPerLife: kingRoute ? 99 : 3,
+          maxPerLife: kingRoute ? 99 : 5,
           keep: true,
           minAge: 16,
           major: kingRoute,
@@ -27917,7 +27921,7 @@ p.combat += 1;
           return;
         }
         let x = scenes[sceneIndex];
-        if (x && !fitScene(x)) {
+        if (x && x.key !== "year_minimum_event" && !fitScene(x)) {
           scenes.splice(sceneIndex, 1);
           showScene();
           return;
@@ -27955,6 +27959,7 @@ p.combat += 1;
         }
         if (p.ship)
           body += `\n\n현재 당신은 ${p.crew || "선원들과 함께"} ${p.ship}을 타고 항해 중입니다. 고향이 아니라 현재 기항한 ${p.place.name}에서 생활하고 있습니다.`;
+        p.flags.yearEventShown = true;
         setEvent(`${ageLabel()} — ${x.title}`, body, x.choices, "올해의 사건");
         showArtFor(x);
         const ac = $("autoChips");
@@ -27978,6 +27983,16 @@ p.combat += 1;
         }
         sceneIndex++;
         if (sceneIndex < scenes.length) {
+          showScene();
+          return;
+        }
+        if (p.flags.yearEventShown === false && !finished && p.health > 0) {
+          const captive = p.job === "노예" || p.flags.impelDown;
+          const title = captive ? "힘겨운 하루" : p.age < 16 ? "작은 발견" : "생활의 한 장면";
+          const body = captive ? "힘겨운 일과를 마치고 잠시 숨을 고릅니다." : p.age < 16 ? "익숙한 곳에서도 어제는 몰랐던 것을 하나 발견했습니다." : `${p.place.name}에서 일상을 보내며 지난날을 돌아봅니다.`;
+          scenes = [{key:"year_minimum_event",essential:true,title,body,effect:()=>{if(captive)p.health+=1;else if(p.age<16)p.knowledge+=1;else p.happiness+=1;},summary:title}];
+          sceneIndex = 0;
+          // 최종 필터가 특수 신분의 일반 사건을 거부하더라도 이 전용 안전망은 허용한다.
           showScene();
           return;
         }
@@ -30547,10 +30562,10 @@ function tacEnsureUI() {
 .tac-ov{position:fixed;inset:0;z-index:9999;background:rgba(5,12,18,.82);display:flex;align-items:stretch;justify-content:center;overflow:hidden;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px))}
 .tac-ov.hidden{display:none}
 .tac-box{width:100%;max-width:640px;min-height:0;max-height:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);color:var(--ink);display:flex;flex-direction:column;overflow:hidden}
-.tac-fixed{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.tac-scroll{flex:0 1 32%;height:32%;max-height:32%;min-height:88px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 3px 5px;touch-action:pan-y}
-.tac-fixed{flex:1 1 auto;min-height:0;overflow-y:auto}
-@media(max-height:650px){.tac-scroll{flex-basis:29%;height:29%;max-height:29%;min-height:76px}}
+.tac-fixed{flex:0 0 auto;min-height:0;overflow:visible}
+.tac-scroll{flex:1 1 auto;height:auto;max-height:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 3px 5px;touch-action:pan-y}
+.tac-fixed{flex:0 0 auto;min-height:0;overflow:visible}
+@media(max-height:650px){.tac-box .tac-art{height:60px;min-height:0}.tac-box .tac-card{padding:4px 7px;margin-top:3px}.tac-box .tac-title{font-size:15px}.tac-box .tac-intent{padding:3px 5px;margin-top:3px}}
 @media(max-height:760px){.tac-art{height:clamp(54px,12vh,85px)}.tac-card{padding:7px 9px;margin-top:5px}.tac-intent{margin-top:4px;padding:5px 7px}.tac-title{margin:2px 0 4px}.tac-bar{margin:4px 0 2px}}
 @media(max-height:600px){.tac-art{height:clamp(50px,10vh,70px)}.tac-head{font-size:12px}.tac-badges{font-size:11px}.tac-scroll .tac-act{min-height:52px}}
 .tac-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -35010,7 +35025,7 @@ new MutationObserver(recs=>{
   <script src="seed-sequels.js?v=1" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
-  <script src="pixel-avatar.js?v=20261127d" defer></script>
+  <script src="pixel-avatar.js?v=20261127e" defer></script>
   <script src="companion-battle.js?v=20261127d" defer></script>
   <script src="battle-visuals.js?v=20261127d" defer></script>
   <script src="canon-intervention.js?v=20261127d" defer></script>
@@ -35021,7 +35036,7 @@ new MutationObserver(recs=>{
   <script src="vitality.js?v=20261126a" defer></script>
   <!-- 인연 줄기: 고른 선택이 다음 장면을 정하고 꼬리에 꼬리를 무는 3~4단계 이야기. place-events.js의 ARC()를 쓴다 -->
   <script src="arc-events.js?v=20261126e" defer></script>
-  <script src="special-islands.js?v=1" defer></script>
+  <script src="special-islands.js?v=2" defer></script>
   <script>
 /* Cosmetic observers; no changes to age, combat odds, event choices or saves. */
 (()=>{'use strict';
