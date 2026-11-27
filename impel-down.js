@@ -50,7 +50,7 @@ battle=function(info){
  const foe=String(info.foe||"");
  const arrest=/해군|세계정부|현상금 사냥꾼|사이퍼 폴|CP[0-9]|아카이누|키자루|후지토라|아오키지|센고쿠|스모커|롭 루치|사카즈키|볼사리노|잇쇼/.test(foe)||/해군·정부/.test(info.death?.type||"");
  const won=oldBattle.apply(this,arguments);
- if(eligible&&arrest&&won===false&&["해적","혁명군"].includes(p.status)&&p.health>0&&Math.random()<.4)enter(foe);
+ if(eligible&&arrest&&won===false&&["해적","혁명군"].includes(p.status)&&p.health>0&&Math.random()<.6)enter(foe);
  return won;
 };
 function pool(s){
