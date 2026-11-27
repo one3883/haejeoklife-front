@@ -635,11 +635,21 @@
       player: true,
     });
   }
+  window.inheritChildLook = function(P,n,sp) {
+    const race=n.race||P.race, seed=hash("npc|"+(n.id||n.name)), look=genLook(seed,race), a=playerLook(P), sr=sp.race||(rng(hash(sp.id||sp.name))()<0.6?P.race:"인간"), b=sp.look||genLook(hash("npc|"+(sp.id||sp.name)),sr);
+    const palette=race==="어인"?SKIN_FISH:race==="버커니어족"?SKIN_BUCC:race==="밍크족"?FUR:SKIN;
+    const choices=[a.skin,b.skin].filter(c=>palette.includes(c));
+    if(choices.length) look.skin=choices[(seed>>>0)%choices.length];
+    if(race==="밍크족") look.fur=look.skin;
+    look.hair=(seed&1)?a.hair:b.hair; n.look=look; return look;
+  };
   function npcActor(P, n, pl, inheritHair) {
     const r = rng(hash(n.id || n.name));
     const race = n.race || (n.role === "배우자" ? (r() < 0.6 ? P.race : "인간") : P.race);
-    const look = genLook(hash("npc|" + (n.id || n.name)), race);
-    if (inheritHair) look.hair = pl.look.hair;
+    const look = n.look || genLook(hash("npc|" + (n.id || n.name)), race);
+    if (n.role === "자녀" && !n.look) { const sp=(P.npcs||[]).find(x=>x.id===n.parentLookId || (!n.parentLookId && x.id===P.spouseId)); if(sp) window.inheritChildLook(P,n,sp); }
+    if (n.look) Object.assign(look,n.look);
+    if (inheritHair && !n.look) look.hair = pl.look.hair;
     const ageReal = Math.max(0, Math.floor(n.age || 0));
     const stageAge = Math.floor(ageReal / scaleOf(race));
     const job = n.job || "민간인";

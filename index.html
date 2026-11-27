@@ -9995,6 +9995,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function buildExtraScenes() {
         const age = p.age;
+        if (age >= 16 && p.job !== "노예" && p.status !== "천룡인" && !/수감/.test(p.job) && age - (p.flags.islandOfferAge ?? -99) >= 2 && Math.random() < 0.38) {
+          const dest = rand(travelPlaces().filter(x => x.name !== p.place.name && x.sea === p.sea && !/임펠|마리조아|펑크 해저드/.test(x.name)));
+          if (dest) scenes.push({key:"island_move_offer", major:true, essential:true, minAge:16, title:"다른 섬으로 떠날 기회", body:`항구에서 ${dest.name}으로 향하는 배를 발견했습니다. 새로운 곳에서 생활할 기회입니다.`, callbackValid:()=>p.job!=="노예" && p.status!=="천룡인" && !/수감/.test(p.job) && p.place.name!==dest.name && p.sea===dest.sea, choices:[{title:`${dest.name}으로 떠난다`,desc:"이동 비용 5만 베리 · 새로운 경험",run:()=>{p.flags.islandOfferAge=p.age;if(p.money<50000){log("여비가 부족해 이동하지 못함");return;}p.money-=50000;p.place=dest;p.sea=dest.sea;p.knowledge+=2;log(`${dest.name}으로 이동함`);}},{title:"현재 섬에 남는다",desc:"현재 생활을 유지한다.",run:()=>{p.flags.islandOfferAge=p.age;p.happiness+=1;}}]});
+        }
         { const cb = callbackScene(); if (cb) scenes.push(cb); }
         if (age >= 16 && Math.random() < 0.24) {
           const s = lifeImpactScene();
@@ -13291,6 +13295,9 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       function npcName(g) {
         return rand(NPC_FIRST[g]) + " " + rand(NPC_LAST);
       }
+      function isBloodRelative(n) {
+        return !!n && (n.bloodRelative || ["부모","형제","자녀","손주","조부모","친족"].includes(n.role) || /^(아버지|어머니|형|오빠|누나|언니|남동생|여동생|자매|형제|아들|딸|손자|손녀)$/.test(n.title || "") || (n.bondHist || []).some(b => ["부모","형제","자녀","손주"].includes(b.from) || ["부모","형제","자녀","손주"].includes(b.to)));
+      }
       function makeNpc(o = {}) {
         const g = o.gender || rand(["남성", "여성"]),
           age = o.age ?? p.age;
@@ -13305,6 +13312,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           age,
           personality: o.personality || rand(PERSONALITIES),
           role: o.role || "친구",
+          bloodRelative: famRole || ["손주","조부모","친족"].includes(o.role),
           title: o.title || null,
           aff: o.aff || "민간인",
           job: o.job || (age < 16 ? (age < 1 ? "아기" : "아이") : "민간인"),
@@ -13640,6 +13648,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         }
       }
       function marry(n) {
+        if (!n || !n.alive || isBloodRelative(n) || (npcById(p.spouseId)?.alive)) return false;
         p.flags.marriedAge = p.age;
         n.scale = lifeScale();
         if (lifeScale() > 1 && n.age > realAge() + 10 * lifeScale())
@@ -14110,6 +14119,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         };
       }
       function reunionScene(n) {
+        if (n.id === p.spouseId || n.role === "배우자") return null;
         const me = myAff();
         if (opposed(me, n.aff))
           return {
@@ -14529,7 +14539,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             p.job === "현상금 사냥꾼"
           )
             pool.push(spouseConflictScene(sp));
-          pool.push(anniversaryScene(sp));
+          if (p.age > (p.flags.marriedAge ?? p.age - 1)) pool.push(anniversaryScene(sp));
         }
         if (!sp && age >= 20 && age <= 45) pool.push(courtshipScene());
         const teen = rand(
@@ -14798,6 +14808,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               age: 0,
               rel: ri(70, 90),
             });
+            n.parentLookId = sp.id;
+            if (window.inheritChildLook) window.inheritChildLook(p,n,sp);
             n.bornPlace = p.place.name;
             n.bornYear = canonYear();
             p.children = npcsBy((x) => x.role === "자녀").length;
@@ -14815,7 +14827,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const f = rand(
           npcsBy(
             (n) =>
-              ["친구", "동료", "은인"].includes(n.role) &&
+              ["친구", "동료", "은인"].includes(n.role) && !isBloodRelative(n) &&
               n.gender === opp &&
               n.rel >= 65 &&
               n.age >= 18 &&
@@ -22602,6 +22614,7 @@ p.combat += 1;
       function kidTeenPool() {
         const pool = [],
           f = bestFriend(false);
+        const romanticFriend = f && !isBloodRelative(f) && f.gender !== p.gender;
         if (
           !p.flags.contactNavy &&
           (p.combat >= 12 || skv("검술") >= 15 || p.flags.navyPraise)
@@ -22740,7 +22753,7 @@ p.combat += 1;
               ],
             ),
           );
-        if (f)
+        if (romanticFriend)
           pool.push(
             K(
               "t_love",
@@ -25226,6 +25239,7 @@ p.combat += 1;
         const k = String(sceneKey(s));
         if (!statusFits(s)) return null;
         if (s.callbackValid && !s.callbackValid()) return null;
+        if (k.startsWith("npc_reunion_") && k.slice(12) === p.spouseId) return null;
         if (k === "rokushiki_special_training" && (p.abilities.includes("육식") || p.flags.retired || p.job === "노예")) return null;
         if (/^fam_child_/.test(k) && !canHaveChild(npcById(p.spouseId))) return null;
         if ((p.flags.retired || p.job === "은퇴자") && retiredCareerScene(s))
@@ -26589,6 +26603,7 @@ p.combat += 1;
         return {
           major: true,
           key: "fam_anniv",
+          callbackValid: () => sp.alive && p.spouseId === sp.id && sp.role === "배우자" && p.age > (p.flags.marriedAge ?? p.age - 1),
           cooldown: 4,
           title: `${sp.name}와(과)의 결혼기념일`,
           body: `오늘은 ${sp.name}와(과) 부부가 된 지 ${yrs}년째 되는 날입니다. ${sp.personality} ${sp.name}은(는) 아침부터 어딘가 들떠 보입니다.`,
@@ -29749,7 +29764,7 @@ function tacBossKind(foe) {
   if (/이무/.test(f)) return "imu";
   if (/카이도/.test(f)) return "kaido";
   if (/빅맘|빅 맘|링링/.test(f)) return "bigmom";
-  if (/티치|검은수염/.test(f)) return "teach";
+  if (/티치/.test(f) || /^검은수염(?: 해적단)?$/.test(f)) return "teach";
   if (/샹크스|붉은 머리|빨간 머리/.test(f)) return "shanks";
   if (/뉴게이트|흰 ?수염/.test(f)) return "whitebeard";
   if (/루피/.test(f)) return "luffy";
@@ -30220,7 +30235,7 @@ function tacNewState(info, ab, k, rng, sim) {
     boss: tier === "boss",
     ab,
     k,
-    A0: Math.max(1, (k * total) / len),
+    A0: Math.max(1, (Math.min(k, tier === "boss" ? 0.85 : tier === "strong" ? 1.05 : 25) * total) / len),
     E: pmax / (tier === "normal" ? TAC_TUNE.eNormal : TAC_TUNE.eStrong),
     pmax,
     php: pmax,
@@ -31306,7 +31321,7 @@ new MutationObserver(recs=>{
     return n.mem.slice().sort((a, b) => (b.w || 1) - (a.w || 1) || b.a - a.a)[0];
   }
   function setRole(n, role, why) {
-    if (!n || n.role === role) return;
+    if (!n || n.role === role || isBloodRelative(n) || n.id === p.spouseId) return;
     n.bondHist = n.bondHist || [];
     n.bondHist.push({ a: realAge(), from: n.role, to: role });
     n.role = role;
@@ -31472,6 +31487,7 @@ new MutationObserver(recs=>{
     const _marry = marry;
     marry = function (n) {
       const r = _marry.apply(this, arguments);
+      if (r === false) return false;
       try {
         // 기존 marry()는 성별이 맞지 않으면 새 이름을 붙이는데, 이때 다른 인물과 이름이 겹칠 수 있다
         for (let i = 0; i < 12 && nameTaken(n.name, n); i++) {
@@ -32196,7 +32212,7 @@ new MutationObserver(recs=>{
   // 첫사랑 — 15~30년 뒤
   D.saga_firstlove = (d) => {
     const n = npcById(d.id);
-    if (!alive(n)) return null;
+    if (!alive(n) || isBloodRelative(n) || n.id === p.spouseId) return null;
     const meFree = !spouse() && !lover();
     const nFree = !n.spouse && !["배우자", "연인"].includes(n.role);
     const m = memOf(n, "firstlove");
@@ -32640,6 +32656,7 @@ new MutationObserver(recs=>{
         npcsBy((x) => guests.includes(x.name)).forEach((x) => remember(x, `${p.name}의 결혼식에 참석함`, "wedding_guest", 1));
       },
       "결혼식을 올림",
+      { npc: n, roles: ["배우자"], valid: () => p.spouseId === n.id && p.flags.marriedAge === p.age && !done("wedding_day_" + n.id) },
     );
   }
   function romanceScenes(out) {
@@ -32649,7 +32666,7 @@ new MutationObserver(recs=>{
     const lv = lover();
     const opp = p.gender === "남성" ? "여성" : "남성";
     if (a >= 14 && a <= 18 && !done("teen_firstlove") && !lv && !spouse() && free() && w !== "cel") {
-      let n = pick(npcsBy((x) => ["친구", "라이벌", "동료"].includes(x.role) && x.gender === opp && Math.abs(ea(x) - a) <= 3 && x.rel >= 40 && near(x)));
+      let n = pick(npcsBy((x) => ["친구", "라이벌", "동료"].includes(x.role) && !isBloodRelative(x) && x.gender === opp && Math.abs(ea(x) - a) <= 3 && x.rel >= 40 && near(x)));
       const where = w === "pirate" ? "같은 배를 탄 또래 선원" : w === "navy" ? "같은 기수의 훈련병" : "같은 동네에 사는 또래";
       out.push(
         mk(
@@ -32698,7 +32715,7 @@ new MutationObserver(recs=>{
       );
     }
     const fl = s.firstLoveId && npcById(s.firstLoveId);
-    if (alive(fl) && a >= 18 && a <= 21 && !done("firstlove_fork") && !spouse() && fl.role !== "연인") {
+    if (alive(fl) && !isBloodRelative(fl) && a >= 18 && a <= 21 && !done("firstlove_fork") && !spouse() && fl.role !== "연인") {
       const leaving = w === "pirate" || w === "navy" ? "당신이 바다로 나가게 되면서" : `${fl.name}${ga(fl.name)} 먼 섬으로 일을 하러 떠나게 되면서`;
       out.push(
         mk(
@@ -32741,7 +32758,7 @@ new MutationObserver(recs=>{
       );
     }
     if (!lv && !spouse() && a >= 20 && a <= 50 && free() && w !== "cel") {
-      const c = closeNpcs((x) => ["친구", "동료", "은인"].includes(x.role) && x.gender === opp && x.rel >= 70 && !x.spouse && Math.abs(ea(x) - a) <= 10 && ea(x) >= 18 && near(x))[0];
+      const c = closeNpcs((x) => ["친구", "동료", "은인"].includes(x.role) && !isBloodRelative(x) && x.gender === opp && x.rel >= 70 && !x.spouse && Math.abs(ea(x) - a) <= 10 && ea(x) >= 18 && near(x))[0];
       if (c && !done("love_" + c.id)) {
         const m = bestMemory(c);
         out.push(
@@ -32789,7 +32806,7 @@ new MutationObserver(recs=>{
             `${lv.name}${wa(lv.name)}의 미래`,
             `${lv.name}${wa(lv.name)} 만난 지 ${yrs}년. 함께한 계절이 쌓여 이제 서로 없는 내일은 잘 떠오르지 않습니다.`,
             [
-              { title: "청혼한다", desc: "평생을 함께하기로 한다.", run: () => { marry(lv); p.happiness += 12; followUp(weddingDay(lv)); } },
+              { title: "청혼한다", desc: "평생을 함께하기로 한다.", run: () => { if (marry(lv) !== false) { p.happiness += 12; followUp(weddingDay(lv)); } } },
               { title: "아직은 지금 이대로가 좋다", desc: "몇 년 뒤 다시 생각한다.", run: () => { lv.rel -= 4; s.loverSince = realAge(); delete s.done["saga_propose_" + lv.id]; log(`${lv.name}에게 청혼을 미룸`); } },
               {
                 title: "서로의 길이 다르다며 헤어진다",
