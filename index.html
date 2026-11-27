@@ -27660,6 +27660,11 @@ p.combat += 1;
         "island_델타 섬": "델타 섬",
       };
       const CUSTOM_SCENE_ART = {
+        "island_아마존 릴리": "assets/scene-amazon-lily.webp",
+        "island_발라티에": "assets/scene-baratie.webp",
+        "island_스릴러 바크": "assets/scene-thriller-bark.webp",
+        "island_펑크 해저드": "assets/scene-punk-hazard.webp",
+        "island_에그헤드": "assets/scene-egghead.webp",
         "Luffy Battle": "assets/scene-luffy-battle.webp",
         Mihawk:
           "assets/scene-mihawk.webp",
@@ -27685,7 +27690,8 @@ p.combat += 1;
           return;
         }
         // 태그: 등록된 그림(CUSTOM_SCENE_ART) → 내장 그림(battle·seaking·imu·luffy) → SVG 카테고리(ART) 순서로 찾는다. 대소문자는 구분하지 않는다.
-        const tags = x && Array.isArray(x.tags) ? x.tags : [];
+        const tags = x && Array.isArray(x.tags) ? [...x.tags] : [];
+        if (x && x.specialPlace) tags.push("island_" + x.specialPlace);
         const findKey = (obj, t) =>
           Object.keys(obj).find(
             (k) => k.toLowerCase() === String(t).toLowerCase(),
