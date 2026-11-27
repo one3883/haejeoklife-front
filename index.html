@@ -2331,7 +2331,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const home = {"스카이피안":"스카이피아","어인":"어인섬","인어":"어인섬","밍크족":"조우"}[race];
         if (home) {
           if (place.country !== home && place.name !== home) {
-            place = places.find(x => birthAllowed(x) && (x.country === home || x.name === home));
+            place = places.find(x => birthAllowed(x) && (x.country === home || x.name === home)) || place;
           }
           if (fam === "천룡인 가문" || (["스카이피안","밍크족"].includes(race) && fam === "해군 가족"))
             fam = rand(familyTypes.filter(f => !["해군 가족","천룡인 가문"].includes(f)));
@@ -10014,7 +10014,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               callbackValid:()=>p.job==="의사 견습"&&!p.flags[flag],
               choices:[
                 {title:cure?"새 치료법을 시험한다":"고난도 수술을 집도한다",desc:"성공하면 명성을 얻지만 실패 위험이 있다",run:()=>{finish();p.health-=6;sk("의술",5);if(Math.random()<Math.min(.9,.35+p.knowledge*.005)){p.reputation+=10;gainStanding(7);p.money+=Math.round(annualSalary()*.25);p.flags[cure?"medicalCureSuccess":"medicalSurgerySuccess"]=true;log(cure?"난치병 치료에 성공함":"고난도 수술에 성공함");}else{p.happiness-=8;p.reputation-=4;log("치료에 실패함");}}},
-                {title:"전문 의료진과 협력한다",desc:"보수는 적지만 안전하게 경험을 쌓는다",run:()=>{finish();p.knowledge+=4;sk("의술",3);p.relationship+=3;log("전문 의료진과 협력함");}},
+                {title:"전문 의료진과 협력한다",desc:"보수는 적지만 안전하게 경험을 쌓는다",run:()=>{finish();p.knowledge+=4;sk("의술",3);p.relationship+=3;p.money+=Math.round(annualSalary()*.05);log("전문 의료진과 협력함");}},
                 {title:"다른 병원에 의뢰한다",desc:"위험을 피하지만 기회를 놓친다",run:()=>{finish();p.happiness-=2;log("환자를 다른 병원에 의뢰함");}}
               ]});
           }
@@ -34982,8 +34982,11 @@ new MutationObserver(recs=>{
   <script src="seed-events.js?v=20261127c" defer></script>
   <script src="ranking.js?v=20261124c" defer></script>
   <script src="collection.js?v=20261125a" defer></script>
-  <script src="pixel-avatar.js?v=20261124a" defer></script>
-  <script src="impel-down.js?v=20261127a" defer></script>
+  <script src="pixel-avatar.js?v=20261127d" defer></script>
+  <script src="companion-battle.js?v=20261127d" defer></script>
+  <script src="battle-visuals.js?v=20261127d" defer></script>
+  <script src="canon-intervention.js?v=20261127d" defer></script>
+  <script src="impel-down.js?v=20261127d" defer></script>
   <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
   <script src="companion-events.js?v=20261125a" defer></script>
   <!-- 건강과 행복: 두 스탯이 사망 위험·싸움·수입에 실제로 영향을 준다. companion-events.js 뒤에 불러온다 -->
