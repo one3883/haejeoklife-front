@@ -5280,10 +5280,10 @@ CB([
             effect: { standing: 4, happiness: -6, traits: { "신중": 1 },
                       log: "추천한 제자의 처분을 규정대로 맡김" },
             risk: null },
-          { title: "맞은 상관의 비리를 캔다", desc: "판을 뒤집지만 적을 만든다",
+          { title: "비리 혐의가 있는 장교를 조사한다", desc: "판을 뒤집지만 적을 만든다",
             effect: { standing: 6, knowledge: 3, traits: { "용기": 1 },
-                      memory: "밤새 뒤진 보급 장부", log: "제자에게 맞은 상관의 비리를 캐냄" },
-            risk: { chance: 0.3, effect: { health: -10, log: "상관의 패거리에게 밤길에 습격당함" } } }
+                      memory: "밤새 뒤진 보급 장부", log: "제자에게 맞은 장교의 비리를 캐냄" },
+            risk: { chance: 0.3, get effect() { return (isAdmiral() || p.combat >= 75) ? { reputation: -2, log: "비리 연루 장교의 측근이 조사에 반발함" } : { health: -10, log: "비리 연루 장교의 패거리에게 밤길에 습격당함" }; } } }
         ]
       },
       "해적|혁명군": {
