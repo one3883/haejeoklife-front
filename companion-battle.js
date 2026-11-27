@@ -19,7 +19,7 @@ function options(n){
  const out=[];
  if(/의사|의술/.test(j))out.push(["응급 처치","heal"]);
  if(/저격|사격/.test(j))out.push(["엄호 사격","break"]);
- if(/항해/.test(j))out.push(["퇴로 확보","escape"]);
+ if(/항해/.test(j))out.push(["위험 경고","guard"]);
  if(/요리/.test(j))out.push(["보급 식사","recover"]);
  if(/검사|검술|격투|무투/.test(j))out.push([/검사|검술/.test(j)?"지원 검격":"연계 타격","hit"]);
  if(n.fruit){const [name,t]=tacFruitDef(n.fruit);out.push([name,({heal:"heal",guard:"guard",evade:"guard",stun:"break",buff:"recover",drain:"hit"})[t]||"hit"]);}
@@ -32,7 +32,6 @@ function use(st,n,opt){
  const [name,t]=opt,v=power(n),scale=.5+v/200;let msg="";
  if(t==="heal"){const d=Math.min(st.pmax-st.php,Math.round(st.pmax*.12*scale));if(!d)return;st.php+=d;msg="체력 "+d+" 회복";}
  else if(t==="recover"){const keys=Object.keys(st.cd).filter(k=>st.cd[k]>0);if(!keys.length)return;keys.sort((a,b)=>st.cd[b]-st.cd[a]);const k=keys[0],d=Math.min(st.cd[k],v>=70?2:1);st.cd[k]-=d;msg="기술 재사용 대기 "+d+"턴 감소";}
- else if(t==="escape"){st.supportEscape=.15+.1*v/100;msg="도주 확률 +"+Math.round(st.supportEscape*100)+"%";}
  else if(t==="break"){const d=Math.min(st.eblock,Math.round(st.A0*.45*scale));st.eblock-=d;st.eWeak=Math.max(st.eWeak,.12*scale);msg="방어 "+d+" 감소 · 이번 적 공격 약화";}
  else if(t==="guard"){st.eWeak=Math.max(st.eWeak,.2*scale);msg="이번 적 공격 약화";}
  else {const d=tacDamageFoe(st,Math.min(Math.max(0,st.ehp-1),Math.round(st.A0*.4*scale*tacFoeTakeMult(st,{pierce:false,slash:/검격/.test(name)}))),false);msg=d+" 피해";}
@@ -59,10 +58,9 @@ tacRender=function(st){oldRender(st);init(st);const acts=document.getElementById
  else {
  const describe=(b,title,desc,preview)=>{b.replaceChildren();const h=document.createElement("b");h.textContent=title;b.append(h);for(const [t,c] of [[desc,""],[preview,"tac-pv"]]){const x=document.createElement("small");x.className=c;x.textContent=t;b.append(x);}return b;};
  const original=(id,title)=>{const b=map.get(id);if(b){b.querySelector("b").textContent=title;return b;}return button(title,()=>tacClick(st,id),true);};
- acts.append(original("strong","⚔️ 일반 공격"),describe(button("",()=>{st.menu="skills";tacRender(st);},st.busy||st.acted),"🔥 기술 사용","패기 · 열매 · 전투 기술","기술별 예상 피해 확인"),original("guard","🛡️ 방어"),describe(button("",()=>flee(st),st.busy||st.acted||st.boss),"💨 도주",st.boss?"보스 전투에서는 도주 불가":"실패 시 적의 공격을 받음",st.boss?"사용 불가":"성공 확률 "+Math.round(Math.min(.8,.35+(st.supportEscape||0))*100)+"%"));
+ acts.append(original("strong","⚔️ 일반 공격"),describe(button("",()=>{st.menu="skills";tacRender(st);},st.busy||st.acted),"🔥 기술 사용","패기 · 열매 · 전투 기술","기술별 예상 피해 확인"),original("guard","🛡️ 방어"),describe(button("",()=>{st.support.open=!st.support.open;tacRender(st);},st.busy||st.acted||!list().length),"🤝 동료 지원",list().length?"참여 동료 및 지원 기술":"참여 가능한 동료 없음",list().length?"지원 "+(2-st.support.total)+"회 남음":"사용 불가"));
  }
  }supportUI(st);};
 tacClick=function(st,id){if(st===tacCur&&!st.busy&&!st.over&&!st.acted){init(st);st.support.locked=true;st.menu=null;}return oldClick(st,id);};
-function flee(st){if(st!==tacCur||st.busy||st.over||st.acted||st.boss)return;init(st);st.support.locked=true;const chance=Math.min(.8,.35+(st.supportEscape||0));st.supportEscape=0;if(Math.random()<chance){st.fled=true;st.over=true;st.won=false;tacLog(st,"전투에서 도주했습니다.");tacFinishUI(st);}else{tacLog(st,"도주 실패 — 적의 공격에 노출됩니다.");st.acted=true;st.mods=tacModsIf(st,null);tacEnemyAct(st,Math.random);if(st.over)tacFinishUI(st);else tacRender(st);}}
 tacFinishUI=function(st){oldFinish(st);const b=document.getElementById("tacDone");if(b)b.onclick=()=>{if(st.resolved)return;st.resolved=true;st.done({won:!!st.won,fled:!!st.fled,foe:st.foe,base:st.base,note:"[전략 전투] "+st.turn+"턴 · "+(st.fled?"도주":st.won?"승리":"패배")+(st.support?.logs.length?"\n"+st.support.logs.join("\n"):"")});};};
 })();
