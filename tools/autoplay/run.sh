@@ -52,7 +52,7 @@ rm -rf "$PROFILES" 2>/dev/null || true
 parts=0; ok=1; errs=""
 for f in "$OUT"/part*.json; do
   parts=$((parts + 1))
-  got=$(grep -o '"lives":[0-9]*' "$f" | head -1 | cut -d: -f2)
+  got=$(grep -o '"lives":[0-9]*' "$f" | head -1 | cut -d: -f2 || true)
   [ -z "$got" ] && { echo "실패: $(basename "$f") 결과가 비었습니다" >&2; ok=0; continue; }
   part="${f##*/}"; part="${part#part}"; part="${part%.json}"
   expected="${EXPECTED_LIVES[$part]:-}"
