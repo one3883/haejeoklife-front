@@ -99,12 +99,16 @@ buildYearScenes=function(){
  const ev=CANON_EVENTS.find(e=>e.id==="dressrosa");
  if(ev){const news=note("doffy_news","세계의 소식 — "+ev.title,ev.body);news.effect=()=>{if(!seenCanon("dressrosa")){p.canonSeen=p.canonSeen||{};p.canonSeen.dressrosa=p.age;(ev.effect||(()=>{}))();(CANON_PERSONAL.dressrosa||(()=>{}))();}p.flags.doffyArrestNews=true;};scenes.push(news);}
  }
- if(canonYear()===1522&&p.canonSeen?.marineford===undefined&&!p.flags.impelLuffySeen){
+ if(canonYear()>=1522&&canonYear()<1524&&!seenCanon("marineford")&&!p.flags.impelLuffySeen){
+ if(!seenCanon("crocodile")){
+ const ev=CANON_EVENTS.find(e=>e.id==="crocodile");
+ if(ev){const news=note("crocodile_news","세계의 소식 — "+ev.title,ev.body);news.effect=()=>{p.canonSeen=p.canonSeen||{};p.canonSeen.crocodile=p.age;(ev.effect||(()=>{}))();(CANON_PERSONAL.crocodile||(()=>{}))();};scenes.push(news);}
+ }
  p.flags.impelLuffySeen=true;
  scenes.push(event("luffy","밀짚모자 루피의 침입","에이스를 구하려는 루피의 침입으로 임펠다운이 혼란에 빠졌습니다.",[
  choice("혼란을 틈타 탈옥한다","특별 탈옥 기회",()=>attempt("루피의 침입",.42)),choice("감방에 남는다","안전 · 기회 포기",()=>happy(-3))]));
  }
- if(canonYear()===1522&&p.canonSeen?.marineford===undefined&&!p.flags.impelTeachSeen){
+ if(canonYear()>=1522&&canonYear()<1524&&!seenCanon("marineford")&&!p.flags.impelTeachSeen){
  p.flags.impelTeachSeen=true;
  scenes.push(event("teach","검은수염의 방문","검은수염 해적단이 임펠다운에 나타났습니다. LEVEL 6의 죄수들 사이에서 소동이 일어납니다.",[
  choice("소동을 이용한다","탈옥 기회 · 부상 위험",()=>attempt("검은수염의 방문",.25)),choice("몸을 숨긴다","안전 · 행복 감소",()=>happy(-2))]));
