@@ -649,6 +649,37 @@
       captain: n.aff === "해적" && /선장/.test(String(n.rank || "")),
     });
   }
+  window.drawCompanionSD = function(n) {
+    const P=G("p"),a=npcActor(P,n,playerActor(P),false),sp=sprite(a,false,0);
+    const c=document.createElement("canvas");c.width=GW;c.height=GH;c.getContext("2d").drawImage(sp.c,0,0);c.setAttribute("aria-label",n.name);return c;
+  };
+  // Reuse the existing sprite renderer; named bosses get fixed cosmetic palettes.
+  window.drawBattleSD = function(name, player) {
+    const P=G("p");let a;
+    if(player) a=playerActor(P);
+    else {
+      const profiles=[
+        [/루피/, "#252020","#c83b32","#345a99","해적"],
+        [/조로/, "#43834b","#e4e1d4","#273e35","해적"],
+        [/샹크스/, "#a93630","#eee7d9","#49332e","해적"],
+        [/미호크/, "#242026","#6c2534","#28242a","해적"],
+        [/카이도/, "#24202c","#71558b","#343040","해적"],
+        [/빅맘|링링/, "#e47eae","#d85c9e","#ad466e","해적"],
+        [/티치|검은수염/, "#252020","#b82f32","#343039","해적"],
+        [/크로커다일/, "#252020","#55734e","#343039","해적"],
+        [/아론/, "#34304c","#e4b65a","#446b93","해적"],
+        [/아카이누/, "#292329","#b62f39","#ece9e0","해군"],
+        [/키자루/, "#342a20","#d9b64a","#ece9e0","해군"],
+        [/이무/, "#24202c","#25202f","#25202f","민간인"]
+      ];
+      const pr=profiles.find(x=>x[0].test(name));
+      const existing=(P.npcs||[]).find(n=>n.name===name);
+      const n=existing||{id:"foe:"+name,name,age:35,race:/아론|호디|어인/.test(name)?"어인":"인간",gender:/빅맘|링링/.test(name)?"여성":"남성",aff:pr?pr[4]:/해군|정부/.test(name)?"해군":"해적",job:"전투원"};
+      a=npcActor(P,n,playerActor(P),false);
+      if(pr){a.look.hair=pr[1];a.outfit.shirt=pr[2];a.outfit.pants=pr[3];a.akey+="|canon:"+name;}
+    }
+    const sp=sprite(a,false,0),c=document.createElement("canvas");c.width=GW;c.height=GH;c.getContext("2d").drawImage(sp.c,0,0);return c;
+  };
   function buildCast(P, ctx, maxC) {
     const pl = playerActor(P);
     if (["battle", "encounter", "sea", "crisis", "work"].includes(ctx)) return { list: [pl], pl };
