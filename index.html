@@ -8942,7 +8942,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             (!ev.when || ev.when()) &&
             !["ace_exec", "marineford", "imu"].includes(ev.id) &&
             !(ev.id === "tiger" && p.job === "노예") &&
-            Math.random() < 0.3
+            ev.id !== "dressrosa" && Math.random() < 0.3
           ) {
             (ev.effect || (() => {}))();
             (CANON_PERSONAL[ev.id] || (() => {}))();
@@ -8958,6 +8958,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               effect: () => {
                 (ev.effect || (() => {}))();
                 (CANON_PERSONAL[ev.id] || (() => {}))();
+                if (ev.id === "dressrosa") p.flags.doffyArrestNews = true;
               },
               summary: ev.title,
             });
@@ -27659,6 +27660,7 @@ p.combat += 1;
         "island_델타 섬": "델타 섬",
       };
       const CUSTOM_SCENE_ART = {
+        "Luffy Battle": "assets/scene-luffy-battle.webp",
         Mihawk:
           "assets/scene-mihawk.webp",
         "Summit War":

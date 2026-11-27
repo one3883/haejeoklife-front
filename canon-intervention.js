@@ -93,7 +93,7 @@ buildYearScenes=function(){
  if(!matches.length&&p.age>=16){
  const pair=Object.entries(st.ties).find(([name,t])=>!t.followed&&alive(name)&&p.age-t.age>=6&&(p.place.name===t.place||p.place.country===t.place)&&Math.abs(t.score)>=8);
  if(pair){const [name,t]=pair;const friendly=t.score>0;const done=()=>{t.followed=true;};
- scenes.unshift({key:"intervention_reunion_"+t.arc+"_"+name,essential:true,title:name+"와의 인연",body:friendly?"과거 사건에서 맺은 인연이 다시 이어집니다. 연락을 통해 도움을 주고받을 기회가 생겼습니다.":"과거의 적대 관계 때문에 경계와 갈등이 이어집니다.",choices:[choice(friendly?"협력 관계를 이어간다":"갈등을 피하고 화해를 시도한다","재산 감소 · 관계 개선",()=>{done();p.money-=Math.min(Math.max(0,p.money),100000);t.score+=10;gainStanding(1);}),...(friendly?[choice("구호 물자를 지원한다","재산 감소 · 우호 관계 강화",()=>{done();p.money-=Math.min(Math.max(0,p.money),150000);t.score+=15;p.relationship+=3;log(name+" 측에 구호 물자를 보냄");})]:[]),choice("거리를 둔다","관계 유지 · 위험 회피",done)]});}
+ scenes.unshift({key:"intervention_reunion_"+t.arc+"_"+name,essential:true,tags:["Luffy Battle"],title:name+"와의 인연",body:friendly?"과거 사건에서 맺은 인연이 다시 이어집니다. 연락을 통해 도움을 주고받을 기회가 생겼습니다.":"과거의 적대 관계 때문에 경계와 갈등이 이어집니다.",choices:[choice(friendly?"협력 관계를 이어간다":"갈등을 피하고 화해를 시도한다","재산 감소 · 관계 개선",()=>{done();p.money-=Math.min(Math.max(0,p.money),100000);t.score+=10;gainStanding(1);}),...(friendly?[choice("구호 물자를 지원한다","재산 감소 · 우호 관계 강화",()=>{done();p.money-=Math.min(Math.max(0,p.money),150000);t.score+=15;p.relationship+=3;log(name+" 측에 구호 물자를 보냄");})]:[]),choice("거리를 둔다","관계 유지 · 위험 회피",done)]});}
  }
  return r;
 };
