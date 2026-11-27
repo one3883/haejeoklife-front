@@ -10096,7 +10096,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = fruitScene();
           if (s) scenes.push(s);
         }
-        if ((p.haki || []).length && p.age - (p.seenScenes?.hk_train ?? -99) >= 5 && Math.random() < 0.35) {
+        if ((p.haki || []).length && p.age >= 14 && p.job !== "노예" && (["무장색","견문색","패왕색"].some((h,i) => p.haki.includes(h) && (p.hakiLv?.[h] || 0) >= 40 && !p.flags[["ryuo","foresight","conqCoat"][i]]) || (p.age - (p.flags.lastHakiTrainingAge ?? p.seenScenes?.hk_train ?? -99) >= 2 && (p.age - (p.flags.lastHakiTrainingAge ?? p.seenScenes?.hk_train ?? -99) >= 5 || Math.random() < 0.55)))) {
           const s = hakiScene();
           if (s) scenes.push(s);
         }
@@ -17201,7 +17201,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function syncHaki() {
         p.hakiLv = p.hakiLv || {};
-        for (const h of p.haki || []) if (!p.hakiLv[h]) p.hakiLv[h] = 10;
+        for (const h of p.haki || []) p.hakiLv[h] = Math.max(0, Math.min(100, Number.isFinite(p.hakiLv[h]) ? p.hakiLv[h] : 10));
       }
       function fruitScene() {
         const f = p.fruit,
@@ -17469,9 +17469,9 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           ];
           const seenT = (p.flags.hakiTitles = p.flags.hakiTitles || {});
           const cand = stages.filter(([lv]) => low >= lv).reverse().flatMap(([, list]) => list);
-          const pick = cand.find(([t]) => !seenT[t]);
+          const pick = cand.find(([t]) => !seenT[t]) || rand(stages.filter(([lv]) => low >= lv).slice(-1)[0][1]);
           if (pick) {
-            const mark = () => (seenT[pick[0]] = true);
+            const mark = () => { seenT[pick[0]] = true; p.flags.lastHakiTrainingAge = p.age; };
             const lowest = trainable.slice().sort((a, b) => (L[a] || 0) - (L[b] || 0));
             pool.push({
               key: "hk_train",
@@ -17481,7 +17481,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               body: `${pick[1]} 지금의 패기 — ${trainable.map((h) => `${h} ${L[h]}`).join(", ")}.`,
               choices: [
                 // 가장 낮은 패기 두 개까지는 골라서 꾸준히 단련할 수 있다
-                ...lowest.slice(0, 2).map((h) => ({
+                ...lowest.map((h) => ({
                   title: `${h} 패기를 꾸준히 단련한다`,
                   desc: "확실하지만 고되다",
                   _pe: { traits: ["신중"] },
@@ -17538,7 +17538,7 @@ p.combat += 1;
             effect: () => {
               p.flags.ryuo = true;
               p.abilities.push("무장색: 류오");
-              L.무장색 += 5;
+              L.무장색 = Math.min(100, L.무장색 + 5);
             },
             summary: "무장색 패기의 고급 기술 '류오'를 익힘",
           });
@@ -17552,7 +17552,7 @@ p.combat += 1;
             effect: () => {
               p.flags.foresight = true;
               p.abilities.push("견문색: 미래 예지");
-              L.견문색 += 5;
+              L.견문색 = Math.min(100, L.견문색 + 5);
             },
             summary: "견문색 패기로 미래를 엿보게 됨",
           });
@@ -17566,11 +17566,12 @@ p.combat += 1;
             effect: () => {
               p.flags.conqCoat = true;
               p.abilities.push("패휘감");
-              L.패왕색 += 5;
+              L.패왕색 = Math.min(100, L.패왕색 + 5);
             },
             summary: "패왕색 패기를 공격에 두르게 됨",
           });
-        return pickFresh(pool, 3);
+        const advanced = pool.filter(x => x.key !== "hk_train");
+        return advanced[0] || pool[0] || null;
       }
       function corruptLordScene() {
         if (
