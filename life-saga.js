@@ -416,6 +416,11 @@
         s.loverId = null;
         s.marriedAt = realAge();
         n.home = null;
+        if (n.role === "배우자" || n.id === p.spouseId) {
+          n.spouse = null;
+          n.spouseGender = null;
+          n.marriedAt = null;
+        }
         remember(n, "부부가 되기로 약속한 날", "wed", 3);
         chron(`${n.name}${wa(n.name)} 결혼`, "가족", 3);
       } catch (e) {}
@@ -704,16 +709,26 @@
   }
 
   /* ───────────────────────── NPC의 독립된 삶 ───────────────────────── */
+  // 플레이어와 연결된 배우자는 독립 NPC 결혼 대상이 아니다.
+  function independentWeddingNpc(n) {
+    return alive(n) && n.id !== p.spouseId && !["배우자", "부모", "연인", "전 배우자"].includes(n.role);
+  }
   function npcLifeYear() {
     const list = (p.npcs || []).filter(alive);
     for (const n of list) {
       ensureNpc(n);
+      // 기존 저장의 충돌한 독립 결혼 정보도 정리한다.
+      if (n.role === "배우자" || n.id === p.spouseId) {
+        n.spouse = null;
+        n.spouseGender = null;
+        n.marriedAt = null;
+      }
       const e = ea(n);
       const close = FAMILY.includes(n.role) || n.rel >= 55 || ["연인", "제자"].includes(n.role);
       // 결혼 (플레이어의 배우자·연인·부모는 제외)
       if (
         e >= 20 && e <= 45 && !n.spouse && !n.married &&
-        !["배우자", "부모", "연인", "전 배우자"].includes(n.role) &&
+        independentWeddingNpc(n) &&
         chance(n.role === "자녀" ? 0.08 : 0.05)
       ) {
         const g = n.gender === "남성" ? "여성" : "남성";
@@ -817,7 +832,9 @@
   const D = DELAYED;
   D.saga_wedding = (d) => {
     const n = npcById(d.id);
-    if (!alive(n) || !n.spouse) return null;
+    if (!independentWeddingNpc(n) || !n.spouse) return null;
+    const weddingSpouse = n.spouse;
+    const weddingValid = () => independentWeddingNpc(n) && n.spouse === weddingSpouse;
     // 20세(턴 나이) 전에는 결혼식·청첩장 사건을 보여 주지 않는다
     if (p.age < 20) return null;
     const own = n.role === "자녀";
@@ -858,7 +875,7 @@
                   }
                 },
                 "피로연을 즐김",
-                { npc: n },
+                { npc: n, valid: weddingValid },
               ),
             );
           },
@@ -883,7 +900,7 @@
           },
         },
       ],
-      { essential: own, npc: n },
+      { essential: own, npc: n, valid: weddingValid },
     );
   };
   D.saga_grandchild = (d) => {
