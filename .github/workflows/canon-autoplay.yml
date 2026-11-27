@@ -1,0 +1,43 @@
+name: Canon autoplay 1000
+on:
+  push:
+    branches: [integration/latest-game-updates]
+  workflow_dispatch:
+jobs:
+  autoplay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: JavaScript syntax checks
+        run: |
+          for f in *.js; do node --check "$f"; done
+          python3 - <<'PY'
+          import re, pathlib, subprocess
+          html=pathlib.Path("index.html").read_text()
+          for i, (attrs, script) in enumerate(re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.S | re.I)):
+              if "application/ld+json" in attrs.lower() or "application/json" in attrs.lower():
+                  continue
+              if script.strip():
+                  p=pathlib.Path("/tmp") / f"inline-{i}.js"
+                  p.write_text(script)
+                  subprocess.run(["node","--check",str(p)],check=True)
+          PY
+      - name: Run validation
+        shell: bash
+        run: |
+          export EDGE="$(command -v google-chrome || command -v chromium)"
+          wrapper="$RUNNER_TEMP/chrome-wrapper"
+          printf '#!/bin/bash\nexec "%s" --no-sandbox --disable-dev-shm-usage "$@"\n' "$EDGE" > "$wrapper"
+          chmod +x "$wrapper"
+          export EDGE="$wrapper"
+          chmod +x tools/autoplay/*.sh
+          bash tools/autoplay/check.sh "intervention_,impel_" --final --procs 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autoplay-results
+          path: .git/autoplay-cache/
+          include-hidden-files: true

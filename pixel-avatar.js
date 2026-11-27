@@ -635,11 +635,21 @@
       player: true,
     });
   }
+  window.inheritChildLook = function(P,n,sp) {
+    const race=n.race||P.race, seed=hash("npc|"+(n.id||n.name)), look=genLook(seed,race), a=playerLook(P), sr=sp.race||(rng(hash(sp.id||sp.name))()<0.6?P.race:"인간"), b=sp.look||genLook(hash("npc|"+(sp.id||sp.name)),sr);
+    const palette=race==="어인"?SKIN_FISH:race==="버커니어족"?SKIN_BUCC:race==="밍크족"?FUR:SKIN;
+    const choices=[a.skin,b.skin].filter(c=>palette.includes(c));
+    if(choices.length) look.skin=choices[(seed>>>0)%choices.length];
+    if(race==="밍크족") look.fur=look.skin;
+    look.hair=(seed&1)?a.hair:b.hair; n.look=look; return look;
+  };
   function npcActor(P, n, pl, inheritHair) {
     const r = rng(hash(n.id || n.name));
     const race = n.race || (n.role === "배우자" ? (r() < 0.6 ? P.race : "인간") : P.race);
-    const look = genLook(hash("npc|" + (n.id || n.name)), race);
-    if (inheritHair) look.hair = pl.look.hair;
+    const look = n.look || genLook(hash("npc|" + (n.id || n.name)), race);
+    if (n.role === "자녀" && !n.look) { const sp=(P.npcs||[]).find(x=>x.id===n.parentLookId || (!n.parentLookId && x.id===P.spouseId)); if(sp) window.inheritChildLook(P,n,sp); }
+    if (n.look) Object.assign(look,n.look);
+    if (inheritHair && !n.look) look.hair = pl.look.hair;
     const ageReal = Math.max(0, Math.floor(n.age || 0));
     const stageAge = Math.floor(ageReal / scaleOf(race));
     const job = n.job || "민간인";
@@ -649,6 +659,37 @@
       captain: n.aff === "해적" && /선장/.test(String(n.rank || "")),
     });
   }
+  window.drawCompanionSD = function(n) {
+    const P=G("p"),a=npcActor(P,n,playerActor(P),false),sp=sprite(a,false,0);
+    const c=document.createElement("canvas");c.width=GW;c.height=GH;c.getContext("2d").drawImage(sp.c,0,0);c.setAttribute("aria-label",n.name);return c;
+  };
+  // Reuse the existing sprite renderer; named bosses get fixed cosmetic palettes.
+  window.drawBattleSD = function(name, player) {
+    const P=G("p");let a;
+    if(player) a=playerActor(P);
+    else {
+      const profiles=[
+        [/루피/, "#252020","#c83b32","#345a99","해적"],
+        [/조로/, "#43834b","#e4e1d4","#273e35","해적"],
+        [/샹크스/, "#a93630","#eee7d9","#49332e","해적"],
+        [/미호크/, "#242026","#6c2534","#28242a","해적"],
+        [/카이도/, "#24202c","#71558b","#343040","해적"],
+        [/빅맘|링링/, "#e47eae","#d85c9e","#ad466e","해적"],
+        [/티치|검은수염/, "#252020","#b82f32","#343039","해적"],
+        [/크로커다일/, "#252020","#55734e","#343039","해적"],
+        [/아론/, "#34304c","#e4b65a","#446b93","해적"],
+        [/아카이누/, "#292329","#b62f39","#ece9e0","해군"],
+        [/키자루/, "#342a20","#d9b64a","#ece9e0","해군"],
+        [/이무/, "#24202c","#25202f","#25202f","민간인"]
+      ];
+      const pr=profiles.find(x=>x[0].test(name));
+      const existing=(P.npcs||[]).find(n=>n.name===name);
+      const n=existing||{id:"foe:"+name,name,age:35,race:/아론|호디|어인/.test(name)?"어인":"인간",gender:/빅맘|링링/.test(name)?"여성":"남성",aff:pr?pr[4]:/해군|정부/.test(name)?"해군":"해적",job:"전투원"};
+      a=npcActor(P,n,playerActor(P),false);
+      if(pr){a.look.hair=pr[1];a.outfit.shirt=pr[2];a.outfit.pants=pr[3];a.akey+="|canon:"+name;}
+    }
+    const sp=sprite(a,false,0),c=document.createElement("canvas");c.width=GW;c.height=GH;c.getContext("2d").drawImage(sp.c,0,0);return c;
+  };
   function buildCast(P, ctx, maxC) {
     const pl = playerActor(P);
     if (["battle", "encounter", "sea", "crisis", "work"].includes(ctx)) return { list: [pl], pl };
