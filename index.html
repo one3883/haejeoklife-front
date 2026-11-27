@@ -30089,7 +30089,7 @@ function tacBuildActions(st) {
   return out;
 }
 function tacActionList(st) {
-  const out = st.acts || (st.acts = tacBuildActions(st));
+  const out = st.acts || (st.acts = tacBuildActions(st).filter(a => !/^(flee|escape|retreat|run|runaway)$/i.test(a.id) && !/^(도주|도망|후퇴|전투 이탈)/.test(a.name || "")));
   for (const a of out) {
     a.left = st.cd[a.id] || 0;
     a.sealed = st.sealed > 0 && (a.group === "fruit" || a.group === "haki");
@@ -30306,7 +30306,7 @@ function tacCheckFoe(st) {
 }
 // 플레이어 한 번의 행동. 성공하면 true
 function tacPlayerAct(st, id, rng) {
-  if (st.over || st.acted) return false;
+  if (st.over || st.acted || /^(flee|escape|retreat|run|runaway)$/i.test(id)) return false;
   const a = tacActionList(st).find((x) => x.id === id);
   if (!a || !a.ok) return false;
   st.acted = true; // 한 턴에 한 번만 행동한다

@@ -58,10 +58,11 @@ function crewResult(members,won,a){
 }
 function befriendLuffy(){if(p.health<=0||p.flags.impelDown||!alive("몽키 D. 루피"))return;if(p.flags.strawHat!=="friend"){p.flags.strawHat="friend";p.flags.knewLuffy=true;p.relationship+=4;log("몽키 D. 루피와 친구가 됨");}}
 function fight(a,foe,ally,withCrew,hostile){
- const members=withCrew?npcsBy(n=>n.role==="동료"&&n.aff===myAff()).slice(0,3):[];
+ const members=withCrew?npcsBy(n=>window.canBattleSupport?window.canBattleSupport(n):n.role==="동료"&&n.aff===myAff()&&n.age>=16).slice(0,3):[];
  const strong=foe===a[6];const base=strong?-.25:.18;
  const won=battle({foe,base,extra:Math.min(.12,members.reduce((s,n)=>s+n.power*.0007,0)),loseHp:strong?[22,45]:[10,25],win:()=>reward(strong?ri(300000,900000):ri(80000,300000),true)});
- crewResult(members,won,a);if(won&&!hostile)befriendLuffy();tie(foe,-12,a);tie(ally,won?20:8,a);
+ if(typeof won!=="boolean")throw new Error("Invalid canon battle result");
+ crewResult(members,won,a);if(won&&!hostile)befriendLuffy();tie(foe,-12,a);if(!hostile)tie(ally,won?20:8,a);else tie(ally,won?8:0,a);
  if(won)log(a[3]+"에서 "+foe+"와의 국지전 승리 — 원작 결말은 유지됨");
 }
 function scene(a){
@@ -70,7 +71,7 @@ function scene(a){
  const foe=p.combat>=65&&alive(major)?major:alive(minor)?minor:null;
  if(fighter&&foe&&p.status!=="해군"&&alive(ally)){
  cs.push(choice("밀짚모자 일행과 협력한다 — "+foe,"국지전 · 승리 시 명성 및 보상 · 패배 시 부상 또는 사망",()=>fight(a,foe,ally,false,false)));
- if(npcsBy(n=>n.role==="동료"&&n.aff===myAff()).length)cs.push(choice("동료들과 함께 싸운다 — "+foe,"동료 지원 · 동료도 부상이나 사망 위험",()=>fight(a,foe,ally,true,false)));
+ if(npcsBy(n=>window.canBattleSupport?window.canBattleSupport(n):n.role==="동료"&&n.aff===myAff()&&n.age>=16).length)cs.push(choice("동료들과 함께 싸운다 — "+foe,"동료 지원 · 동료도 부상이나 사망 위험",()=>fight(a,foe,ally,true,false)));
  }
  if(fighter&&enemy&&alive(enemy)&&["해군","해적","현상금 사냥꾼"].includes(myAff())&&id!=="amazon")
  cs.push(choice("밀짚모자 측을 저지한다 — "+enemy,"적대 세력 협력 · 원작 결말은 유지",()=>fight(a,enemy,foe,false,true)));
