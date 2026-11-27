@@ -11,7 +11,7 @@ const css=document.createElement("style");css.textContent=`
 .ts-row button,.ts-row select{min-height:44px;max-width:48%;font:inherit}
 #tacActs .ts-back{grid-column:1/-1;min-height:44px}
 `;document.head.append(css);
-const eligible=n=>n&&n.alive&&n.role==="동료"&&n.aff===myAff()&&n.age>=16&&!n.dispatched&&!n.mission&&!n.severeInjury&&!(n.dispatchUntil>=p.age)&&!(n.injuredUntil>=p.age)&&!(n.health!=null&&n.health<30)&&!p.flags.impelDown;
+const eligible=n=>n&&n.alive&&n.role==="동료"&&n.aff===myAff()&&(!window.isCompanionNow||window.isCompanionNow(n))&&n.age>=16&&!n.dispatched&&!n.mission&&!n.severeInjury&&!(n.dispatchUntil>=p.age)&&!(n.injuredUntil>=p.age)&&!(n.health!=null&&n.health<30)&&!p.flags.impelDown;
 const list=()=> (p.npcs||[]).filter(eligible);
 const power=n=>Math.max(0,Math.min(100,Number(n.power)||0));
 function options(n){
@@ -57,10 +57,10 @@ tacRender=function(st){oldRender(st);init(st);const acts=document.getElementById
  if(st.menu==="skills"){for(const a of actions)if(!["strong","guard"].includes(a.id)&&map.get(a.id))acts.append(map.get(a.id));const back=button("뒤로",()=>{st.menu=null;tacRender(st);});back.classList.add("ts-back");acts.append(back);}
  else {
  const describe=(b,title,desc,preview)=>{b.replaceChildren();const h=document.createElement("b");h.textContent=title;b.append(h);for(const [t,c] of [[desc,""],[preview,"tac-pv"]]){const x=document.createElement("small");x.className=c;x.textContent=t;b.append(x);}return b;};
- const original=(id,title)=>{const b=map.get(id);if(b){b.querySelector("b").textContent=title;return b;}return button(title,()=>tacClick(st,id),true);};
+ const original=(id,title)=>{const b=map.get(id);if(b){const h=b.querySelector("b")||b.querySelector(".tac-act-name")||b.firstElementChild;if(h)h.textContent=title;return b;}return button(title,()=>tacClick(st,id),true);};
  acts.append(original("strong","⚔️ 일반 공격"),describe(button("",()=>{st.menu="skills";tacRender(st);},st.busy||st.acted),"🔥 기술 사용","패기 · 열매 · 전투 기술","기술별 예상 피해 확인"),original("guard","🛡️ 방어"),describe(button("",()=>{st.support.open=!st.support.open;tacRender(st);},st.busy||st.acted||!list().length),"🤝 동료 지원",list().length?"참여 동료 및 지원 기술":"참여 가능한 동료 없음",list().length?"지원 "+(2-st.support.total)+"회 남음":"사용 불가"));
  }
  }supportUI(st);};
 tacClick=function(st,id){if(st===tacCur&&!st.busy&&!st.over&&!st.acted){init(st);st.support.locked=true;st.menu=null;}return oldClick(st,id);};
-tacFinishUI=function(st){oldFinish(st);const b=document.getElementById("tacDone");if(b)b.onclick=()=>{if(st.resolved)return;st.resolved=true;st.done({won:!!st.won,fled:!!st.fled,foe:st.foe,base:st.base,note:"[전략 전투] "+st.turn+"턴 · "+(st.fled?"도주":st.won?"승리":"패배")+(st.support?.logs.length?"\n"+st.support.logs.join("\n"):"")});};};
+tacFinishUI=function(st){oldFinish(st);const b=document.getElementById("tacDone");if(b)b.onclick=()=>{if(st.resolved)return;st.resolved=true;st.done({won:!!st.won,foe:st.foe,base:st.base,note:"[전략 전투] "+st.turn+"턴 · "+(st.won?"승리":"패배")+(st.support?.logs.length?"\n"+st.support.logs.join("\n"):"")});};};
 })();
