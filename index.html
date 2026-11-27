@@ -1590,6 +1590,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             </div>
             <div class="small" id="familyline"></div>
             <div class="stats" id="stats" style="margin-top: 12px"></div>
+            <div class="focusMini" id="focusMiniPc"></div>
             <div class="travel" id="dreamBox" style="margin-top: 10px"></div>
             <div class="travel" id="npcBox" style="margin-top: 8px"></div>
             <div class="travel" id="kidBox" style="margin-top: 8px"></div>
@@ -3004,6 +3005,24 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               `<button class="focusChoice ${p.focus === name ? "active" : ""}" onclick="setFocus('${name}')"><b>${name}</b><small>${v.desc}</small></button>`,
           )
           .join("");
+        const mini = $("focusMiniPc");
+        if (mini) mini.innerHTML = focusMiniHTML();
+      }
+      // 스탯 창(PC 오른쪽 칸·휴대폰 요약 창)에 넣는 작은 초점 버튼 줄
+      function focusMiniHTML() {
+        if (!p) return "";
+        const options = focusOptions();
+        const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        return (
+          `<div class="fm-head">올해의 초점</div><div class="fm-row">` +
+          Object.entries(options)
+            .map(
+              ([name, v]) =>
+                `<button type="button" class="fm-chip${p.focus === name ? " active" : ""}" aria-pressed="${p.focus === name}" title="${esc(v.desc)}" onclick="setFocus(${esc(JSON.stringify(name))})">${esc(name)}</button>`,
+            )
+            .join("") +
+          `</div>`
+        );
       }
       function setFocus(name) {
         if (!p || !focusOptions()[name]) return;
@@ -30861,6 +30880,15 @@ document.addEventListener("keydown",e=>{
 #mobileStats .ms-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 #mobileStats .ms-tag{font-size:12px;line-height:1.3;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
 #mobileStats .ms-tag-more{color:var(--muted)}
+/* 올해의 초점 작은 버튼 (PC 오른쪽 칸·휴대폰 요약 창 공통). 휴대폰에서는 오른쪽 칸 것을 숨겨 두 번 보이지 않게 한다 */
+.focusMini{margin-top:12px}
+.focusMini:empty{display:none}
+.focusMini .fm-head{font-size:12px;font-weight:800;color:var(--gold);margin-bottom:6px}
+.focusMini .fm-row{display:flex;flex-wrap:wrap;gap:5px}
+.focusMini .fm-chip{font:inherit;font-size:12px;line-height:1.3;padding:5px 10px;min-height:28px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;touch-action:manipulation}
+.focusMini .fm-chip:hover{border-color:var(--sea)}
+.focusMini .fm-chip.active{background:var(--sea);border-color:var(--sea);color:#fff;font-weight:700}
+@media (max-width:760px){body.in-game #focusMiniPc{display:none}}
 </style>`);
  const box=document.createElement("section");
  box.id="mobileStats";box.className="panel";box.setAttribute("aria-label","내 상태 요약");
@@ -30879,6 +30907,7 @@ document.addEventListener("keydown",e=>{
    `<div class="ms-sub">📍 ${esc(place)}</div>`+
    `<div class="ms-sub">💰 ${Math.floor(p.money).toLocaleString()} 베리${outlaw?` · 현상금 ${Math.floor(p.bounty||0).toLocaleString()} 베리`:""}</div>`+
    `<div class="ms-grid">${cell("건강",p.health,30)}${cell("행복",p.happiness,30)}${cell("지식",p.knowledge)}${cell("관계",p.relationship)}${cell("전투력",p.combat)}${cell("명성",p.reputation+50)}</div>`+
+   `<div class="focusMini">${focusMiniHTML()}</div>`+
    hakiHTML()+abilityHTML()+
    `<button type="button" class="btn secondary ms-more">전체 상태 보기 ▾</button>`;
  }
