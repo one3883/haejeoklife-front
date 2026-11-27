@@ -6,7 +6,7 @@ const place={name:"임펠다운",country:"세계정부",sea:"그랜드라인"};
 const names=["","홍련지옥","맹수지옥","기아지옥","초열지옥","극한지옥","무한지옥"];
 const hazards=["","칼날 나무 사이의 노동","맹수의 울음","물 한 모금","끓어오르는 열기","얼어붙은 감방","빛 없는 독방"];
 const fields=["job","status","careerTrack","careerStartAge","rankTitle","rankLevel","place","sea","ship","crew","focus"];
-const event=(key,title,body,choices)=>({key:"impel_"+key,essential:true,title,body,choices});
+const event=(key,title,body,choices)=>({key:"impel_"+key,essential:true,tags:[["arrival","escaped"].includes(key)?"Impel Down":"prison"],title,body,choices});
 const choice=(title,desc,run)=>({title,desc,run});
 const note=(key,title,body)=>event(key,title,body,null);
 const hp=n=>{p.health+=n;};
@@ -82,7 +82,7 @@ function pool(s){
  if(n>=4&&!s.hidden)list.push(event("newkama","뉴커머 랜드 발견","감옥 깊은 곳에서 숨겨진 LEVEL 5.5의 존재를 알게 됩니다.",[
  choice("뉴커머 랜드에 합류한다","건강 회복 · 탈옥 준비",()=>{s.hidden=true;hp(10);s.plan+=2;s.allies++;happy(-2);}),
  choice("감방으로 돌아간다","기회 포기 · 건강 감소",()=>hp(-3))]));
- if(n>=5&&p.age-s.age>=2)list.push(event("execution","사형 선고","세계정부가 당신의 처형을 결정했습니다.",[
+ if(n>=5&&p.age-s.age>=4&&!s.executionSeen&&Math.random()<.035)list.push(event("execution","사형 선고","세계정부가 당신의 처형을 결정했습니다.",[
  choice("마지막 탈옥을 시도한다","실패하면 사형",()=>{attempt("사형 직전 탈옥",.1);if(active()){p.health=0;p.flags.deathCause={type:"임펠다운에서 처형",detail:"탈옥에 실패하여 처형되었습니다."};}}),
  choice("운명을 받아들인다","사망",()=>{p.health=0;p.flags.deathCause={type:"임펠다운에서 처형",detail:"세계정부의 사형 선고가 집행되었습니다."};})]));
  return list;
