@@ -3,6 +3,7 @@
 "use strict";
 const style=document.createElement("style");style.textContent=`
 #tacArt.battle-stage{position:relative;overflow:hidden;isolation:isolate;min-height:130px;max-height:220px;aspect-ratio:2.5;background:linear-gradient(#243c52,#637b83 65%,#3d4546 66%);display:block}
+@media(max-height:760px){#tacArt.battle-stage{min-height:0;height:clamp(48px,12vh,90px);max-height:90px;aspect-ratio:auto}}
 #tacArt .battle-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75;pointer-events:none}
 #tacArt .battle-floor{position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(0,0,0,.5))}
 #tacArt .battle-actor{position:absolute;bottom:5%;width:27%;height:82%;display:flex;align-items:end;justify-content:center;pointer-events:none}
