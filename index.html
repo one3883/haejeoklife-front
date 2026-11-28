@@ -21111,6 +21111,7 @@ p.combat += 1;
           cooldown: o.cd ?? 99,
           minAge: o.min ?? 0,
           kid: true,
+          ...(o.tags ? { tags: o.tags } : {}),
         };
       }
       function KA(key, title, body, effect, summary, o = {}) {
@@ -23187,7 +23188,7 @@ p.combat += 1;
                     },
                   },
                 ],
-                { min: 5 },
+                { min: 5, tags: ["Shanks"] },
               ),
             );
           add(
