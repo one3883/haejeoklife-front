@@ -12549,7 +12549,66 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       PLACE_INFO["성지 마리조아"] =
         "성지 마리조아는 세계를 가로지르는 거대한 대륙 레드라인 꼭대기에 있는 세계정부의 심장입니다. 세계 귀족 천룡인들이 사는 곳으로, 그들의 화려한 저택 아래에서는 세계 각지에서 끌려온 노예들이 일하고 있습니다.";
+      // 노예 생활 중에도 기존 크루 인연과 탈출 준비를 활용한다.
+      function slaveSpecialScenes() {
+        if (p.job !== "노예") return [];
+        const out = [], flags = p.flags;
+        const valid = () => p.job === "노예";
+        const make = (key,title,body,choices,extra={}) => ({
+          key,title,body,choices,major:true,minAge:8,cooldown:3,
+          _slaveOnly:true,callbackValid:valid,...extra
+        });
+        const eligible = n => n.alive && n.age >= 16 && n.rel >= 45 &&
+          (n.isCrewCompanion || (flags.crewCompanions || []).includes(n.id));
+        const crew = (p.npcs || []).filter(eligible).sort((a,b)=>b.rel-a.rel);
+        const n = crew[0];
+        if (n && Math.random() < Math.min(.45,.12+n.rel/300)) {
+          const chance = Math.min(.9,.35+n.rel/250+(n.power||0)/400+(flags.escapePlan||0)*.025);
+          out.push(make("slave_crew_rescue","당신을 잊지 않은 동료",
+            `숙소의 문이 열리고 낯익은 얼굴이 나타났습니다. ${n.name}입니다. "널 두고 떠날 수는 없잖아. 같이 돌아가자!" 동료는 목걸이를 풀 방법을 마련해 왔습니다.`,[
+            {title:"동료와 함께 탈출한다",desc:`구출 성공 확률 ${Math.round(chance*100)}%`,run:()=>{
+              if(!valid()||!eligible(n))return;
+              if(Math.random()<chance){
+                n.rel=clamp(n.rel+12);p.happiness+=15;
+                npcStory(n,"마리조아에 찾아와 당신을 구출함");
+                freeSlave(n.name+"의 도움으로 마리조아를 탈출함");
+              }else{
+                p.health-=ri(4,10);flags.escapePlan=(flags.escapePlan||0)+2;
+                npcStory(n,"당신을 구하려 했으나 실패하고 물러남");
+                log(n.name+"의 구출 시도가 실패했지만 동료는 무사히 물러남");
+              }
+            }},
+            {title:"동료에게 먼저 물러나라고 한다",desc:"동료의 안전을 우선한다. 탈출 준비 증가.",run:()=>{
+              if(!valid()||!eligible(n))return;
+              n.rel=clamp(n.rel+4);flags.escapePlan=(flags.escapePlan||0)+2;
+              log(n.name+"에게 다음 기회를 기다려 달라고 부탁함");
+            }}
+          ],{essential:true,callbackValid:()=>valid()&&eligible(n)}));
+        }
+        if(Math.random()<.24)out.push(make("slave_secret_map","벽 너머의 바다",
+          "오랫동안 성지에서 일한 노예가 바깥세상으로 이어지는 길을 알고 있다며 말을 걸었습니다. 그도 자유를 꿈꾸고 있습니다.",[
+          {title:"함께 탈출을 준비한다",desc:"탈출 준비 +3 · 지식 증가",run:()=>{flags.escapePlan=(flags.escapePlan||0)+3;p.knowledge+=2;log("다른 노예와 탈출을 준비함");}},
+          {title:"위험한 일에는 관여하지 않는다",desc:"현재 상태 유지",run:()=>log("탈출 계획에 관여하지 않음")}
+        ]));
+        if(Math.random()<.20)out.push(make("slave_shared_food","빵 한 조각",
+          "함께 일하던 노예가 몰래 빵을 내밀었습니다. 자신도 굶주리고 있지만 당신의 몫을 남겨 두었다고 합니다.",[
+          {title:"반으로 나누어 먹는다",desc:"건강·행복·인간관계 증가",run:()=>{p.health+=2;p.happiness+=3;p.relationship+=4;log("동료 노예와 빵을 나누어 먹음");}},
+          {title:"상대에게 양보한다",desc:"인간관계 증가",run:()=>{p.relationship+=6;log("빵을 동료 노예에게 양보함");}}
+        ]));
+        if(p.age>=13 && Math.random()<.15)out.push(make("slave_uprising","숙소의 반란",
+          "더는 참지 못한 노예들이 자유를 되찾기 위해 일어서려 합니다. 당신에게도 함께해 달라는 부탁이 들어왔습니다.",[
+          {title:"함께 자유를 되찾는다",desc:"성공하면 해방, 실패하면 부상",run:()=>{
+            const c=Math.min(.75,.18+p.combat/250+(flags.escapePlan||0)*.025);
+            if(Math.random()<c){p.relationship+=5;freeSlave("노예들의 반란에 합류해 자유를 얻음");}
+            else{p.health-=ri(8,18);flags.escapePlan=(flags.escapePlan||0)+1;log("노예들의 반란이 실패함");}
+          }},
+          {title:"다친 사람들을 돌본다",desc:"인간관계 증가",run:()=>{p.relationship+=5;log("반란으로 다친 노예들을 돌봄");}},
+          {title:"이번에는 나서지 않는다",desc:"현재 상태 유지",run:()=>log("반란에 참여하지 않음")}
+        ],{minAge:13}));
+        return out;
+      }
       function slaveYear() {
+        scenes.push(...slaveSpecialScenes());
         const t = p.age - (p.flags.slaveSince ?? p.age);
         scenes.push(
           pickFresh(
