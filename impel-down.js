@@ -18,8 +18,9 @@ function level(){
 }
 function enter(foe){
  const old={};for(const k of fields)old[k]=p[k]??null;
- const s={old,level:level(),age:p.age,plan:0,allies:0,hidden:false,seen:{},foe};
+ const s={old,level:level(),age:p.age,plan:0,allies:0,hidden:false,seen:{},foe,savedBounty:p.bounty||0,savedBountyIssued:!!p.bountyIssued};
  p.flags.impelDown=s;
+ p.bounty=0;p.bountyIssued=false;
  p.job=p.status=p.rankTitle="수감자";p.careerTrack=null;p.rankLevel=0;p.careerStartAge=null;
  p.place={...place};p.sea=place.sea;p.ship=null;p.crew=null;p.focus="감옥에서 단련";
  p.health=Math.max(12,p.health);delete p.flags.deathCause;
@@ -31,10 +32,10 @@ function escape(route){
  const s=prison();if(!s)return;
  for(const k of fields)p[k]=s.old[k];
  if(p.place) p.place=places.find(x=>x.name===p.place.name)||p.place;
- p.bountyIssued=true;p.bounty=Math.max(1000000,Math.floor((p.bounty||0)*1.2)+s.level*2000000);
+ p.bounty=s.savedBounty??p.bounty??0;p.bountyIssued=s.savedBountyIssued??(p.bounty>0);
  delete p.flags.impelDown;
  achieve("임펠다운 탈옥");log(route+"로 임펠다운 탈옥");
- scenes.splice(sceneIndex+1, scenes.length, note("escaped","임펠다운 탈옥 성공","자유를 되찾았습니다. 기존 직업과 소속으로 돌아가며 현상금이 상승했습니다."));
+ scenes.splice(sceneIndex+1, scenes.length, note("escaped","임펠다운 탈옥 성공","자유를 되찾았습니다. 기존 직업과 소속으로 돌아가며 수감 전 현상금이 복구되었습니다."));
 }
 function attempt(route,bonus){
  const s=prison();const chance=Math.max(.05,Math.min(.85,.38-s.level*.055+p.combat*.003+s.plan*.055+s.allies*.035+bonus));
