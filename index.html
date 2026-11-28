@@ -2123,6 +2123,50 @@
           설정입니다. 극장판 《오마츠리 남작과 비밀의 섬》의 장소는 본편 만화의
           정사와 구분합니다.
         </div>
+        <aside
+          id="ranking-maintenance-notice"
+          role="status"
+          hidden
+          style="
+            margin: 12px 0;
+            padding: 12px 16px;
+            border: 1px solid #b98945;
+            border-radius: 8px;
+            background: #fff4d9;
+            color: #392910;
+            line-height: 1.6;
+            text-align: left;
+          "
+        >
+          <strong>랭킹 서버 점검 안내</strong>
+          <div></div>
+        </aside>
+        <script>
+          (() => {
+            const notice = document.getElementById(
+              "ranking-maintenance-notice",
+            );
+            const start = Date.parse("2026-11-29T00:00:00+09:00");
+            const end = Date.parse("2026-11-29T08:00:00+09:00");
+            function update() {
+              const now = Date.now();
+              if (now >= end) {
+                notice.hidden = true;
+                return;
+              }
+              const before = now < start;
+              notice.querySelector("div").textContent = before
+                ? "1,000점 인생 랭킹 업데이트를 위해 11월 29일(일) 0시부터 랭킹 조회와 기록 등록을 잠시 중단합니다. 랭킹 도전 중이라면 11월 28일(토) 밤 12시 전에 기록 등록까지 마쳐 주세요. 29일 오전 8시까지 재개할 예정이며, 일반 게임은 계속 플레이할 수 있습니다."
+                : "현재 1,000점 인생 랭킹 업데이트로 랭킹 조회와 기록 등록을 잠시 중단했습니다. 11월 29일(일) 오전 8시까지 재개할 예정입니다. 일반 게임은 계속 플레이할 수 있습니다.";
+              notice.hidden = false;
+              setTimeout(
+                update,
+                Math.min((before ? start : end) - now, 2147483647),
+              );
+            }
+            update();
+          })();
+        </script>
         <div class="actions">
           <button
             class="btn"
@@ -2131,8 +2175,8 @@
             onclick="loadGame()"
           >
             이어하기</button
-          ><button class="btn" onclick="begin()">운명에 맡기고 태어나기</button
-          ><button
+          ><button class="btn" onclick="begin()">운명에 맡기고 태어나기</button>
+          <button
             class="btn"
             id="rankingChallengeBtn"
             type="button"
@@ -38536,17 +38580,15 @@ ${p.partner ? "배우자: " + p.partner : ""} / 자녀: ${p.children}명${extraB
           s.memoir = s.memoir || 0;
           if (fresh && p.age > 0) {
             // 이 시스템이 생기기 전의 저장: 지금까지의 큰 일만 연대기에 옮겨 둔다
-            (p.achievements || [])
-              .slice(0, 12)
-              .forEach((t) =>
-                s.chron.push({
-                  a: realAge(),
-                  st: stageName(),
-                  t: `(이전 기록) ${t}`,
-                  k: "업적",
-                  w: 2,
-                }),
-              );
+            (p.achievements || []).slice(0, 12).forEach((t) =>
+              s.chron.push({
+                a: realAge(),
+                st: stageName(),
+                t: `(이전 기록) ${t}`,
+                k: "업적",
+                w: 2,
+              }),
+            );
             s.lastPlace = p.place && p.place.name;
             s.lastJob = p.job;
             s.stage = stageOf().id;
