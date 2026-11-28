@@ -1,271 +1,192 @@
 /* 오늘의 랭킹: 기존 게임 진행 로직과 독립적으로 동작합니다. */
 (() => {
-  "use strict";
-  const API = "https://api.haejeoklife.com/api/v2/rankings";
-  const $ = (id) => document.getElementById(id);
-  const clean = (v, max = 40) => String(v ?? "").slice(0, max);
-  const nicknameClean = (v) =>
-    String(v ?? "")
-      .replace(/[<>"'&]/g, "")
-      .slice(0, 12);
-  const integer = (v) => {
-    const n = Number(v);
-    return Number.isFinite(n)
-      ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(n)))
-      : 0;
-  };
-  const format = (n) => integer(n).toLocaleString("ko-KR");
+  'use strict';
+  const API = 'https://api.haejeoklife.com/api/v2/rankings';
+  const $ = id => document.getElementById(id);
+  const clean = (v, max = 40) => String(v ?? '').slice(0, max);
+  const nicknameClean = v => String(v ?? '').replace(/[<>"'&]/g, '').slice(0, 12);
+  const integer = v => { const n = Number(v); return Number.isFinite(n) ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(n))) : 0; };
+  const format = n => integer(n).toLocaleString('ko-KR');
   let submitting = false;
   let submitted = false;
   let lastPayload = null;
-  const challengeActive = () =>
-    typeof p !== "undefined" &&
-    !!p &&
-    !!p.flags?.rankingChallenge &&
-    typeof finished !== "undefined" &&
-    finished === true;
-  const deathPanel = () => $("ranking-death");
+  const challengeActive = () => typeof p !== 'undefined' && !!p && !!p.flags?.rankingChallenge && typeof finished !== 'undefined' && finished === true;
+  const deathPanel = () => $('ranking-death');
   function hideDeathRanking() {
     lastPayload = null;
     const panel = deathPanel();
-    if (panel) {
-      panel.hidden = true;
-      panel.style.display = "none";
-    }
-    if ($("ranking-form")) $("ranking-form").hidden = true;
-    if ($("ranking-register-open")) $("ranking-register-open").hidden = true;
+    if (panel) { panel.hidden = true; panel.style.display = 'none'; }
+    if ($('ranking-form')) $('ranking-form').hidden = true;
+    if ($('ranking-register-open')) $('ranking-register-open').hidden = true;
   }
-  const esc = (v) =>
-    String(v ?? "").replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[c],
-    );
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  const pendingLikes = new Set();
+  function likeButton(r) {
+    if (r.id == null || typeof r.likedByMe !== 'boolean' || !Number.isSafeInteger(r.likeCount) || r.likeCount < 0) return '';
+    const id = String(r.id);
+    if (!/^[a-zA-Z0-9_-]+$/.test(id)) return '';
+    return `<button type="button" data-ranking-like="${id}" aria-label="${esc(r.nickname || '도전자')}의 인생 좋아요" aria-pressed="${r.likedByMe}" ${pendingLikes.has(id) ? 'disabled' : ''}>${r.likedByMe ? '♥' : '♡'} ${format(r.likeCount)}</button><small data-like-error="${id}" role="status"></small>`;
+  }
+  document.addEventListener('click', async event => {
+    const button = event.target.closest?.('[data-ranking-like]');
+    if (!button) return;
+    const id = button.dataset.rankingLike;
+    if (pendingLikes.has(id)) return;
+    const buttons = () => document.querySelectorAll(`[data-ranking-like="${CSS.escape(id)}"]`);
+    const errors = () => document.querySelectorAll(`[data-like-error="${CSS.escape(id)}"]`);
+    const liked = button.getAttribute('aria-pressed') !== 'true';
+    pendingLikes.add(id);
+    buttons().forEach(b => b.disabled = true);
+    errors().forEach(e => e.textContent = '');
+    try {
+      const result = await request(`${API}/${encodeURIComponent(id)}/like`, {method: liked ? 'PUT' : 'DELETE'});
+      if (typeof result.likedByMe !== 'boolean' || !Number.isSafeInteger(result.likeCount) || result.likeCount < 0) throw Error('invalid like response');
+      buttons().forEach(b => {
+        b.setAttribute('aria-pressed', String(result.likedByMe));
+        b.textContent = (result.likedByMe ? '♥ ' : '♡ ') + format(result.likeCount);
+      });
+    } catch {
+      errors().forEach(e => e.textContent = '좋아요 반영 여부를 확인할 수 없어요. 새로고침해 주세요.');
+    } finally {
+      pendingLikes.delete(id);
+      buttons().forEach(b => b.disabled = false);
+    }
+  });
 
   function renderRanking(target, data) {
     if (!target) return;
     const count = integer(data?.totalCount);
-    const rows = Array.isArray(data?.topRankings)
-      ? data.topRankings.slice(0, 30)
-      : [];
-    const total = target.querySelector(".ranking-total");
-    const list = target.querySelector(".ranking-list");
+    const rows = Array.isArray(data?.topRankings) ? data.topRankings.slice(0, 30) : [];
+    const total = target.querySelector('.ranking-total');
+    const list = target.querySelector('.ranking-list');
     if (total) total.textContent = `오늘의 도전자 ${format(count)}명`;
     if (!list) return;
     if (count > rows.length && rows.length === 10) {
-      console.warn(
-        "랭킹 서버가 10개 기록만 반환했습니다. 서버의 TOP 30 배포를 확인해야 합니다.",
-      );
-      if (total)
-        total.textContent +=
-          " · 서버에서 10개 기록만 전달됨 (서버 업데이트 필요)";
+      console.warn('랭킹 서버가 10개 기록만 반환했습니다. 서버의 TOP 30 배포를 확인해야 합니다.');
+      if (total) total.textContent += ' · 서버에서 10개 기록만 전달됨 (서버 업데이트 필요)';
     }
-    if (!rows.length) {
-      list.innerHTML =
-        '<p class="small ranking-empty">아직 등록된 기록이 없습니다. 첫 번째 도전자가 되어 보세요!</p>';
-      return;
-    }
-    list.innerHTML = rows
-      .map(
-        (r, i) => `<div class="ranking-row">
+    if (!rows.length) { list.innerHTML = '<p class="small ranking-empty">아직 등록된 기록이 없습니다. 첫 번째 도전자가 되어 보세요!</p>'; return; }
+    list.innerHTML = rows.map((r, i) => `<div class="ranking-row">
       <span class="ranking-place">${esc(Number.isFinite(Number(r.rank)) ? integer(r.rank) : i + 1)}위</span>
-      <div class="ranking-person"><strong>${esc(r.nickname || "이름 없음")}</strong><small>${esc(r.title || "칭호 없음")} · ${format(r.age)}세 · ${esc(r.bestCareer || r.raceAndJob || "직업 없음")}</small><small class="ranking-death">${esc(r.lifeHeadline || r.causeOfDeath || "")}</small></div>
+      <div class="ranking-person"><strong>${esc(r.nickname || '이름 없음')}</strong><small>${esc(r.title || '칭호 없음')} · ${format(r.age)}세 · ${esc(r.bestCareer || r.raceAndJob || '직업 없음')}</small><small class="ranking-death">${esc(r.lifeHeadline || r.causeOfDeath || '')}</small>${likeButton(r)}</div>
       <details class="ranking-score"><summary><b>${format(r.totalScore)}점</b></summary>
         <small>직업 ${format(r.careerPoints)} · 기술 ${format(r.skillPoints)}<br>꿈 ${format(r.dreamPoints)} · 재산 ${format(r.wealthPoints)}</small></details>
-    </div>`,
-      )
-      .join("");
+    </div>`).join('');
   }
   async function request(url, options = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        cache: options.cache || "no-store",
-        headers: {
-          Accept: "application/json",
-          ...(options.body ? { "Content-Type": "application/json" } : {}),
-        },
-      });
+      const response = await fetch(url, { credentials: 'include', ...options, signal: controller.signal, cache: options.cache || 'no-store', headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
       if (!response.ok) throw new Error(`서버 응답 오류 (${response.status})`);
       return await response.json();
-    } finally {
-      clearTimeout(timer);
-    }
+    } finally { clearTimeout(timer); }
   }
   async function refreshRankings() {
-    const panels = [$("ranking-home"), $("ranking-death")];
+    const panels = [$('ranking-home'), $('ranking-death')];
     try {
-      const data = await request(`${API}/today?limit=30&_=${Date.now()}`, {
-        cache: "no-store",
-      });
-      panels.forEach((el) => renderRanking(el, data));
+      const data = await request(`${API}/today?limit=30&_=${Date.now()}`, { cache: 'no-store' });
+      panels.forEach(el => renderRanking(el, data));
     } catch (error) {
-      panels.forEach((el) => {
-        if (!el) return;
-        const list = el.querySelector(".ranking-list");
-        if (list && !list.querySelector(".ranking-row"))
-          list.textContent =
-            "랭킹을 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.";
-      });
+      panels.forEach(el => { if (!el) return; const list = el.querySelector('.ranking-list'); if (list && !list.querySelector('.ranking-row')) list.textContent = '랭킹을 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.'; });
     }
   }
   function deathResult(cause) {
-    if (typeof p === "undefined" || !p) return null;
+    if (typeof p === 'undefined' || !p) return null;
     return {
       ...p.finalScore,
       bounty: integer(p.bounty),
       lifeHeadline: clean(p.lifeHeadline, 180),
-      title: clean(
-        typeof endingTitle === "function"
-          ? endingTitle(cause)
-          : p.flags?.endingTitle || "",
-        40,
-      ),
-      age: integer(typeof realAge === "function" ? realAge() : p.age),
-      raceAndJob: clean(
-        [p.race, typeof jobTitle === "function" ? jobTitle() : p.job]
-          .filter(Boolean)
-          .join(" · "),
-        40,
-      ),
-      causeOfDeath: clean(
-        cause?.type || p.flags?.deathCause?.type || "인생 종료",
-        40,
-      ),
+      title: clean(typeof endingTitle === 'function' ? endingTitle(cause) : (p.flags?.endingTitle || ''), 40),
+      age: integer(typeof realAge === 'function' ? realAge() : p.age),
+      raceAndJob: clean([p.race, typeof jobTitle === 'function' ? jobTitle() : p.job].filter(Boolean).join(' · '), 40),
+      causeOfDeath: clean(cause?.type || p.flags?.deathCause?.type || '인생 종료', 40)
     };
   }
   function openDeathRanking(cause) {
-    const panel = $("ranking-death");
+    const panel = $('ranking-death');
     if (!panel) return;
-    if (!challengeActive()) {
-      hideDeathRanking();
-      return;
-    }
+    if (!challengeActive()) { hideDeathRanking(); return; }
     lastPayload = deathResult(cause);
     if (!lastPayload) return;
     submitted = false;
     submitting = false;
     // 단계 줄이기: 닉네임 입력칸을 처음부터 펼치고 캐릭터 이름을 미리 채워, '랭킹 등록' 한 번만 누르면 되게 한다.
     // (휴대폰 키보드가 갑자기 올라오지 않도록 자동 포커스는 하지 않는다)
-    $("ranking-form").hidden = false;
-    $("ranking-register-open").hidden = true;
-    $("ranking-submit").disabled = false;
-    $("ranking-nickname").value = nicknameClean(
-      typeof p !== "undefined" && p ? p.name : "",
-    ).trim();
-    $("ranking-my-rank").hidden = true;
-    $("ranking-message").textContent = "";
+    $('ranking-form').hidden = false;
+    $('ranking-register-open').hidden = true;
+    $('ranking-submit').disabled = false;
+    $('ranking-nickname').value = nicknameClean(typeof p !== 'undefined' && p ? p.name : '').trim();
+    $('ranking-my-rank').hidden = true;
+    $('ranking-message').textContent = '';
     panel.hidden = false;
-    panel.style.display = "";
+    panel.style.display = '';
     refreshRankings();
   }
   function showRankingForm() {
-    if (!challengeActive() || !lastPayload || submitted || submitting) {
-      if (!challengeActive()) hideDeathRanking();
-      return;
-    }
-    $("ranking-form").hidden = false;
-    $("ranking-register-open").hidden = true;
-    $("ranking-nickname").focus();
+    if (!challengeActive() || !lastPayload || submitted || submitting) { if (!challengeActive()) hideDeathRanking(); return; }
+    $('ranking-form').hidden = false;
+    $('ranking-register-open').hidden = true;
+    $('ranking-nickname').focus();
   }
   async function submitRanking(event) {
     event.preventDefault();
-    if (!challengeActive() || submitted || submitting || !lastPayload) {
-      if (!challengeActive()) hideDeathRanking();
-      return;
-    }
-    const input = $("ranking-nickname");
+    if (!challengeActive() || submitted || submitting || !lastPayload) { if (!challengeActive()) hideDeathRanking(); return; }
+    const input = $('ranking-nickname');
     const nick = nicknameClean(input.value).trim();
     input.value = nick;
-    const message = $("ranking-message");
-    if (!nick) {
-      message.textContent = "닉네임을 1~12자로 입력해 주세요.";
-      input.focus();
-      return;
-    }
+    const message = $('ranking-message');
+    if (!nick) { message.textContent = '닉네임을 1~12자로 입력해 주세요.'; input.focus(); return; }
     const entry = lastPayload;
     submitting = true;
-    $("ranking-submit").disabled = true;
-    message.textContent = "기록을 등록하는 중입니다…";
+    $('ranking-submit').disabled = true;
+    message.textContent = '기록을 등록하는 중입니다…';
     try {
-      const data = await request(API, {
-        method: "POST",
-        body: JSON.stringify({ nickname: nick, ...entry }),
-      });
+      const data = await request(API, { method: 'POST', body: JSON.stringify({ nickname: nick, ...entry }) });
       if (entry !== lastPayload) return;
       submitted = true;
-      $("ranking-form").hidden = true;
-      $("ranking-register-open").hidden = true;
-      $("ranking-my-rank").hidden = false;
-      $("ranking-my-rank").textContent =
-        `오늘 ${format(data.totalCount)}명 중 ${format(data.myRank)}위`;
-      message.textContent = "랭킹 등록이 완료되었습니다!";
-      renderRanking($("ranking-death"), data);
-      renderRanking($("ranking-home"), data);
+      $('ranking-form').hidden = true;
+      $('ranking-register-open').hidden = true;
+      $('ranking-my-rank').hidden = false;
+      $('ranking-my-rank').textContent = `오늘 ${format(data.totalCount)}명 중 ${format(data.myRank)}위`;
+      message.textContent = '랭킹 등록이 완료되었습니다!';
+      renderRanking($('ranking-death'), data);
+      renderRanking($('ranking-home'), data);
     } catch (error) {
       if (entry !== lastPayload) return;
-      message.textContent =
-        error.name === "AbortError"
-          ? "응답 시간이 초과되었습니다. 등록 여부를 확인한 후 다시 시도해 주세요."
-          : `등록에 실패했습니다. ${error.message}`;
+      message.textContent = error.name === 'AbortError' ? '응답 시간이 초과되었습니다. 등록 여부를 확인한 후 다시 시도해 주세요.' : `등록에 실패했습니다. ${error.message}`;
       // 타임아웃이나 연결 끊김 시 서버에 등록됐을 수 있으므로 무조건 재전송하지 않도록 안내합니다.
     } finally {
       if (entry === lastPayload) {
         submitting = false;
-        if (!submitted) $("ranking-submit").disabled = false;
+        if (!submitted) $('ranking-submit').disabled = false;
       }
     }
   }
   hideDeathRanking();
-  $("ranking-register-open")?.addEventListener("click", showRankingForm);
-  $("ranking-nickname")?.addEventListener("input", (event) => {
-    event.target.value = nicknameClean(event.target.value);
-  });
+  $('ranking-register-open')?.addEventListener('click', showRankingForm);
+  $('ranking-nickname')?.addEventListener('input', event => { event.target.value = nicknameClean(event.target.value); });
   // 미리 채운 캐릭터 이름을 바꾸고 싶을 때 바로 새로 쓸 수 있게, 입력칸을 누르면 전체 선택한다.
-  $("ranking-nickname")?.addEventListener("focus", (event) => {
-    try {
-      event.target.select();
-    } catch (e) {}
-  });
-  $("ranking-form")?.addEventListener("submit", submitRanking);
-  document
-    .querySelectorAll(".ranking-refresh")
-    .forEach((button) => button.addEventListener("click", refreshRankings));
+  $('ranking-nickname')?.addEventListener('focus', event => { try { event.target.select(); } catch (e) {} });
+  $('ranking-form')?.addEventListener('submit', submitRanking);
+  document.querySelectorAll('.ranking-refresh').forEach(button => button.addEventListener('click', refreshRankings));
   refreshRankings();
   // 새 인생 및 이어하기에서 이전 사망의 등록 UI를 반드시 초기화합니다.
-  if (typeof begin === "function") {
+  if (typeof begin === 'function') {
     const originalBegin = begin;
-    begin = function () {
-      hideDeathRanking();
-      return originalBegin.apply(this, arguments);
-    };
+    begin = function() { hideDeathRanking(); return originalBegin.apply(this, arguments); };
   }
-  if (typeof loadGame === "function") {
+  if (typeof loadGame === 'function') {
     const originalLoadGame = loadGame;
-    loadGame = function () {
-      hideDeathRanking();
-      return originalLoadGame.apply(this, arguments);
-    };
+    loadGame = function() { hideDeathRanking(); return originalLoadGame.apply(this, arguments); };
   }
   // 원본 afterDeath 및 기존 수배서/분석 래퍼를 그대로 실행한 뒤 랭킹만 표시합니다.
-  if (typeof afterDeath === "function") {
+  if (typeof afterDeath === 'function') {
     const originalAfterDeath = afterDeath;
-    afterDeath = function (cause) {
+    afterDeath = function(cause) {
       const result = originalAfterDeath.apply(this, arguments);
-      try {
-        openDeathRanking(cause);
-      } catch (error) {
-        console.error("ranking UI", error);
-      }
+      try { openDeathRanking(cause); } catch (error) { console.error('ranking UI', error); }
       return result;
     };
   }
