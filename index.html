@@ -4936,7 +4936,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
               : 1) - canonList.length,
         );
         for (let i = 0; i < extraCount; i++) scenes.push(randomScene(age));
-        if (age >= 18 && age % 3 !== 0 && Math.random() < 0.12)
+        if (age >= 18 && age % 3 !== 0 && Math.random() < 0.28)
           scenes.push(careerChangeScene());
         else if (p.job === "은퇴자" && age < 75 && Math.random() < 0.05)
           scenes.push(careerChangeScene()); // 은퇴 후에도 가끔 새 일 제안
@@ -7229,6 +7229,21 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         pick.cooldown = cd;
         return pick;
       }
+      function progressionCooldown(s) {
+        const k = String(sceneKey(s));
+        if (s.promotion) return 0;
+        if (k === "voyage") return s.minCooldown ?? 2;
+        if (k === "haki_learn") return p.flags.hakiDeclines ? 4 : 2;
+        if (/^(cel_knight|job_formcrew|직업을 바꿀 기회)$/.test(k)) return 3;
+        if (/^(ship_offer|island_move_offer|job_recruit|job_bigbounty|현상금 의뢰|slave_escape|slave_crew_rescue|void_offer|void_progress_|martial_|companion_offer_|fr_work|hk_train|rokushiki_special_training)/.test(k)) return 2;
+        if (/^(fr_awaken|powerpower_awaken|hk_ryuo|hk_foresight|hk_coat|dream_|fruit_crew|sword_daz|sword_ryuma|pirate_king_route_ship)/.test(k)) return 0;
+        return null;
+      }
+      function progressionPriority(s) {
+        const k = String(sceneKey(s));
+        if (s.promotion || /^(voyage$|haki_learn$|ship_offer$|island_move_offer$|직업을 바꿀 기회$|job_formcrew$|cel_knight$|rokushiki_special_training$|fr_awaken$|powerpower_awaken$|dream_|fruit_crew$)/.test(k)) return 2;
+        return progressionCooldown(s) !== null ? 1 : 0;
+      }
       function finalizeScenes(list) {
         p.seenScenes = p.seenScenes || {};
         const out = [],
@@ -7253,7 +7268,12 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             if (s.essential) s = guardianResolve(s);
             else continue;
           }
-          if (!s.essential && !s.promotion) {
+          const progressCd = progressionCooldown(s);
+          if (progressCd !== null && !s.promotion) {
+            const last = p.seenScenes[k];
+            if (last !== undefined && p.age - last < progressCd) continue;
+          }
+          if (progressCd === null && !s.essential && !s.promotion) {
             const last = p.seenScenes[k],
               cd = Math.max(s.minCooldown ?? 4, s.cooldown ?? 8); // 같은 사건은 최소 4년(사건이 minCooldown으로 줄일 수 있음), 기본 8년 간격
             if (
@@ -7312,6 +7332,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             optional
               .sort(
                 (x, y) =>
+                  progressionPriority(out[x]) - progressionPriority(out[y]) ||
                   (out[x].kid ? 1 : 0) - (out[y].kid ? 1 : 0) ||
                   // keep 표시가 있는 사건(항해 계획 등)은 되도록 남긴다
                   (out[x].keep ? 1 : 0) - (out[y].keep ? 1 : 0) ||
@@ -7322,7 +7343,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           for (let i = out.length - 1; i >= 0; i--)
             if (drop.has(i)) out.splice(i, 1);
         }
-        out.forEach((s) => (p.seenScenes[sceneKey(s)] = p.age));
+        out.forEach((s) => { if (progressionCooldown(s) === null) p.seenScenes[sceneKey(s)] = p.age; });
         return out;
       }
 
@@ -9989,7 +10010,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
       function buildExtraScenes() {
         const age = p.age;
-        if (age >= 16 && p.job !== "노예" && p.status !== "천룡인" && !/수감/.test(p.job) && age - (p.flags.islandOfferAge ?? -99) >= 2 && Math.random() < 0.19) {
+        if (age >= 16 && p.job !== "노예" && p.status !== "천룡인" && !/수감/.test(p.job) && age - (p.flags.islandOfferAge ?? -99) >= 2 && Math.random() < 0.35) {
           const candidates = travelPlaces().filter(x => x.name !== p.place.name && x.sea === p.sea && !/임펠|마리조아/.test(x.name));
           const special = candidates.filter(x => !birthAllowed(x));
           const normal = candidates.filter(x => birthAllowed(x));
@@ -13157,7 +13178,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
 
       /* ===================== v18 추가 시스템 ===================== */
       // ── 공용 도구 ──
-      const MAX_YEAR_SCENES = 4; // 한 해에 보여줄 비필수 사건의 최대 수 (필수 사건은 제외)
+      const MAX_YEAR_SCENES = 5; // 한 해에 보여줄 비필수 사건의 최대 수 (필수 사건은 제외)
       function uid() {
         return Math.random().toString(36).slice(2, 9);
       }
@@ -14839,7 +14860,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       function rokushikiTrainingScene() {
         if (p.age < 18 || p.combat < 35 || p.job === "노예" || p.flags.retired ||
             p.abilities.includes("육식") || p.age - (p.flags.rokushikiOfferAge ?? -99) < 3 ||
-            Math.random() >= (p.status === "해군" ? 0.35 : 0.18)) return null;
+            Math.random() >= (p.status === "해군" ? 0.50 : 0.30)) return null;
         return {
           key: "rokushiki_special_training",
           essential: true,
@@ -16593,7 +16614,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           p.vessel ||
           p.age < 18 ||
           ["해군", "천룡인 소유 노예", "천룡인"].includes(p.status) ||
-          Math.random() >= 0.08
+          Math.random() >= 0.35
         )
           return null;
         const isle = /항구|타운|워터 세븐|샤본디|나노하나/.test(p.place.name)
@@ -16750,14 +16771,13 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
             kingRoute && missing.length
               ? 0.94
               : p.status === "해적"
-                ? 0.45
-                : 0.30;
+                ? 0.70
+                : 0.45;
         if (
           p.age - (p.flags.lastVoyagePlan ?? -99) < cooldown ||
           Math.random() >= rate
         )
           return null;
-        p.flags.lastVoyagePlan = p.age;
         const v = p.vessel,
           dests = nextIslands(),
           gl = ["그랜드 라인 전반부", "신세계"].includes(p.sea);
@@ -16851,11 +16871,10 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         });
         return {
           key: "voyage",
-          // 섬을 골라 떠나는 사건이라 다른 사건보다 자주 나오게 한다: 3년(해적왕 항로는 1년)마다, 한 인생 3번까지(해적왕 항로는 제한 없음),
+          // 항해는 진행 사건으로 2년(해적왕 항로는 1년) 간격, 평생 횟수 제한 없음.
           // 한 해 사건이 많아도 되도록 남김. 더 자주 나오게 하면 항해 위험 때문에 평균 수명이 크게 줄어든다(2년·무제한일 때 평균 수명 -8년, 4번일 때 약 -3년).
-          cooldown: kingRoute ? 1 : 3,
-          minCooldown: kingRoute ? 1 : 3,
-          maxPerLife: kingRoute ? 99 : 5,
+          cooldown: kingRoute ? 1 : 2,
+          minCooldown: kingRoute ? 1 : 2,
           keep: true,
           minAge: 16,
           major: kingRoute,
@@ -19024,7 +19043,7 @@ p.combat += 1;
         /^(pl_|sea_|npc_child_|npc_newfriend|npc_duel_|npc_stranger|fam_conflict|fam_sib_|job_recruit|job_raid|job_treasure|job_navytrain|job_rivalhunter|job_trap|job_crime|job_community|fr_wild|fr_work|fr_logia|hk_train|slave_protect|slave_arena|fight_)/;
       const MAJOR_KEY = /^(pl_shells_recruit|pl_w7_galley)$/;
       function isMinor(s) {
-        if (!s || s.essential || s.promotion || s.major || !s.choices)
+        if (!s || s.essential || s.promotion || s.major || !s.choices || progressionCooldown(s) !== null)
           return false;
         const k = String(sceneKey(s));
         if (MAJOR_KEY.test(k)) return false;
@@ -26148,7 +26167,7 @@ p.combat += 1;
         const hasObs = p.abilities.includes("견문색 패기"),
           hasArm = p.abilities.includes("무장색 패기"),
           hasOne = hasObs || hasArm;
-        if (!hasOne && Math.random() >= 0.36) return null;
+        if (!hasOne && Math.random() >= 0.60) return null;
         // 두 번째 패기는 첫 패기 습득 후에도 따로 오되, 미룬 뒤에는 더 오래 기다린다.
         if (p.age - (p.seenScenes?.haki_learn ?? -99) < (dec ? 4 : 2)) return null;
         const ch = [];
@@ -28077,6 +28096,12 @@ p.combat += 1;
           sceneIndex++;
           showScene();
           return;
+        }
+        if (progressionCooldown(x) !== null && !x._progressShown) {
+          x._progressShown = true;
+          const k = sceneKey(x);
+          (p.seenScenes ||= {})[k] = p.age;
+          if (k === "voyage") p.flags.lastVoyagePlan = p.age;
         }
         let body = x.body;
         if (x.effect && !x.applied) {
@@ -34568,6 +34593,7 @@ new MutationObserver(recs=>{
       ep = epilogueActive();
     for (let i = scenes.length - 1; i >= 0; i--) {
       const x = scenes[i];
+      if (x && progressionCooldown(x) !== null) continue;
       // keep 표시 사건(항해 계획 등)은 일반 사건의 '평생 한 번' 대신 maxPerLife번까지 나온다(간격은 minCooldown)
       if (x && x.keep && !x.essential) {
         if ((S().cnt[String(sceneKey(x))] || 0) >= (x.maxPerLife ?? 99)) scenes.splice(i, 1);
@@ -34620,7 +34646,7 @@ new MutationObserver(recs=>{
         const s = S();
         out.forEach((x) => {
           const k = String(sceneKey(x));
-          s.cnt[k] = (s.cnt[k] || 0) + 1;
+          if (progressionCooldown(x) === null) s.cnt[k] = (s.cnt[k] || 0) + 1;
         });
         const keys = Object.keys(s.cnt);
         if (keys.length > 900) keys.slice(0, keys.length - 900).forEach((k) => delete s.cnt[k]);
