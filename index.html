@@ -1391,6 +1391,30 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           설정입니다. 극장판 《오마츠리 남작과 비밀의 섬》의 장소는 본편 만화의
           정사와 구분합니다.
         </div>
+        <!-- index.html의 랭킹 도전 버튼 위에 이 블록 전체를 붙여 넣으세요. -->
+<aside id="ranking-maintenance-notice" role="status" hidden style="margin:12px 0;padding:12px 16px;border:1px solid #b98945;border-radius:8px;background:#fff4d9;color:#392910;line-height:1.6;text-align:left">
+  <strong>랭킹 서버 점검 안내</strong>
+  <div></div>
+</aside>
+<script>
+(() => {
+  const notice = document.getElementById('ranking-maintenance-notice');
+  const start = Date.parse('2026-11-29T00:00:00+09:00');
+  const end = Date.parse('2026-11-29T08:00:00+09:00');
+  function update() {
+    const now = Date.now();
+    if (now >= end) { notice.hidden = true; return; }
+    const before = now < start;
+    notice.querySelector('div').textContent = before
+      ? '1,000점 인생 랭킹 업데이트를 위해 11월 29일(일) 0시부터 랭킹 조회와 기록 등록을 잠시 중단합니다. 랭킹 도전 중이라면 11월 28일(토) 밤 12시 전에 기록 등록까지 마쳐 주세요. 29일 오전 8시까지 재개할 예정이며, 일반 게임은 계속 플레이할 수 있습니다.'
+      : '현재 1,000점 인생 랭킹 업데이트로 랭킹 조회와 기록 등록을 잠시 중단했습니다. 11월 29일(일) 오전 8시까지 재개할 예정입니다. 일반 게임은 계속 플레이할 수 있습니다.';
+    notice.hidden = false;
+    setTimeout(update, Math.min((before ? start : end) - now, 2147483647));
+  }
+  update();
+})();
+</script>
+
         <div class="actions">
           <button
             class="btn"
