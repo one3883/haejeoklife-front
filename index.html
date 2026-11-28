@@ -2316,9 +2316,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         let race =
           $("race").value === "random"
             ? rand([
-                "인간",
-                "인간",
-                "인간",
+                ...Array(7).fill("인간"),
                 "어인",
                 "인어",
                 "밍크족",
@@ -2512,6 +2510,11 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           p.flags.voidResearch = false;
           if ((p.flags.voidProgress || 0) < 7) p.flags.voidProgress = 0;
           log("직업 변경으로 공백의 100년 연구를 중단함");
+        }
+        if (p.flags?.impelDown) {
+          const prison = p.flags.impelDown;
+          if (prison.savedBounty == null) { prison.savedBounty = p.bounty || 0; prison.savedBountyIssued = !!p.bountyIssued; }
+          p.bounty = 0; p.bountyIssued = false;
         }
         slowStats();
         ["health", "happiness", "knowledge", "relationship", "combat"].forEach(
@@ -3450,7 +3453,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
       }
 
       function celestialDragonIncident() {
-        if (p.status === "천룡인" || nonMember() || isAdmiral() || worldFreed())
+        if (p.status === "천룡인" || p.flags.exNoble || p.flags.exNobleAge != null || nonMember() || isAdmiral() || worldFreed())
           return null;
         const chance =
           (p.place.name === "샤본디 제도" || p.place.country === "샤본디 제도"
@@ -10062,6 +10065,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         {
           const s = exNobleScene();
           if (s) scenes.push(s);
+          const extra = nobleHistoryScene();
+          if (extra) scenes.push(extra);
         }
         if (p.age >= 16 && Math.random() < 0.45) {
           const s = npcScene();
@@ -10079,7 +10084,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = familyScene();
           if (s) scenes.push(s);
         }
-        if (p.age >= 16 && Math.random() < 0.5) {
+        if (p.age >= 16 && Math.random() < (p.status === "천룡인" ? 0.85 : 0.5)) {
           const s = jobScene();
           if (s) scenes.push(s);
         }
@@ -20307,6 +20312,7 @@ p.combat += 1;
                   desc: "들키면 크게 혼난다.",
                   run: () => {
                     p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                     if (Math.random() < 0.3) {
                       npcsBy((n) => n.role === "부모").forEach(
                         (n) => (n.rel -= 10),
@@ -20537,6 +20543,7 @@ p.combat += 1;
                 desc: "피를 묻히지 않는다.",
                 run: () => {
                   p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                   gainStanding(-3);
                   log("반역자 처단 임무를 넘김");
                 },
@@ -20603,6 +20610,7 @@ p.combat += 1;
                 p.flags.cruel = (p.flags.cruel || 0) + 1;
                 gainStanding(3);
                 p.happiness += 2;
+                p.flags.nobleOwnedSlave = true;
                 log("인간 경매장에서 노예를 삼");
               },
             },
@@ -20612,10 +20620,11 @@ p.combat += 1;
               run: () => {
                 p.money -= ri(1000000, 4000000);
                 p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                 if (Math.random() < 0.3) {
                   gainStanding(-8);
                   log("노예를 풀어 준 것이 들통남");
-                } else log("경매에서 산 사람을 몰래 풀어 줌");
+                } else { p.flags.nobleFreedOwnedSlave = true; log("경매에서 산 사람을 몰래 풀어 줌"); }
               },
             },
             {
@@ -20700,6 +20709,7 @@ p.combat += 1;
                 desc: "하계의 평판은 오르지만 다른 귀족들이 수군거린다.",
                 run: () => {
                   p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                   gainStanding(-3);
                   p.happiness += 3;
                   log("세계회의에서 가난한 왕국의 천상금 감면을 거들었음");
@@ -20737,6 +20747,7 @@ p.combat += 1;
               desc: "재산은 그대로지만 사절은 눈물을 흘린다.",
               run: () => {
                 p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                 p.happiness += 4;
                 log("흉년이 든 나라의 진상품을 돌려보냄");
               },
@@ -20766,6 +20777,7 @@ p.combat += 1;
                 desc: "들키면 가문의 수치가 된다.",
                 run: () => {
                   p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                   if (Math.random() < 0.3) {
                     gainStanding(-8);
                     log("사냥 대회에서 노예를 놓아준 것이 들통남");
@@ -20853,6 +20865,7 @@ p.combat += 1;
               desc: "하계 사람들의 눈빛이 마음에 걸린다.",
               run: () => {
                 p.flags.kindNoble = (p.flags.kindNoble || 0) + 1;
+                  p.flags.nobleDissent = (p.flags.nobleDissent || 0) + 1;
                 log("고개를 든 청년을 못 본 척 지나감");
               },
             },
@@ -20926,6 +20939,8 @@ p.combat += 1;
           });
         const m = celestialMajorScene();
         if (m) pool.push(m);
+        const exam = pool.find(e => e.key === "cel_knight");
+        if (exam && (p.age - (p.seenScenes?.cel_knight ?? -99) >= 4) && Math.random() < 0.65) return {...exam, keep:true, maxPerLife: 10, cooldown:4};
         return pickMajorFirst(pool, 4);
       }
       function celestialAdultScene() {
@@ -20964,9 +20979,38 @@ p.combat += 1;
           choices: opts,
         };
       }
+      function nobleHistoryScene() {
+        if (worldFreed() || p.age < 16 || p.job === "노예" || p.flags.impelDown) return null;
+        const f = p.flags;
+        const make = (key,title,body,choices) => ({key,title,body,choices,major:true,minAge:16,cooldown:8,callbackValid:()=>p.status!=="천룡인" && (f.exNoble || f.exNobleAge != null)});
+        const c = (title,desc,run)=>({title,desc,run});
+        if (p.status === "천룡인") {
+          if ((f.nobleDissent || 0) < 3 || f.nobleWarned) return null;
+          return {key:"cel_knight_warning",title:"신의 기사단의 경고",body:"당신이 하계 사람들을 감싸고 귀족의 관습을 거스른 일이 기사단에 보고되었습니다. 기사가 저택을 찾아와 더는 가문의 이름을 욕되게 하지 말라고 경고합니다.",major:true,keep:true,minAge:16,callbackValid:()=>p.status==="천룡인"&&!f.nobleWarned,choices:[
+            c("경고를 받아들인다","권세를 지키지만 마음이 무겁다",()=>{f.nobleWarned=true;p.happiness-=8;gainStanding(3);log("기사단의 경고를 받아들임");}),
+            c("신념을 굽히지 않는다","권세를 잃지만 신념을 지킨다",()=>{f.nobleWarned=true;gainStanding(-10);p.happiness+=4;log("기사단의 경고에도 신념을 지킴");})
+          ]};
+        }
+        if (!(f.exNoble || f.exNobleAge != null) || p.age-(f.exNobleAge??p.age)<1 || Math.random()>=0.4) return null;
+        const pool=[];
+        if (f.nobleOwnedSlave || f.nobleFreedOwnedSlave) pool.push(make("exnoble_slave_reunion","과거에 자신이 부리던 노예와의 재회","항구에서 낯익은 얼굴을 발견합니다. 성지에서 당신의 명령을 따르던 사람이 이제는 자유로운 몸으로 살아가고 있습니다. 그는 당신을 알아보고 걸음을 멈춥니다.",[
+          c("과거의 일을 사과한다","관계를 회복하지만 마음이 무겁다",()=>{p.relationship+=6;p.happiness-=4;log("과거에 부리던 노예에게 사과함");}),
+          c("조용히 자리를 떠난다","과거를 마주할 기회를 놓친다",()=>{p.happiness-=3;log("옛 노예와의 대화를 피함");})
+        ]));
+        pool.push(make("exnoble_acquaintance","천룡인 시절의 지인과 재회","하계에 내려온 옛 지인이 당신을 알아봅니다. 그는 과거의 생활을 그리워하지 않느냐고 묻고, 조용히 생활비를 건네겠다고 제안합니다.",[
+          c("도움을 받아들인다","생활비를 얻지만 자존심을 잃는다",()=>{p.money+=300000;p.happiness-=6;log("옛 지인에게 생활비를 받음");}),
+          c("도움을 정중히 거절한다","돈 대신 독립을 지킨다",()=>{p.happiness+=4;log("옛 지인의 도움을 거절함");})
+        ]));
+        if (!f.nobleReturnAsked) pool.push(make("exnoble_return_request","세계정부에 천룡인 복귀 요청","세계정부의 관리에게 성지로 돌아갈 수 있는지 문의할 기회가 생겼습니다. 한 번 버린 지위는 쉽게 되찾을 수 없다는 사실을 당신도 알고 있습니다.",[
+          c("복귀 청원을 제출한다","청원은 거절될 수 있다",()=>{f.nobleReturnAsked=true;p.happiness-=8;log("세계정부가 천룡인 복귀 청원을 거절함");}),
+          c("하계에서 계속 살아간다","과거의 특권을 포기한다",()=>{f.nobleReturnAsked=true;p.happiness+=5;log("천룡인 복귀를 포기함");})
+        ]));
+        const fresh=pool.filter(e=>p.seenScenes?.[e.key]===undefined);
+        return fresh.length?rand(fresh):null;
+      }
       function exNobleScene() {
         if (
-          !p.flags.exNoble ||
+          !p.flags.exNoble || p.flags.exNobleForgiven ||
           p.status === "천룡인" ||
           p.age - (p.flags.exNobleAge ?? -99) > 8 ||
           Math.random() >= 0.25
@@ -21001,7 +21045,7 @@ p.combat += 1;
               run: () => {
                 if (Math.random() < 0.4) {
                   p.relationship += 6;
-                  p.flags.exNoble = false;
+                  p.flags.exNobleForgiven = true;
                   log("무릎을 꿇고 용서를 빌어 받아들여짐");
                 } else {
                   p.health -= ri(8, 20);
@@ -35082,7 +35126,7 @@ new MutationObserver(recs=>{
   <script src="companion-battle.js?v=20261127d" defer></script>
   <script src="battle-visuals.js?v=20261127d" defer></script>
   <script src="canon-intervention.js?v=20261127d" defer></script>
-  <script src="impel-down.js?v=20261127d" defer></script>
+  <script src="impel-down.js?v=20261128a" defer></script>
   <!-- 동료와 관계: 관계 스탯의 효과, 싸움에서 동료의 구조, 동료가 있을 때·없을 때의 사건. impel-down.js 뒤에 불러와 그 위를 감싼다 -->
   <script src="companion-events.js?v=20261125a" defer></script>
   <!-- 건강과 행복: 두 스탯이 사망 위험·싸움·수입에 실제로 영향을 준다. companion-events.js 뒤에 불러온다 -->
