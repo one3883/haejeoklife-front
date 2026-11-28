@@ -8310,7 +8310,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         const f = p.flags.strawHat;
         if (
           !["enies", "marineford", "return", "wano", "egghead"].includes(id) ||
-          !f ||
+          !f || !luffyBondWorld() ||
           f === "passed"
         )
           return "";
@@ -9040,93 +9040,55 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         if (seenCanon("dressrosa")) return "현상금 5억 베리의 해적";
         return "현상금 4억 베리의 해적";
       }
+      // 유년기 인연 전용. 원작 개입에서 성인이 된 뒤 얻은 knewLuffy만으로는 열리지 않는다.
+      function luffyBondWorld() {
+        return p.fruit !== "고무고무 열매" &&
+          !(p.extraFruits || []).includes("고무고무 열매") &&
+          !(p.abilities || []).some(a => String(a).startsWith("고무고무 열매")) &&
+          !p.flags.luffyDead &&
+          !(p.npcs || []).some(n => n.name === "몽키 D. 루피" && n.alive === false);
+      }
+      function childhoodLuffyBond() {
+        if (p.flags.childhoodLuffy) return p.flags.childhoodLuffy;
+        const memories = p.kid?.memories || [];
+        if (p.flags.knewLuffy && memories.some(m => m.t === "밀짚모자를 동경하던 꼬마 루피")) return "foosha";
+        if (p.flags.knewLuffy && memories.some(m => m.t === "세 형제와 함께 쓰러뜨린 호랑이")) return "mountain";
+        return null;
+      }
+      function luffyReunionEligible() {
+        if (!luffyBondWorld() || !childhoodLuffyBond() || p.flags.childhoodLuffyReunited ||
+            p.age < 16 || realAge() < 16 || p.job === "노예" || p.job === "수감자" ||
+            p.flags.impelDown || p.status === "천룡인" || p.place?.name === "성지 마리조아") return false;
+        const y = canonYear(), n = p.place?.name;
+        if (y === 1522 && !seenCanon("marineford")) {
+          return ["쉘즈 타운","오렌지 마을","시롭 마을","코코야시 마을","로그타운","드럼섬","나노하나","알바나","모크 타운","엔젤 아일랜드","워터 세븐","롱 링 롱 랜드","샤본디 제도"].includes(n);
+        }
+        if (y >= 1524 && seenCanon("return") && (!seenCanon("egghead") || p.age-p.canonSeen.egghead<=2)) {
+          return ["샤본디 제도","어인섬","드레스로자 왕도","홀케이크 아일랜드","꽃의 도읍","쿠리","조우","엘바프","엘바프 항구"].includes(n);
+        }
+        return false;
+      }
       function strawHatScene() {
-        const ph = strawPhase();
-        if (
-          p.flags.strawHat ||
-          p.fruit === "고무고무 열매" ||
-          p.status === "해군" ||
-          p.status === "천룡인" ||
-          p.place === MARIJOA ||
-          p.place.name === "성지 마리조아" ||
-          p.age < 8 ||
-          !ph
-        )
-          return null;
-        const onRoute = STRAWHAT_ROUTE[ph].includes(p.place.name);
-        if (
-          Math.random() >=
-          (onRoute ? 0.05 : 0.004) * (p.flags.knewLuffy ? 3 : 1)
-        )
-          return null;
-        const crew =
-          ph === 1
-            ? "초록 머리의 검사와 주황색 머리의 항해사"
-            : "초록 머리의 검사, 주황색 머리의 항해사, 긴 코의 저격수, 그리고 해골 모습의 음악가";
-        const hunter = p.job === "현상금 사냥꾼";
-        return {
-          essential: true,
-          minAge: 8,
-          key: "strawhat",
-          tags: ["Luffy"],
-          title: "밀짚모자 해적단과의 만남",
-          body: `${p.place.name}의 식당이 갑자기 시끌벅적해졌습니다. 밀짚모자를 쓴 청년이 산더미처럼 쌓인 고기를 먹어 치우고 있고, ${crew}가 그 옆에서 한숨을 쉬고 있습니다.\n벽에 붙은 수배서를 보니 그는 '밀짚모자 루피', ${luffyBounty()}입니다. ${p.flags.knewLuffy ? '\n그가 고기를 문 채 당신을 빤히 보더니 소리칩니다. "어? 너, 후샤 마을의 그 녀석 아냐?!"' : "그가 고기를 문 채 당신을 보며 씩 웃습니다."}${p.status === "혁명군" && seenCanon("marineford") ? "\n혁명군인 당신은 그가 총사령관 몽키 D. 드래곤의 아들이라는 사실을 알고 있습니다." : ""}`,
-          choices: [
-            {
-              title: "말을 걸고 친구가 된다",
-              desc: "그의 모험 이야기를 들으며 함께 웃고 떠든다.",
-              run: () => {
-                p.flags.strawHat = "friend";
-                p.relationship += 12;
-                p.happiness += 12;
-                if (p.status === "해적") p.reputation += 3;
-                log("몽키 D. 루피와 친구가 됨");
-              },
-            },
-            {
-              title: hunter
-                ? "현상금을 노리고 덤빈다"
-                : "시비를 걸고 싸움을 건다",
-              desc:
-                "상대는 보통 해적이 아니다. 무사하지 못할 수 있다." +
-                oddsText(-0.45),
-              run: () => {
-                p.flags.strawHat = "enemy";
-                if (
-                  battle({
-                    foe: "밀짚모자 루피",
-                    base: -0.45,
-                    loseHp: [15, 35],
-                    win: () => {
-                      p.reputation += 15;
-                      p.combat += 5;
-                      if (p.status === "해적" && p.bountyIssued)
-                        p.bounty += 3 * ri(50000000, 150000000);
-                    },
-                    lose: () => {
-                      p.happiness -= 6;
-                    },
-                    death: {
-                      type: "밀짚모자 루피와의 싸움",
-                      detail:
-                        "밀짚모자 루피에게 덤볐다가 한 방에 날아갔습니다. 그는 당신을 죽일 생각이 없었지만, 이미 약해져 있던 몸이 그 충격을 견디지 못했습니다.",
-                    },
-                  })
-                )
-                  log("믿기 어렵게도 밀짚모자 루피를 쓰러뜨림");
-                else log("밀짚모자 루피에게 덤볐다가 한 방에 날아감");
-              },
-            },
-            {
-              title: "엮이지 않고 조용히 자리를 뜬다",
-              desc: "수배범과 얽혀서 좋을 일은 없다.",
-              run: () => {
-                p.flags.strawHat = "passed";
-                log("밀짚모자 해적단을 보고도 모른 척 지나감");
-              },
-            },
-          ],
+        if (!luffyReunionEligible() || Math.random() >= 0.65) return null;
+        const place = p.place.name, mountain = childhoodLuffyBond() === "mountain";
+        const finish = () => { p.flags.childhoodLuffyReunited = true; };
+        const friendly = () => {
+          finish(); p.flags.strawHat = "friend"; p.relationship += 6; p.happiness += 8;
+          log("어린 시절 친구 루피와 재회함");
         };
+        const choices = [
+          {title:"옛 추억을 나눈다",desc:"오랜 우정을 다시 이어간다",run:friendly},
+          {title:"짧게 인사하고 헤어진다",desc:"각자의 길을 존중한다",run:()=>{finish();p.flags.strawHat="friend";p.happiness+=3;log("루피와 짧게 인사하고 각자의 길을 떠남");}}
+        ];
+        if (p.status === "해군" || p.job === "현상금 사냥꾼") {
+          choices[0] = {title:"이번만 눈감아 준다",desc:"우정을 지키지만 직업상 공적을 잃는다",run:()=>{friendly();gainStanding(-5);}};
+          choices[1] = {title:"직무 때문에 거리를 둔다",desc:"직무를 지키지만 우정이 멀어진다",run:()=>{finish();p.flags.strawHat="passed";p.happiness-=4;log("직무 때문에 옛 친구 루피와 거리를 둠");}};
+        } else if (p.status === "해적") {
+          choices.push({title:"바다에서 다시 만나자고 약속한다",desc:"서로의 꿈을 응원한다",run:()=>{friendly();p.reputation+=3;}});
+        }
+        return {key:"childhood_luffy_reunion",title:"어린 시절 친구 루피와의 재회",major:true,essential:true,minAge:16,tags:["Luffy"],
+          body:place+"에서 밀짚모자를 쓴 청년이 당신을 발견하고 달려옵니다. "+(mountain?"콜보산에서 함께 뛰어다니던 일을 떠올린":"후샤 마을에서 함께 놀던 일을 떠올린")+" 루피가 환하게 웃으며 외칩니다. \"너잖아! 엄청 오랜만이다!\"",
+          callbackValid:()=>luffyReunionEligible() && p.place.name===place,choices};
       }
 
       // ── 6. 학자와 공백의 100년 ──
@@ -10015,7 +9977,8 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           const s = lifeImpactScene();
           if (s) scenes.push(s);
         }
-        // 일반 밀짚모자 만남은 원작 개입으로 대체됨.
+        // 일반 만남은 부활시키지 않고 유년기 친구만 재회한다.
+        { const reunion = strawHatScene(); if (reunion) scenes.push(reunion); }
         if (p.job === "의사 견습" && p.age >= 18 && p.rankLevel >= 1) {
           const rare = p.rankLevel >= 3 && p.knowledge >= 75;
           const key = rare && !p.flags.medicalCureSeen && Math.random() < .12 ? "medical_cure" :
@@ -10204,7 +10167,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
         if (p.birthPlace && p.birthPlace.name !== p.place.name)
           s += `\n\n[지금 사는 곳]\n${placeInfo(p.place)}`;
         s += "\n";
-        if (p.flags.strawHat === "friend") s += "\n밀짚모자 루피: 친구";
+        if ((p.flags.strawHat === "friend" && luffyBondWorld())) s += "\n밀짚모자 루피: 친구";
         else if (p.flags.strawHat === "enemy") s += "\n밀짚모자 루피: 적대";
         if (p.flags.slaveMark)
           s +=
@@ -13009,7 +12972,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           p.flags.imuSecret === "betray" ||
           (p.job === "학자" && p.flags.voidResearch) ||
           p.status === "혁명군" ||
-          p.flags.strawHat === "friend"
+          (p.flags.strawHat === "friend" && luffyBondWorld())
         );
       }
       function imuScene() {
@@ -13055,7 +13018,7 @@ body { position: relative; -webkit-text-size-adjust: 100%; text-size-adjust: 100
           );
           bonus.push(0.2);
         }
-        if (p.flags.strawHat === "friend") {
+        if ((p.flags.strawHat === "friend" && luffyBondWorld())) {
           r.push(
             "오랜만에 날아온 편지에 낯익은 글씨가 적혀 있었습니다. '마리조아에 갈 거야. 같이 가자!' 밀짚모자를 쓴 옛 친구의 편지입니다.",
           );
@@ -23187,7 +23150,7 @@ p.combat += 1;
           if (x) pool.push(x);
         };
         if (n === "후샤 마을") {
-          if (cy >= 1511 && cy <= 1512 && !p.flags.knewShanks)
+          if (cy >= 1511 && cy <= 1512 && age >= 5 && luffyBondWorld() && !p.flags.knewShanks && p.seenScenes?.kid_p_shanks === undefined)
             add(
               K(
                 "p_shanks",
@@ -23211,6 +23174,7 @@ p.combat += 1;
                     run: () => {
                       p.flags.knewShanks = true;
                       p.flags.knewLuffy = true;
+                      p.flags.childhoodLuffy = "foosha";
                       mem("밀짚모자를 동경하던 꼬마 루피");
                       log("해적이 되겠다는 꼬마 루피와 친구가 됨");
                     },
@@ -23256,16 +23220,16 @@ p.combat += 1;
         }
         if (
           ["콜보산", "그레이 터미널", "후샤 마을"].includes(n) &&
-          cy >= 1510 &&
-          cy <= 1512 &&
-          age >= 6 &&
-          !p.flags.knewAceSabo
+          cy >= 1512 &&
+          cy <= 1518 &&
+          age >= 6 && luffyBondWorld() &&
+          !p.flags.knewAceSabo && p.seenScenes?.kid_p_threeboys === undefined
         )
           add(
             K(
               "p_threeboys",
-              "산속의 세 소년",
-              "콜보산 숲에서 세 소년이 자기들보다 몇 배는 큰 호랑이와 싸우고 있습니다. 주근깨 소년, 모자를 쓴 소년, 그리고 밀짚모자를 쓴 꼬마입니다.",
+              cy === 1512 && !seenCanon("gray") ? "산속의 세 소년" : "산속의 두 형제",
+              cy === 1512 && !seenCanon("gray") ? "콜보산 숲에서 세 소년이 자기들보다 몇 배는 큰 호랑이와 싸우고 있습니다. 주근깨 소년, 모자를 쓴 소년, 그리고 밀짚모자를 쓴 꼬마입니다." : "콜보산 숲에서 주근깨 소년 에이스와 밀짚모자를 쓴 루피가 호랑이와 맞서고 있습니다. 두 형제는 당신을 발견하고 함께하자고 손짓합니다.",
               [
                 {
                   title: "막대기를 들고 끼어든다",
@@ -23274,10 +23238,12 @@ p.combat += 1;
                     p.flags.knewAceSabo = true;
                     if (kidCheck(0.3, "검술")) {
                       sk("검술", 6);
-                      mem("세 형제와 함께 쓰러뜨린 호랑이");
-                      log("세 소년과 함께 호랑이를 쓰러뜨림");
+                      mem("루피와 함께 쓰러뜨린 호랑이");
+                      log("루피 일행과 함께 호랑이를 쓰러뜨림");
                     } else hurt(5, 12, "호랑이에게 할퀴어 다침");
                     p.flags.knewLuffy = true;
+                    p.flags.childhoodLuffy = "mountain";
+                    mem("콜보산에서 친구가 된 루피");
                   },
                 },
                 {
@@ -23285,8 +23251,8 @@ p.combat += 1;
                   desc: "엄청난 녀석들이다.",
                   run: () => {
                     p.flags.knewAceSabo = true;
-                    mem("숲에서 본 무모한 세 소년");
-                    log("세 소년의 싸움을 숨어서 지켜봄");
+                    mem("숲에서 본 무모한 루피 일행");
+                    log("루피 일행의 싸움을 숨어서 지켜봄");
                   },
                 },
               ],
@@ -23899,7 +23865,14 @@ p.combat += 1;
         return l && l.length ? pickFresh(l, 99) : null;
       }
       function childhoodYear(age) {
-        if (age < 6) return kidEarlyYear(age);
+        if (age < 6) {
+          const early = kidEarlyYear(age);
+          if (age === 5) {
+            const shanks = kidPlacePool().find(e => e.key === "kid_p_shanks");
+            if (shanks) early.push({...shanks,essential:true,callbackValid:()=>luffyBondWorld() && p.place.name==="후샤 마을"});
+          }
+          return early;
+        }
         const out = [];
         if (age <= 9) {
           const pool = [...kidMidPool(), ...kidFamilyPool(), ...kidPlacePool()];
@@ -23926,6 +23899,8 @@ p.combat += 1;
           const pool = [...kidTeenPool(), ...kidPlacePool()];
           out.push(pf(pool));
         }
+        const bond = kidPlacePool().find(e => ["kid_p_shanks","kid_p_threeboys"].includes(e.key) && !out.some(x=>x?.key===e.key));
+        if (bond && Math.random()<0.6) out.push({...bond,keep:true});
         return out.filter(Boolean);
       }
 
@@ -25302,6 +25277,7 @@ p.combat += 1;
         if (!s) return s;
         const k = String(sceneKey(s));
         if (!statusFits(s)) return null;
+        if (["kid_p_shanks","kid_p_threeboys","childhood_luffy_reunion"].includes(k) && !luffyBondWorld()) return null;
         const contextText = [s.title,s.body,...(s.choices||[]).map(c=>[c.title,c.desc,String(c.run)].join(" "))].join(" ");
         if (p.place?.name === "G-8 나바론" && !s.essential && /해적선|해적 선박|해적의 배/.test(contextText) && !/나포|소탕|요새 밖|근해/.test(contextText)) return null;
         if (isAdmiral() && /상관의|상관에게|상관이|상관은|상관과|상관을|상관으로|직속 상관/.test(contextText)) return null;
@@ -26382,7 +26358,7 @@ p.combat += 1;
       }
       function imuForcedScene() {
         let base = -0.35 + 0.1;
-        if (p.flags.strawHat === "friend") base += 0.25;
+        if ((p.flags.strawHat === "friend" && luffyBondWorld())) base += 0.25;
         if (p.status === "혁명군") base += 0.15;
         if (p.fruit === "고무고무 열매" && p.flags.awakened) base += 0.3;
         return {
